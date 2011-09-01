@@ -1,0 +1,56 @@
+/*
+ * Copyright (c) 2011, Intel Corporation
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright notice, 
+ *   this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice, 
+ *   this list of conditions and the following disclaimer in the documentation 
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "nsISecurityCheckedComponent.idl"
+#include "dpoIKernel.idl"
+
+%{ C++
+#include "jspubtd.h"
+%}
+
+[scriptable, uuid(166ca6fa-f574-47de-b938-a2e7e13c6bc0)]
+interface dpoIContext : nsISecurityCheckedComponent
+{
+	// Functions for generating kernels. 
+	dpoIKernel compileKernel( in AString source, in AString kernelName, [optional] in AString options);
+
+	// Debugging the build process.
+	readonly attribute AString buildLog;
+
+    // Functions for mapping data.
+	[implicit_jscontext]
+	dpoIData mapData( in jsval source);
+	[implicit_jscontext]
+	dpoIData cloneData( in jsval source);
+	[implicit_jscontext]
+	dpoIData allocateData( in jsval templ, [optional] in PRUint32 length);
+	[implicit_jscontext]
+	dpoIData allocateData2( in dpoIData templ, [optional] in PRUint32 length);
+
+	// Profiling support
+	readonly attribute PRUint64 lastExecutionTime;
+	readonly attribute PRUint64 lastRoundTripTime;
+};

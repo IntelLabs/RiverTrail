@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Firefox OpenCL Interface", "Firefox OpenCL Interface.vcxproj", "{3ABB989A-A3CC-F808-7317-1793B974595A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3ABB989A-A3CC-F808-7317-1793B974595A}.Debug|Win32.ActiveCfg = Release|Win32
+		{3ABB989A-A3CC-F808-7317-1793B974595A}.Debug|Win32.Build.0 = Release|Win32
+		{3ABB989A-A3CC-F808-7317-1793B974595A}.Release|Win32.ActiveCfg = Release|Win32
+		{3ABB989A-A3CC-F808-7317-1793B974595A}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

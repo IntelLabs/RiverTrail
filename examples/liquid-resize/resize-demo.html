@@ -1,0 +1,91 @@
+<!--
+ Copyright (c) 2011, Intel Corporation
+ All rights reserved.
+ 
+ Redistribution and use in source and binary forms, with or without 
+ modification, are permitted provided that the following conditions are met:
+
+ - Redistributions of source code must retain the above copyright notice, 
+   this list of conditions and the following disclaimer.
+ - Redistributions in binary form must reproduce the above copyright notice, 
+   this list of conditions and the following disclaimer in the documentation 
+   and/or other materials provided with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+ THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<!-- 
+The algorithm used in this example is based on the following paper, which also appeared in
+ACM SIGGRAPH 2007.
+Shai Avidan and Ariel Shamir. 2007. Seam carving for content-aware image resizing. 
+ACM Trans. Graph. 26, 3, Article 10 (July 2007). 
+DOI=10.1145/1276377.1276390 http://doi.acm.org/10.1145/1276377.1276390
+-->
+<html>
+<head>
+<title>Data-Parallel JavaScript Context Aware Image Resizing Demo</title>
+<script type="text/javascript" src="../../jslib/ParallelArray.js"></script>
+<script type="application/javascript" src="../../jslib/jit/narcissus/jsdefs.js"></script>
+<script type="application/javascript" src="../../jslib/jit/narcissus/jslex.js"></script>
+<script type="application/javascript" src="../../jslib/jit/narcissus/jsparse.js"></script>
+<script type="application/javascript" src="../../jslib/jit/narcissus/jsdecomp.js"></script>
+<script type="application/javascript" src="../../jslib/jit/compiler/definitions.js"></script>
+<script type="application/javascript" src="../../jslib/jit/compiler/helper.js"></script>
+<script type="application/javascript" src="../../jslib/jit/compiler/driver.js"></script>
+<script type="application/javascript" src="../../jslib/jit/compiler/dotviz.js"></script>
+<script type="application/javascript" src="../../jslib/jit/compiler/typeinference.js"></script>
+<script type="application/javascript" src="../../jslib/jit/compiler/rangeanalysis.js"></script>
+<script type="application/javascript" src="../../jslib/jit/compiler/genOCL.js"></script>
+<script type="application/javascript" src="../../jslib/jit/compiler/runOCL.js"></script>
+</head>
+<body>
+<canvas id="theCanvas"></canvas>
+<hr />
+<input type="button" id="btnResize" value="Resize" onclick="resize();"/>
+using
+<select id="impl">
+  <option value="js">sequential JavaScript</option>
+  <option value="dp">Data Parallel JavaScript</option>
+</select>
+, or
+<input type="button" id="btnReset" value="start over" onclick="reset();"/>
+. You can 
+<input type="button" id="btnHalve" value="halve" onclick="halve();" />
+the image, as well.
+<hr />
+<div id="statusBar"></div>
+<hr />
+<p id="log"></p>
+
+<div style="position:fixed;top:0pt;right:0pt;background-color:#EEEEEE;padding:2em;font-family:sans-serif;font-size:large;height:100%;">
+<h1 style="margin-top:0em;"> Scoreboard<a href="javascript:resetScoreboard()" style="font-size:small">[reset]</a></h1>
+<h2>Last Sequential Runtimes</h2>
+<table style="width:100%;font-size:x-large;">
+<tr><td>Full</td><td id="seqFull" style="text-align:right;">--</td></tr>
+<tr><td>Parallel Component</td><td id="seqPar" style="text-align:right;">--</td></tr>
+</table>
+<h2>Last Parallel Runtimes</h2>
+<table style="width:100%;font-size:x-large;">
+<tr><td>Full</td><td id="parFull" style="text-align:right;">--</td></tr>
+<tr><td>Parallel Component</td><td id="parPar" style="text-align:right;">--</td></tr>
+</table>
+<h2>Speedup</h2>
+<table style="width:100%;font-size:x-large;">
+<tr><td>Full</td><td id="speedupFull" style="text-align:right;font-weight:bold;color:#33AA33;">--</td></tr>
+<tr><td>Parallel Component</td><td id="speedupPar" style="text-align:right;font-weight:bold;color:#33AA33;">--</td></tr>
+</table>
+</div>
+<script type="text/javascript" src="resize-control.js"></script>
+<script type="text/javascript" src="resize-compute-dp.js"></script>
+<script type="text/javascript" src="resize-compute-js.js"></script>
+</body>
+</html>

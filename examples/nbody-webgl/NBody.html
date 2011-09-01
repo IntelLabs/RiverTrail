@@ -1,0 +1,177 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd" />
+<!--
+ Copyright (c) 2011, Intel Corporation
+ All rights reserved.
+ 
+ Redistribution and use in source and binary forms, with or without 
+ modification, are permitted provided that the following conditions are met:
+
+ - Redistributions of source code must retain the above copyright notice, 
+   this list of conditions and the following disclaimer.
+ - Redistributions in binary form must reproduce the above copyright notice, 
+   this list of conditions and the following disclaimer in the documentation 
+   and/or other materials provided with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+ THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<html>
+<head>
+
+<title>Data-Parallel JavaScript NBody Demo. </title>  
+<meta http-equiv="content-script-type" content="text/javascript" />  
+ 
+    <script type="text/javascript" src="../../jslib/ParallelArray.js"></script>
+
+    <script type="text/javascript" src="NBody.js"> </script>    
+    <script type="application/javascript" src="../../jslib/jit/narcissus/jsdefs.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/narcissus/jslex.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/narcissus/jsparse.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/narcissus/jsdecomp.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/definitions.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/helper.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/driver.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/dotviz.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/typeinference.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/rangeanalysis.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/genOCL.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/runOCL.js"></script>
+       
+    <!-- helper code for nbodyGLDisplay.js -->
+    <script type="text/javascript" src="contrib/glMatrix-0.9.5.js"></script> 
+
+<!- Some shader scripts needed by nbodyGLDisplay.js, how do I put these in the .js file? -->
+
+<script id="shader-fs" type="x-shader/x-fragment"> 
+#ifdef GL_ES
+	precision highp float;
+#endif
+    varying lowp vec4 vColor; // How we get color information from the fragment shader.
+
+void main(void) {
+    // This works on each individual body image.
+    // The turns square point into a circle by discarding pixels 
+    // more than half way away from the center of the box.
+    // Next it subtle darkens the remaining pixels from the 
+    // center our. This creates a sphere like image instead of
+    // a mono-colored disc.
+	vec2 coords = gl_PointCoord - 0.5;
+	float dist = sqrt(coords.x * coords.x + coords.y * coords.y);
+	
+    if (dist > 0.5) {
+		discard;
+    } else {
+        // The 1.0-dist fades the circle to look like a 3d sphere
+		vec4 result = vec4((vColor[0]/255.0), (vColor[1]/255.0), (vColor[2]/255.0), 0.0) * (1.0-dist);
+		result[3] = 1.0;        // rbga - three is a 
+		gl_FragColor = result;  // 1,1,1,1 is White. 0,0,0,1 is black 1, .5, 1, 1 is a nice purple.
+	}
+}
+</script> 
+<script id="shader-vs" type="x-shader/x-vertex"> 
+    attribute vec4 aVertexPosition;
+    attribute vec4 aVertexColor;
+
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+    varying lowp vec4 vColor; // How we get color to the fragment shader.
+
+    void main(void) {
+        float x, y, z;
+        const float canvasWidth = 800.00;
+        const float canvasWidthHalf = 400.00;
+        x = aVertexPosition[0];   //x
+        y = aVertexPosition[1];   //y
+        z = aVertexPosition[2];   //z
+        x = x - canvasWidthHalf; 
+        y = y - canvasWidthHalf; 
+        z = -z - canvasWidth;
+        gl_Position = uPMatrix * uMVMatrix * vec4(x, y, z, 1.0);
+	    gl_PointSize = aVertexPosition[3]/9.0;
+        //vColor[0] = 255.0;
+        //vColor[1] = 105.0;
+        //vColor[2] = 180.0;
+        //vColor[3] = 1.0;
+        vColor = aVertexColor;
+    }
+</script> 
+
+<!-- Now load the code to display the bodies. -->
+<script type="text/javascript" src="nbodyGLDisplay.js"> </script>
+ 
+</head>
+<!-- size and then number of bodies -->
+<!-- width and height of canvas is first arg, number of bodies is secons. -->
+<!-- must be change in init call, the canvas and the vertex shader -->
+
+<body onload="NBody.display.initScoreboard();NBody.resetButtons();" >
+
+<!--
+<p> 
+The NBody algorithm works as follows. We create a 1000 bodies with mass 
+and randomly distribute them on the canvas creating a scene. Next we start 
+ticking and we consider the n**2 interactions between the bodies at each tick.
+Each interaction will result in the two bodies being attracted towards each other.
+The sum of the interactions will determine the location of the body at then end
+of the tick. The body is placed there and displayed.
+</p>
+-->
+<p>
+    <input type="button" id="btnNBody" value="Begin" onclick="NBody.init(800, 1000);"/>
+    <input type="button" id="buttonStop" value="End" onclick="NBody.stop();" disabled/>
+    using
+    <select id="implementation">
+        <option value="sequential">Sequential JavaScript</option>
+        <option value="parallel">Data Parallel JavaScript</option>
+        <!--<option value="parallelNoOCL">Unoptimized Data Parallel JavaScript</option>-->
+    </select>
+    , with number of bodies
+    <select id="bodies" onchange="NBody.display.resetScoreboard();">
+        <option value="10">10</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="200">200</option>
+        <option value="400">400</option>
+        <option value="800">800</option>
+        <option value="1000">1000</option>
+        <option value="2000">2000</option>
+        <option value="4000" selected>4000</option>
+        <option value="8000">8000</option>
+    </select>
+    .
+</p>
+<canvas id="webgl-canvas" style="border: none;" width="800" height="800"></canvas>
+<p id="status">
+Status:
+</p>
+<p style="font-size:small;position:fixed;bottom:0pt;left:5pt;">
+Physics code written by Sir Isaac Newton simulates gravitational attraction between bodies.
+</p>
+<div style="position:fixed;top:0pt;right:0pt;background-color:#EEEEEE;padding:2em;font-family:sans-serif;font-size:large;height:100%;" >
+<h1 style="margin-top:0em;"> Scoreboard<a href="javascript:NBody.display.resetScoreboard()" style="font-size:small">[reset]</a></h1>
+<h2>Last Sequential Framerate</h2>
+<table style="width:100%;font-size:x-large;">
+<tr><td>Current</td><td id="seqFPSCurr" style="text-align:right;">--</td></tr>
+<tr><td>Average</td><td id="seqFPSAvg" style="text-align:right;">--</td></tr>
+</table>
+<h2>Last Parallel Framerate</h2>
+<table style="width:100%;font-size:x-large;">
+<tr><td>Current</td><td id="parFPSCurr" style="text-align:right;">--</td></tr>
+<tr><td>Average</td><td id="parFPSAvg" style="text-align:right;">--</td></tr>
+</table>
+<h2>Speedup</h2>
+<table style="width:100%;font-size:x-large;">
+<tr><td>Average</td><td id="speedup" style="text-align:right;font-weight:bold;color:#33AA33;">--</td></tr>
+</table>
+</div>
+</body>
+</html>
