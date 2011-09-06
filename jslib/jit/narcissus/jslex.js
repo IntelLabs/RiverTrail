@@ -23,6 +23,7 @@
  *   Tom Austin <taustin@ucsc.edu>
  *   Brendan Eich <brendan@mozilla.org>
  *   Shu-Yu Guo <shu@rfrn.org>
+ *   Stephan Herhut <stephan.a.herhut@intel.com>
  *   Dave Herman <dherman@mozilla.com>
  *   Dimitris Vardoulakis <dimvar@ccs.neu.edu>
  *   Patrick Walton <pcwalton@mozilla.com>
@@ -210,7 +211,8 @@ Narcissus.lexer = (function() {
                 this.cursor--;
 
                 this.lexExponent();
-                token.value = parseFloat(token.start, this.cursor);
+                var str = input.substring(token.start, this.cursor);
+                token.value = parseFloat(str);
             } else if (ch === 'x' || ch === 'X') {
                 do {
                     ch = input[this.cursor++];
@@ -267,7 +269,8 @@ Narcissus.lexer = (function() {
                 this.lexExponent();
 
                 token.type = NUMBER;
-                token.value = parseFloat(token.start, this.cursor);
+                var str = input.substring(token.start, this.cursor);
+                token.value = parseFloat(str);
             } else {
                 token.type = DOT;
                 token.assignOp = null;
