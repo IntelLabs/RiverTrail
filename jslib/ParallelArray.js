@@ -27,8 +27,11 @@
 
 "use strict";
 ////////////////////
-//    ParallelArray
-//    The constructor for ParallelArrays.
+
+
+//ParallelArray
+//    The constructor for ParallelArrays
+
 //    Synopsis:
 //    ParallelArray();
 //    ParallelArray(size, elementalFunction, ...); 
@@ -38,31 +41,50 @@
 //    ParallelArray(canvas);
 //    Arguments
 //        none 
-//            return a ParallelArray without elements. 
-//        argument 1 is an instanceOf Function (the elemental function), argument 0 is the "size vector", remaining .. arguments 
-//            return a ParallelArray of "size" where each value is the result of calling the elemental function with
-//            the index where its result goes and any remaning ... arguments.
-//        argument 0 is an Array and there ar no more arguments then use the values in the array to populate the result in ParallelArray 
-//        argument 0 is a function and there is one more eargument then construct a new parallel array as above but use the first
-//            argument as constructor for the internal data container; should only be called internally
-//        otherwise Create a ParallelArray initialized to the elements passed in as arguments.
+//            	return a ParallelArray without elements.
+
+//        argument 0 is an Array and there are no more arguments then use the 
+//            values in the array to populate the new ParallelArray 
+
+//        argument 1 is an instanceOf Function (the elemental function), 
+//                argument 0 is the "size vector", remaining .. arguments 
+//            	return a ParallelArray of "size" where each value is the result 
+//                of calling the elemental function with the index where its 
+//                result goes and any remaining ... arguments
+
+//       argument 0 is a function and there is one more argument then construct
+//                a new parallel array as above but use the first 
+//            	argument as constructor for the internal data container; 
+//                This form can be used to force the ParallelArray to hold
+//                its data as a typed array
+//    
+//        otherwise Create a ParallelArray initialized to the elements passed 
+//                in as arguments.
+
 //    Discussion
-//        To create a parallel array whose first element is an instanceOf Function one must use the elemental function form
-//        and have the elemental function return the function.
-//        It also means that if one wants to create a ParallelArray with a single element that is an Array then it must use the
-//        elemental function form with a size of 1 and return the array from the elemental function.
+//        To create a parallel array whose first element is an instanceOf function
+//        one must use the elemental function form and have the elemental function 
+//        return the function.
+//        It also means that if one wants to create a ParallelArray with 
+//        a single element that is an Array then it must use the
+//        elemental function form with a size of 1 and return the 
+//        array from the elemental function.
+//    
 //    Returns
 //        A freshly minted ParallelArray
+
 //    Notes
-//
-//        pa1 = new ParallelArray([[0,1], [2,3], [4,5]]) returns <<0,1>, <2,3>, <4.5>>
-//        pa2 = new ParallelArray(pa1) returns <<0,1>, <2,3>, <4.5>> but since it is read some sharing is allowed
-//        pa3 = pa2.get(0) // returns <0,1>
-//        pa4 = new ParallelArray(<0,1>, <2,3>); // pa4 = <<0,1>,<2,3>>
-//        pa5 = new ParallelArray([[0,1],[2]]) // pa5 = <<0,1>, <2>>
-//        pa6 = new ParallelArray([<0,1>,<2>]); // pa6 = <<0,1>, <2>>
-//        pa7 = new ParallelArray(3, function(i){return [i, i+1];}); // pa7 = <<0,1><1,2><2,3>>
-//        pa8 = new ParallelArray(canvas); // pa8 has a copy of CanvasPixelArray
+//        <…> is used to indicate a ParallelArray in these examples it is not syntactical   sugar actually available to the program.
+//	
+//        pa1 = new ParallelArray(\[[0,1], [2,3], [4,5]]); // <<0,1>, <2,3>, <4.5>>
+//        pa2 = new ParallelArray(pa1);                   // <<0,1>, <2,3>, <4.5>>
+//        new ParallelArray(<0,1>, <2,3>);           	    // <<0,1>,<2,3>>
+//        new ParallelArray([[0,1],[2]])            	    // <<0,1>, <2>>
+//        new ParallelArray([<0,1>,<2>]);           	    // <<0,1>, <2>>
+//        new ParallelArray(3, 
+//                function(i){return [i, i+1];});         // <<0,1><1,2><2,3>>
+//       new ParallelArray(canvas);  			            // CanvasPixelArray
+
 /////////////////
 
 
