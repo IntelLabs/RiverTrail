@@ -27,7 +27,7 @@
 <html>
 <head>
 
-<title>Data-Parallel JavaScript NBody Demo. </title>  
+<title>River Trail NBody Demo</title>  
 <meta http-equiv="content-script-type" content="text/javascript" />  
  
     <script type="text/javascript" src="../../jslib/ParallelArray.js"></script>
@@ -130,9 +130,9 @@ of the tick. The body is placed there and displayed.
     <input type="button" id="buttonStop" value="End" onclick="NBody.stop();" disabled/>
     using
     <select id="implementation">
-        <option value="sequential">Sequential JavaScript</option>
-        <option value="parallel">Data Parallel JavaScript</option>
-        <!--<option value="parallelNoOCL">Unoptimized Data Parallel JavaScript</option>-->
+        <option value="sequential">sequential JavaScript</option>
+        <option value="parallel">data-parallel JavaScript</option>
+        <!--<option value="parallelNoOCL">Unoptimized data-parallel JavaScript</option>-->
     </select>
     , with number of bodies
     <select id="bodies" onchange="NBody.display.resetScoreboard();">
