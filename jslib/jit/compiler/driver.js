@@ -131,7 +131,7 @@ RiverTrail.compiler = (function () {
         }
                         
         try {
-            ast = parse(paSource, construct, rankOrShape.length || rankOrShape, f.toString(), rawArgs, lowPrecision); // parse, no code gen
+            ast = parse(paSource, construct, rankOrShape, f.toString(), rawArgs, lowPrecision); // parse, no code gen
             kernelString = RiverTrail.compiler.codeGen(ast, paSource, rankOrShape, construct); // Creates an OpenCL kernel function
         } catch (e) {
             RiverTrail.Helper.debugThrow(e);
@@ -165,13 +165,14 @@ RiverTrail.compiler = (function () {
     //
     // Driver method to steer compilation process
     //
-    function parse(paSource, construct, rank, kernel, args, lowPrecision) {
+    function parse(paSource, construct, rankOrShape, kernel, args, lowPrecision) {
         var parser = Narcissus.parser;
         var kernelJS = kernel.toString();
         var ast = parser.parse(kernelJS);        
+        var rank = rankOrShape.length || rankOrShape;
         try {
             RiverTrail.Typeinference.analyze(ast.children[0], paSource, construct, rank, args, lowPrecision);
-            RiverTrail.RangeAnalysis.analyze(ast.children[0], paSource, construct, rank, args);
+            RiverTrail.RangeAnalysis.analyze(ast.children[0], paSource, construct, rankOrShape, args);
             RiverTrail.RangeAnalysis.propagate(ast.children[0]);
         } catch (e) {
             RiverTrail.Helper.debugThrow(e);

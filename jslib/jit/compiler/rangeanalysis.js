@@ -800,13 +800,16 @@ RiverTrail.RangeAnalysis = function () {
         return result;
     }
 
-    function analyze(ast, array, construct, rank, args) {
+    function analyze(ast, array, construct, rankOrShape, args) {
         var env = new VarEnv();
 
         // add range info for index vector. 
         if (construct === "combine")  {
-            var shape = array.getShape().slice(0,rank);
+            var shape = array.getShape().slice(0,rankOrShape);
             var range = shape.map(function (val) { return new Range(0, val - 1, true); });
+            env.update(ast.params[0], range);
+        } else if (construct === "comprehension") {
+            var range = rankOrShape.map(function (val) { return new Range(0, val - 1, true); });
             env.update(ast.params[0], range);
         }
 
