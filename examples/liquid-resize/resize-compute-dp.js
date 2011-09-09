@@ -112,11 +112,11 @@ function computeEnergy(inPA, maxX) {
   var imageHeight = inPA.getShape()[0];
   var imageWidth = inPA.getShape()[1];
   var energy = newArray(imageHeight, imageWidth);
+  var data = inPA.getData();
   energy[0][0] = 0;
   for (var y = 0; y < imageHeight; y++) {
     for (var x = 0; x < maxX; x++) {
-      var e = inPA.get(y,x);
-      //var e = inPA.data[y*imageWidth + x]; 
+      var e = data[y*imageWidth + x]; 
 
       // find min of energy above
       if (y >= 1) {
