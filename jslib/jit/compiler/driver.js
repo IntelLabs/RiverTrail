@@ -66,7 +66,7 @@ RiverTrail.compiler = (function () {
     // main hook to start the compilation/execution process for running a construct using OpenCL
     // paSource -> 'this' inside kernel
     // f -> function to run
-    // construct -> [combine|combineN|map|comprehension]
+    // construct -> [combine|map|comprehension]
     // rankOrShape -> either rank of iterationspace or in case of comprehension the shape of the iterationspace
     // args -> additional arguments to the kernel
     var compileAndGo = function compileAndGo (paSource, f, construct, rankOrShape, args, enable64BitFloatingPoint) {
@@ -211,10 +211,6 @@ RiverTrail.compiler = (function () {
         var argumentTypes = [];
         var i;
         if (construct == "combine") {
-            // the kernel is called with an index as first argument, which has type int []
-            // and an extra isIndex attribute to differentiate it from the rest
-            argumentTypes.push({ inferredType: "int", dimSize: [], attributes: { isIndex: true} });
-        } else if (construct == "combineN") {
             // the kernel is called with an index as first argument, which has type int [rankOrShape]
             // and an extra isIndex attribute to differentiate it from the rest
             argumentTypes.push({ inferredType: "int", dimSize: [rankOrShape], attributes: { isIndex: true} });

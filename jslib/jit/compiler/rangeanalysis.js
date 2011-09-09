@@ -804,7 +804,7 @@ RiverTrail.RangeAnalysis = function () {
         var env = new VarEnv();
 
         // add range info for index vector. 
-        if ((construct === "combine") || (construct === "combineN")) {
+        if (construct === "combine")  {
             var shape = array.getShape().slice(0,rank);
             var range = shape.map(function (val) { return new Range(0, val - 1, true); });
             env.update(ast.params[0], range);

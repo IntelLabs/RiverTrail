@@ -86,7 +86,7 @@ RiverTrail.compiler.codeGen = (function() {
         var s = "";
         var formalsNames = formalsAst.params;
         var formalsTypes = formalsAst.typeInfo.parameters;
-        if ((construct === "combine") || (construct === "combineN")) { 
+        if (construct === "combine") { 
             // Skip the extra type for this and ignore the first argument.
             // the extras do not include |this| and the first formal since that is the index generated in the body.
             formalsTypes = formalsTypes.slice(2);
@@ -122,7 +122,7 @@ RiverTrail.compiler.codeGen = (function() {
         var start = 0;
         var formalsNames = formalsAst.params;
         var formalsTypes = formalsAst.typeInfo.parameters;
-        if ((construct === "combine") || (construct === "combineN") || (construct === "comprehension")) {
+        if ((construct === "combine") || (construct === "comprehension")) {
             // Skip the first argument since it is the index.
             start = 2; // the extras do not include |this| and the first formal since that is the index generated in the body.
         }
@@ -143,7 +143,7 @@ RiverTrail.compiler.codeGen = (function() {
         var dimSizes;
         var s = " ";
         var indexName, indexType;
-        if ((construct === "combine") || (construct === "combineN") || (construct === "comprehension")) {
+        if ((construct === "combine") || (construct === "comprehension")) {
             if (construct === "comprehension") {
                 // comprehensions have no this!
                 indexType = funDecl.typeInfo.parameters[0];
@@ -160,7 +160,7 @@ RiverTrail.compiler.codeGen = (function() {
                 // Deal with array indices.
                 // SAH: id may _NEVER_ be changed in this process as it is required to assign the result!
                 //   CR -- RLH I think we are OK w.r.t the alert following but need to build regression.
-                //   alert("make sure this deals with combineN to different levels.");
+                //   alert("make sure this deals with combine to different levels.");
                 s = s + " { ";
                 for (i = 0; i < dimSizes[0]; i++) { // Ususally only 2 or 3 dimensions so ignore complexity
                    //s = s + indexName + "[" + i + "] = _id_" + i + ";";
@@ -216,18 +216,6 @@ RiverTrail.compiler.codeGen = (function() {
             "resultAssignRhs": " tempResult",
         },
         "combine": {
-            "hasThis": true,
-            "localThisName": " tempThis",
-            "localThisDefinition": " opThisVect[opThisVect__offset]",
-            "thisShapeLength": "const int thisShapeLength = ",
-            "thisShapeDeclPre": "const int thisShapeDecl ",
-            "localResultName": " tempResult",
-            // The body goes here and return uses this to figure out what to return;
-            "resultAssignLhs": " retVal[_writeoffset] = ",
-            "returnType": "double", // This may be altered based on the type of the "this" pa.
-            "resultAssignRhs": " tempResult",
-        },
-        "combineN": {
             "hasThis": true,
             // the type of this goes here.
             "localThisName": " tempThis",
@@ -333,7 +321,7 @@ RiverTrail.compiler.codeGen = (function() {
         // Dump the standard output parameters.
         //CR this else clause needs to change into an internal error at some point.
         // Warning it seems that the result.OpenCLType is just wrong.
-         if ((construct === "combine") || (construct === "combineN") || (construct === "map")) {
+         if ((construct === "combine") || (construct === "map")) {
             // You need to cast the return values to this in the return statement
             if (funDecl.typeInfo.parameters[0].OpenCLType.slice(-1) === "*") {
                 returnElementOpenCLType = funDecl.typeInfo.parameters[0].OpenCLType.slice(0, -1); // drop the *

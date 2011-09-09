@@ -74,7 +74,7 @@ var NBody = {
 
     "animateTick": function animateTick(implementation) {
         // Use the indexedCombine since we need to get the pos and vel out of different arrays.
-        // Don't use the OCL version since there is a nested combineNOCL in NBody.bodyVelocity.
+        // Don't use the OCL version since there is a nested combine in NBody.bodyVelocity.
         if (implementation === "parallel") {
             NBody.animateTickParallel();
             return;
@@ -91,11 +91,11 @@ var NBody = {
 
     "animateTickParallel": function animateTickParallel() {
         // Use the indexedCombine since we need to get the pos and vel out of different arrays.
-        // Don't use the OCL version since there is a nested combineNOCL in NBody.bodyVelocity.
-        var newVel = NBody.private.vel.combineNOCL(1, low_precision(NBody.bodyVelocityLoopified), //Loopified,              // elemental functions
+        // Don't use the OCL version since there is a nested combine in NBody.bodyVelocity.
+        var newVel = NBody.private.vel.combine(1, low_precision(NBody.bodyVelocityLoopified), //Loopified,              // elemental functions
                                      NBody.private.pos, NBody.private.numBodies,
                                      NBody.Constant.deltaTime, NBody.Constant.epsSqr);
-        NBody.private.pos = NBody.private.pos.combineNOCL(1, low_precision(NBody.bodyPosition), newVel, NBody.private.vel, NBody.private.width);
+        NBody.private.pos = NBody.private.pos.combine(1, low_precision(NBody.bodyPosition), newVel, NBody.private.vel, NBody.private.width);
         NBody.private.vel = newVel;
     },
 
@@ -134,12 +134,12 @@ var NBody = {
 
     "animateTickParallelNoOCL": function animateTickParallelNoOCL() {
         // Use the indexedCombine since we need to get the pos and vel out of different arrays.
-        // Don't use the OCL version since there is a nested combineNOCL in NBody.bodyVelocity.
+        // Don't use the OCL version since there is a nested combine in NBody.bodyVelocity.
         // use low_precision(NBody.bodyVelocityLoopified) so we stay in float32
-        var newVel = NBody.private.vel.combineN(1, NBody.bodyVelocityLoopified, //Loopified,              // elemental functions
+        var newVel = NBody.private.vel.combineSeq(1, NBody.bodyVelocityLoopified, //Loopified,              // elemental functions
                                      NBody.private.pos, NBody.private.numBodies,
                                      NBody.Constant.deltaTime, NBody.Constant.epsSqr);
-        NBody.private.pos = NBody.private.pos.combineN(1, NBody.bodyPosition, newVel, NBody.private.vel, NBody.private.width);
+        NBody.private.pos = NBody.private.pos.combineSeq(1, NBody.bodyPosition, newVel, NBody.private.vel, NBody.private.width);
         NBody.private.vel = newVel;
     },
 
@@ -202,7 +202,7 @@ var NBody = {
     // one particle
     //
     /////////////////////////
-    // Called using combineN
+    // Called using combineSeq
     "calcAcc": function calcAcc(index, myPos, epsSqr) {
         // var result;
         //var otherBodyPos = this.get(index); // You are mapping across all _other_ bodies.
@@ -240,7 +240,7 @@ var NBody = {
         var j;
         // Get a Parallel Array of contributing attractions.
 
-        var accComponents = pos.combineNOCL(1, NBody.calcAcc, myPos, epsSqr);
+        var accComponents = pos.combine(1, NBody.calcAcc, myPos, epsSqr);
         // Reduce to a single attraction.
         var acc = accComponents.reduce(NBody.addVelocity);
 
@@ -291,12 +291,8 @@ var NBody = {
             accY += s * ry;
             accZ += s * rz;
         }
-        // var accComponents = pos.combineN(1, NBody.calcAcc, myPos, epsSqr);
-        //var accComponents = pos.combineNOCL(1, NBody.calcAcc, myPos, epsSqr);
-        // Reduce to a single attraction.
-        //var acc = accComponents.reduce(NBody.addVelocity);
 
-        // Caclulate new velocity
+        // Calculate new velocity
         newX = (this.get(index).get(0) + accX * deltaTime);
         //if ((accX * deltaTime) == 0.0) {
         //    newX = this.get(index).get(0);
@@ -353,28 +349,12 @@ var NBody = {
             accY += s * ry;
             accZ += s * rz;
         }
-        // var accComponents = pos.combineN(1, NBody.calcAcc, myPos, epsSqr);
-        //var accComponents = pos.combineNOCL(1, NBody.calcAcc, myPos, epsSqr);
-        // Reduce to a single attraction.
-        //var acc = accComponents.reduce(NBody.addVelocity);
 
         // Caclulate new velocity
         newX = (this.get(index).get(0) + accX * deltaTime);
         newY = (this.get(index).get(1) + accY * deltaTime);
         newZ = (this.get(index).get(2) + accZ * deltaTime);
         newM = 0;
-        /*
-        var dampenVel = false; // Set to true if you want to set a speed limit on the particles.
-        if (dampenVel) {
-        // clamp between -5 and 5.
-        newX = (newX > 5) ? 5 : newX;
-        newX = (newX < -5) ? -5 : newX;
-        newY = (newY > 5) ? 5 : newY;
-        newY = (newY < -5) ? -5 : newY;
-        newZ = (newZ > 5) ? 5 : newZ;
-        newZ = (newZ < -5) ? -5 : newZ;
-        }
-        */
 
         var dampenVel = false; // Set to true if you want to set a speed limit on the particles.
         if (dampenVel) {
@@ -436,10 +416,6 @@ var NBody = {
             accY += s * ry;
             accZ += s * rz;
         }
-        // var accComponents = pos.combineN(1, NBody.calcAcc, myPos, epsSqr);
-        //var accComponents = pos.combineNOCL(1, NBody.calcAcc, myPos, epsSqr);
-        // Reduce to a single attraction.
-        //var acc = accComponents.reduce(NBody.addVelocity);
 
         // Caclulate new velocity
         newX = (self[baseIndex + 0] + accX * deltaTime);
@@ -483,7 +459,7 @@ var NBody = {
         return [newX, newY, newZ, newM];
     },
     // Adjust position based on average of new and old velocity.
-    // Called using combineN
+    // Called using combineSeq
 
     "bodyPositionOrig": function bodyPositionOrig(index, allVels, allOldVels, bounds) {
         var x = 0;

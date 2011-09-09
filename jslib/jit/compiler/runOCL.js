@@ -35,7 +35,7 @@ if (RiverTrail === undefined) {
 // kernelString - either a JavaScript code string or a precompiled kernel (dpoIKernel object)
 // ast          - result from parsing
 // f            - function to compile
-// construct    - outer construct in {combine,combineN,map,comprehension}
+// construct    - outer construct in {combine,,map,comprehension}
 // rankOrShape  - either the rank of the iteration space, or for comprehension the shape of the interationspace
 // actualArgs   - extra kernel arguments
 
@@ -46,7 +46,7 @@ RiverTrail.compiler.runOCL = function () {
     // kernelString - either a JavaScript code string or a precompiled kernel (dpoIKernel object)
     // ast          - result from parsing
     // f            - function to compile
-    // construct    - outer construct in {combine,combineN,map,comprehension}
+    // construct    - outer construct in {combine,map,comprehension}
     // rankOrShape  - either the rank of the iteration space, or for comprehension the shape of the interationspace
     // actualArgs   - extra kernel arguments
     var runOCL = function runOCL(paSource, kernelString, ast, f, construct, rankOrShape, actualArgs,
@@ -237,7 +237,7 @@ RiverTrail.compiler.runOCL = function () {
             }
         }, kernel);
 
-        if ((construct === "map") || (construct == "combine") || (construct == "combineN") || (construct == "comprehension")) {
+        if ((construct === "map") || (construct == "combine") || (construct == "comprehension")) {
             // The differences are to do with args to the elemental function and are dealt with there so we can use the same routine.
             // kernel.run(rank, shape, tiles)
             try {

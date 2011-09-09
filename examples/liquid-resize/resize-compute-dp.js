@@ -174,32 +174,26 @@ function computePath(array, maxX, maxY) {
 }
 
 function grayscaleCore(inPA) {
-    return inPA.combineN(2, grayKernel);
+    return inPA.combineSeq(2, grayKernel);
 }
 
 function grayscaleCoreOCL(inPA) {
-    return inPA.combineNOCL(2, grayKernel);
+    return inPA.combine(2, grayKernel);
 }
 
 // Takes a single pixel PA and returns a single Pixel PA - ie a 2D array with a single data point per pixel.
 function edgesCore(singlePixelPA, maxX, maxY) {
-    var edgePA = singlePixelPA.combineN(2, edgeKernel, sobelX, sobelY, maxX, maxY);
+    var edgePA = singlePixelPA.combineSeq(2, edgeKernel, sobelX, sobelY, maxX, maxY);
     return edgePA;
 }
 function edgesCoreOCL(singlePixelPA, maxX, maxY) {
-    var edgePA = singlePixelPA.combineNOCL(2, edgeKernel, sobelX, sobelY, maxX, maxY);
+    var edgePA = singlePixelPA.combine(2, edgeKernel, sobelX, sobelY, maxX, maxY);
     return edgePA;
 }
 
 // Takes a singlePixelPA and returns a singelPixelPA
 function energyCore(singlePixelPA, maxX) {
-    var energyPA = singlePixelPA.scan(function (prev, innerMaxX) { return this.combine(energyKernelCombine, prev, innerMaxX); }, maxX);
-    return energyPA;
-}
-
-function energyCoreOCL(singlePixelPA, maxX) {
-    var singlePixelPA = new ParallelArray(Float32Array, singlePixelPA); // cast to Float32
-    var energyPA = singlePixelPA.scan(function (prev, innerMaxX) { return this.combineOCL(energyKernelCombine, prev, innerMaxX); }, maxX);
+    var energyPA = singlePixelPA.scan(function (prev, innerMaxX) { return this.combineSeq(energyKernelCombine, prev, innerMaxX); }, maxX);
     return energyPA;
 }
 
@@ -311,8 +305,8 @@ function transpose(aPA) {
 function reduceOneHorizontal(canvas) {
     var inPA = new ParallelArray(canvas);
     var t1 = new Date();
-    var grayPA = inPA.combineNOCL(2, low_precision(grayKernel));
-    var edgePA = grayPA.combineNOCL(2, low_precision(edgeKernel), sobelX, sobelY, virtualWidth, virtualHeight);
+    var grayPA = inPA.combine(2, low_precision(grayKernel));
+    var edgePA = grayPA.combine(2, low_precision(edgeKernel), sobelX, sobelY, virtualWidth, virtualHeight);
     var t2 = new Date();
     parallelComponentTime += (t2 - t1);
     var energy = computeEnergy(edgePA, virtualWidth);
@@ -327,8 +321,8 @@ function reduceOneVertical(canvas) {
     var inPA = new ParallelArray(canvas);
     var t1 = new Date();
     var inPAT = transpose(inPA);
-    var grayPA = inPAT.combineNOCL(2, low_precision(grayKernel));
-    var edgePA = grayPA.combineNOCL(2, low_precision(edgeKernel), sobelX, sobelY, virtualHeight, virtualWidth);
+    var grayPA = inPAT.combine(2, low_precision(grayKernel));
+    var edgePA = grayPA.combine(2, low_precision(edgeKernel), sobelX, sobelY, virtualHeight, virtualWidth);
     var t2 = new Date();
     parallelComponentTime += (t2 - t1);
     var energy = computeEnergy(edgePA, virtualHeight);

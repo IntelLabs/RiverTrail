@@ -1120,7 +1120,7 @@ RiverTrail.Typeinference = function () {
             argT.push(thisT);
         }
         // create type info for index, if present
-        if ((construct === "combine") || (construct === "combineN") || (construct === "comprehension")) {
+        if ((construct === "combine") || (construct === "comprehension")) {
             var ivType = new TObject(TObject.ARRAY);
             ivType.properties.shape = [rank];
             ivType.properties.elements = new TLiteral(TLiteral.NUMBER);

@@ -553,14 +553,14 @@ var ParallelArray = function () {
     var kernelCompiler = false;
 
     // Used by the constructor to build a ParallelArray with given a size vector and a function.
-    // Used by combineN to build the new ParallelArray. 
+    // Used by combine to build the new ParallelArray. 
 
     /***
         buildRaw
         
         Synopsis: 
             Used by the constructor to build a ParallelArray with given a size vector and a function.
-            Used by combineN to build the new ParallelArray.
+            Used by combine to build the new ParallelArray.
         function buildRaw(theThisArray, left, right, fTemp, extraArgs);
         Arguments
             theThisArray: the array you are populating.
@@ -575,7 +575,7 @@ var ParallelArray = function () {
             the original ParallelArray (this) along with the indices holding where the resulting
             element is placed in the result. The indices are the concatination of the 
             arguments left and right. Any extraArgs are also passed to f.
-            The expected use case for combineN is for fTemp to reference this at the appropriate indices to
+            The expected use case for combine is for fTemp to reference this at the appropriate indices to
             build the new element.
             The expected use case for the constructors is to construct the element using the indices and the 
             extra args.
@@ -743,13 +743,13 @@ var ParallelArray = function () {
         return (depth === undefined) ? this.shape : this.shape.slice(0, depth);
     };
    
-    // When in the elemental function f "this" is the same as "this" in combineN.
-    var combineN = function combineN(depth, f) { // optional arguments follow
+    // When in the elemental function f "this" is the same as "this" in combine.
+    var combineSeq = function combineSeq(depth, f) { // optional arguments follow
         var i;
         var result;
         var extraArgs; 
         if (!this.isRegular()) {
-            throw new TypeError("ParallelArray.combineN this is not a regular ParallelArray.");
+            throw new TypeError("ParallelArray.combineSeq this is not a regular ParallelArray.");
         }
         if (arguments.length == 2) {
             extraArgs = new Array();
@@ -765,14 +765,40 @@ var ParallelArray = function () {
         return new ParallelArray(this.data.constructor, result);
     };
 
-    // CombineNOCL implements the openCL parallel version of combinN.  
-    // When in the elemental function f "this" is the same as "this" in combineN.
-    var combineNOCL = function combineNOCL(depth, f) { // optional arguments follow
+    // combine implements the openCL parallel version of combine.  
+    // When in the elemental function f "this" is the same as "this" in combine.
+
+    /***
+    Combine
+    Overview 
+        Similar to map except this is the entire array and an index is provided since you have the entire array you can access other elements in the array. 
+
+    Arguments
+        depth – the number of dimensions traversed to access an element in this
+        Elemental function described below
+        Optional arguments passed unchanged to elemental function
+
+    Elemental Function 
+        this - The ParallelArray
+        index	Location in combine’s result where the result of the elemental function is placed.  Suitable as the first argument to “get” to retrieve source values.
+        Optional arguments
+            Same as the optional arguments passed to combine
+        Result
+            An element to be placed in combine’s result at  the location indicated by index
+
+    Returns
+        A freshly minted ParallelArray whose elements are the results of applying the elemental function.
+
+    Example: an identity function
+        pa.combine(function(i){return this.get(i);})
+
+    ***/
+    var combine = function combine(depth, f) { // optional arguments follow
         var i;
         var paResult;
         var extraArgs; 
         if (!this.isRegular()) {
-            throw new TypeError("ParallelArray.combineN this is not a regular ParallelArray.");
+            throw new TypeError("ParallelArray.combine this is not a regular ParallelArray.");
         }
         if (arguments.length == 2) {
             extraArgs = new Array(0);
@@ -784,7 +810,7 @@ var ParallelArray = function () {
             }
         }
 
-        paResult = RiverTrail.compiler.compileAndGo(this, f, "combineN", depth, extraArgs, enable64BitFloatingPoint);
+        paResult = RiverTrail.compiler.compileAndGo(this, f, "combine", depth, extraArgs, enable64BitFloatingPoint);
         return paResult;
     };
         
@@ -898,83 +924,6 @@ var ParallelArray = function () {
         return paResult;
     };
     
-    /***
-    Combine
-    Overview 
-        Similar to map except this is the entire array and an index is provided since you have the entire array you can access other elements in the array. 
-
-    Arguments
-        depth – the number of dimensions traversed to access an element in this
-        Elemental function described below
-        Optional arguments passed unchanged to elemental function
-
-    Elemental Function 
-        this - The ParallelArray
-        index	Location in combine’s result where the result of the elemental function is placed.  Suitable as the first argument to “get” to retrieve source values.
-        Optional arguments
-            Same as the optional arguments passed to combine
-        Result
-            An element to be placed in combine’s result at  the location indicated by index
-
-    Returns
-        A freshly minted ParallelArray whose elements are the results of applying the elemental function.
-
-    Example: an identity function
-        pa.combine(function(i){return this.get(i);})
-
-     ***/
-
-    var combine = function combine(f) { // optional arguments follow
-        // SAH: for now we have to manually unwrap. Proxies might be a solution but they 
-        //      are too underspecified as of yet
-        if (f instanceof low_precision.wrapper) {
-            f = f.unwrap();
-        }
-
-        var len = this.shape[0]; // The length of the result.
-        var argLen = arguments.length;
-        var result;
-        var i, j;
-        var argArray = new Array(argLen); 
-        for (j=0;j<argLen-1;j++) {
-            argArray[j+1]=arguments[j+1];
-        }
-        var rawResult = new Array(len);
-        for(i=0;i<len;i++) {
-            argArray[0] = i; // The index
-            rawResult[i] = f.apply (this, argArray);
-        }
-        // SAH: temporary until cast is implemented
-        return new ParallelArray(rawResult);
-        return new ParallelArray(this.data.constructor, rawResult);
-    };
-    /***
-        combineOCL
-        Same as combine described above but uses the OpenCL optimizations. Eventually this will go away leaving onl
-            a potentially optimized combine. 
-    ***/
-    var combineOCL = function combineOCL(f) { // optional arguments follow
-        var len = this.shape[0]; // The length of the result.
-        var result;
-            var i, j;
-            var args = new Array(arguments.length - 1); // -1 since we don't count the first (function) arg. 
-        var paResult;
-            if (arguments.length == 1) { // Just a 1 arg function.
-                paResult = RiverTrail.compiler.compileAndGo(this, f, "combine", 1, args, enable64BitFloatingPoint);
-            } else {                       
-                for (j=1;j<arguments.length;j++) {
-                    // CR shouldn't this be
-                    // args[j-1] = arguments[j]; and not what is below 
-                    // CR Yes but we need to make sure that the map code knows what to do...
-                    args[j-1] = arguments[j];                    
-                }
-                paResult = RiverTrail.compiler.compileAndGo(this, f, "combine", 1, args, enable64BitFloatingPoint); 
-            }
-        
-            return paResult;
-    };
-    
-        
         
     /***
     reduce
@@ -1359,7 +1308,7 @@ var ParallelArray = function () {
     // particular it will be whatever type the data in the ParallelArray
     // is held in. A Float32Array would be returned if the original ParallelArray
     // held the actual data in a Float32Array.
-    var toFlatArray = function toFlatArray() {
+    var getData = function getData() {
         var result = new this.data.constructor(this.data);
         return result;
     };
@@ -1951,19 +1900,17 @@ var ParallelArray = function () {
         "isRegularIndexed" : isRegularIndexed,
         "isRegular" : isRegular,
         "getShape" : getShape,
-        "combineN" : combineN,
-        "combineNOCL" : combineNOCL,
         "map" : map,
         "mapOCL" : mapOCL,
         "mapNOCL" : mapNOCL,
         "combine" : combine,
-        "combineOCL" : combineOCL,
+        "combineSeq" : combineSeq,
         "reduce" : reduce,
         "scan" : scan,
         "filter" : filter,
         "scatter" : scatter,
         "getArray" : getArray,
-        "toFlatArray" : toFlatArray,
+        "getData" : getData,
         "get" : get,
         "writeToCanvas" : writeToCanvas,
         "concat" : concat,
