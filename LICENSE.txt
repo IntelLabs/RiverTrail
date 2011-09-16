@@ -1,7 +1,7 @@
-The files found in the directory .\jslib\jit\Narcissus and 
-.\examples\nbody-webgl\contrib are included as a convenience and
-are provided under the licenses contained in their respective 
-files.
+The files found in the directory .\jslib\jit\Narcissus, 
+.\examples\nbody-webgl\contrib and .\examples\idf-demo\contrib
+are included as a convenience and are provided under the licenses 
+contained in their respective files.
 
 Other files found below this directory are provided under the following
 license.
