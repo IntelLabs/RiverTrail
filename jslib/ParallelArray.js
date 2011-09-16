@@ -132,7 +132,7 @@ var ParallelArray = function () {
             enable64BitFloatingPoint = (dpoP.extensions.indexOf("cl_khr_fp64") !== -1);
         } catch (e) {
             console.log("Unable to find OpenCL platform: "+e);
-            consolde.log("enable64BitFloatingPoint has been disabled");
+            console.log("enable64BitFloatingPoint has been disabled");
             enable64BitFloatingPoint = false;
             // eat the problem after you announce it to the console log.
         }
