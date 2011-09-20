@@ -97,7 +97,7 @@ RiverTrail.compiler = (function () {
                                              var result = new ParallelArray( lowPrecision ? Float32Array : Float64Array, object);
                                              result._wasArray = true;
                                              return result;
-                                         } else if (isTypedArray(object)) {
+                                         } else if (RiverTrail.Helper.isTypedArray(object)) {
                                              var result = new ParallelArray( object);
                                              result._wasArray = true;
                                          } else {
@@ -279,26 +279,6 @@ RiverTrail.compiler = (function () {
         }
     }
     
-    // This is used to check whether an object is a typed array. On first invocation, this
-    // method specialises itself depending on whether the browser supports typed arrays or not.
-    var isTypedArray = function isTypedArray(arr) {
-        if ((typeof(Float32Array) == "function") && (typeof(Float32Array.prototype) == "object")) {
-            ParallelArray.prototype.isTypedArray = function (arr) {
-                return ((arr instanceof Float32Array) || (arr instanceof Float64Array) ||
-                        (arr instanceof Int8Array) || (arr instanceof Int16Array) ||
-                        (arr instanceof Int32Array) || (arr instanceof Uint8Array) ||
-                        (arr instanceof Uint16Array) || (arr instanceof Uint32Array) ||
-                        ((typeof(Uint8ClampedArray) == "function") && (arr instanceof Uint8ClampedArray)));
-            };
-        } else {
-            ParallelArray.prototype.isTypedArray = function( arr) {
-                return false;
-            }
-        }
-        return ParallelArray.prototype.isTypedArray(arr);
-    };
-    
-
     var equalsShape = function equalsShape (shapeA, shapeB) {
         return ((shapeA.length == shapeB.length) &&
                 Array.prototype.every.call(shapeA, function (a,idx) { return a == shapeB[idx];}));

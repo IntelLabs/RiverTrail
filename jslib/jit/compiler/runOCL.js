@@ -93,7 +93,7 @@ RiverTrail.compiler.runOCL = function () {
                 if (object.data instanceof Components.interfaces.dpoIData) {
                     // we already have an OpenCL value
                     args.push(object.data);
-                } else if (object.isTypedArray(object.data)) {
+                } else if (RiverTrail.Helper.isTypedArray(object.data)) {
                     if ((object.cachedOpenCLMem === undefined)) {
                         // we map this argument
                         object.cachedOpenCLMem = RiverTrail.compiler.openCLContext.mapData(object.data);

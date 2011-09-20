@@ -153,12 +153,30 @@ RiverTrail.Helper = function () {
         throw e;
     };
 
+    // This is used to check whether an object is a typed array. It is specialized
+    // depending on whether the browser supports typed arrays or not.
+    var isTypedArray;
+    if ((typeof(Float32Array) == "function") && (typeof(Float32Array.prototype) == "object")) {
+        isTypedArray = function (arr) {
+            return ((arr instanceof Float32Array) || (arr instanceof Float64Array) ||
+                    (arr instanceof Int8Array) || (arr instanceof Int16Array) ||
+                    (arr instanceof Int32Array) || (arr instanceof Uint8Array) ||
+                    (arr instanceof Uint16Array) || (arr instanceof Uint32Array) ||
+                    ((typeof(Uint8ClampedArray) == "function") && (arr instanceof Uint8ClampedArray)));
+        };
+    } else {
+        isTypedArray = function( arr) {
+            return false;
+        }
+    }
+
     return { "traverseAst" : traverseAst,
              "wrappedPP" : wrappedPP,
              "inferPAType" : inferPAType,
              "elementalTypeToConstructor" : elementalTypeToConstructor,
              "stripToBaseType" : stripToBaseType,
              "Integer": Integer,
-             "debugThrow": debugThrow };
+             "debugThrow": debugThrow,
+             "isTypedArray": isTypedArray };
 
 }();

@@ -167,11 +167,6 @@ var ParallelArray = function () {
         "zeroArrayShapeConstant": [0]
     };
 
-    var Integer = function Integer (value) {
-        this.value = value;
-        return this;
-    };
-
     // I create three names for Error here so that we can, should we ever wish
     // distinguish both or have our own implementation for exceptions
     var CompilerError = Error;   // compilation failed due to wrong program or missing support
@@ -184,25 +179,6 @@ var ParallelArray = function () {
             console.log("Exception: ", JSON.stringify(e));
         }
         throw e;
-    };
-
-    // This is used to check whether an object is a typed array. On first invocation, this
-    // method specialises itself depending on whether the browser supports typed arrays or not.
-    var isTypedArray = function isTypedArray(arr) {
-        if ((typeof(Float32Array) == "function") && (typeof(Float32Array.prototype) == "object")) {
-            ParallelArray.prototype.isTypedArray = function (arr) {
-                return ((arr instanceof Float32Array) || (arr instanceof Float64Array) ||
-                        (arr instanceof Int8Array) || (arr instanceof Int16Array) ||
-                        (arr instanceof Int32Array) || (arr instanceof Uint8Array) ||
-                        (arr instanceof Uint16Array) || (arr instanceof Uint32Array) ||
-                        ((typeof(Uint8ClampedArray) == "function") && (arr instanceof Uint8ClampedArray)));
-            };
-        } else {
-            ParallelArray.prototype.isTypedArray = function( arr) {
-                return false;
-            }
-        }
-        return ParallelArray.prototype.isTypedArray(arr);
     };
 
     // This method wraps the method given by property into a loader for the
@@ -281,6 +257,12 @@ var ParallelArray = function () {
             }
         }
     };
+
+    // late binding of isTypedArray in local namespace
+    var isTypedArray = function lazyLoad(arg) {
+        isTypedArray = RiverTrail.Helper.isTypedArray;
+        return isTypedArray(arg);
+    }
 
     var equalsShape = function equalsShape (shapeA, shapeB) {
         return ((shapeA.length == shapeB.length) &&
@@ -1448,12 +1430,12 @@ var ParallelArray = function () {
             resultLength += arguments[i].length;
             if (allTypedArrays) {
                 // if this and previous are true check if this arg uses typed arrays.
-                allTypedArrays = arguments[i].isTypedArray(this.data);
+                allTypedArrays = isTypedArray(arguments[i].data);
                 allArrays = false;
             }
             if (allArrays) {
                 // this and all previous are Arrays.
-                allArrays = (data instanceof Array);
+                allArrays = (arguments[i].data instanceof Array);
             }
         }
         
