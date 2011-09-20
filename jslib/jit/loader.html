@@ -41,15 +41,27 @@
 <script type="application/javascript" src="compiler/genOCL.js"></script>
 <script type="application/javascript" src="compiler/runOCL.js"></script>
 <script type="application/javascript">
+var reportResult = function reportResult(s) {
+    var elm = document.getElementById('status');
+    var node = document.createTextNode(s);
+    elm.appendChild(node);
+    elm.appendChild(document.createElement('br'));
+}
 var compileTextArea = function compileTextArea() {
     var d = document;
     var source = d.getElementById("source").value;
     eval( source);
-    RiverTrail.compiler.compileAndGo(eval(d.getElementById("array").value),
-                     eval(d.getElementById("function").value),
-                     d.getElementById("construct").value,
-                     eval(d.getElementById("rank").value),
-                     eval(d.getElementById("args").value));
+    try {
+        var res = RiverTrail.compiler.compileAndGo(eval(d.getElementById("array").value),
+                                                   eval(d.getElementById("function").value),
+                                                   d.getElementById("construct").value,
+                                                   eval(d.getElementById("rank").value),
+                                                   eval(d.getElementById("args").value));
+    } catch (e) {
+	reportResult("FAIL: " + e.toString());
+	return;
+    }
+    reportResult("SUCCESS: " + res.toString());
 }
 </script>
 </head>
