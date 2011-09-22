@@ -91,7 +91,7 @@ RiverTrail.compiler.codeGen = (function() {
             // the extras do not include |this| and the first formal since that is the index generated in the body.
             formalsTypes = formalsTypes.slice(2);
             formalsNames = formalsNames.slice(1);
-        } else if (construct === "comprehension") {
+        } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {
             // ignore the first argument, the index
             formalsTypes = formalsTypes.slice(1);
             formalsNames = formalsNames.slice(1);
@@ -122,7 +122,7 @@ RiverTrail.compiler.codeGen = (function() {
         var start = 0;
         var formalsNames = formalsAst.params;
         var formalsTypes = formalsAst.typeInfo.parameters;
-        if ((construct === "combine") || (construct === "comprehension")) {
+        if ((construct === "combine") || (construct === "comprehension") || (construct === "comprehensionScalar")) {
             // Skip the first argument since it is the index.
             start = 2; // the extras do not include |this| and the first formal since that is the index generated in the body.
         }
@@ -143,12 +143,12 @@ RiverTrail.compiler.codeGen = (function() {
         var dimSizes;
         var s = " ";
         var indexName, indexType;
-        if ((construct === "combine") || (construct === "comprehension")) {
-            if (construct === "comprehension") {
+        if ((construct === "combine") || (construct === "comprehension") || (construct === "comprehensionScalar")) {
+            if (construct === "combine") {
+                indexType = funDecl.typeInfo.parameters[1];
+            } else {
                 // comprehensions have no this!
                 indexType = funDecl.typeInfo.parameters[0];
-            } else {
-                indexType = funDecl.typeInfo.parameters[1];
             }
             indexName = funDecl.params[0];
 
@@ -171,9 +171,8 @@ RiverTrail.compiler.codeGen = (function() {
                 }
                 s = s + "};";
             } else {            
-                // SAH: No idea whether this is still supported by the frontend...
-                s = s + indexType.properties.addressSpace+" const "+indexType.OpenCLType+" "+ indexName+";"; 
-                s = s + indexName + " = _id_0; ";
+                // this path is taken by scalar comprehensions
+                s = s + " const "+indexType.OpenCLType+" "+ indexName+" = _id_0;"; 
             }
         }
         return s;
@@ -230,6 +229,20 @@ RiverTrail.compiler.codeGen = (function() {
             "resultAssignRhs": " tempResult",
         },
         "comprehension": {
+            "hasThis": false,
+            // the type of this goes here.
+            "localThisName": undefined,
+            "localThisDefinition": " opThisVect[opThisVect__offset]",
+            "thisShapeLength": "const int thisShapeLength = ",
+            "thisShapeDeclPre": "const int thisShapeDecl ",
+            // the type of the result of the elemental function goes here
+            "localResultName": " tempResult",
+            // The body goes here and return uses this to figure out what to return;
+            "resultAssignLhs": " retVal[_writeoffset] = ",
+            "returnType": "double", // This may be altered based on the type of the "this" pa.
+            "resultAssignRhs": " tempResult",
+        },
+        "comprehensionScalar": {
             "hasThis": false,
             // the type of this goes here.
             "localThisName": undefined,
@@ -330,7 +343,7 @@ RiverTrail.compiler.codeGen = (function() {
                 console.log("funDecl.typeInfo.parameters[0].OpenCLType for return is not a pointer.");
             }
             s = s + "__global " + funDecl.typeInfo.parameters[0].OpenCLType + " retVal"; // * since they will be collected.
-        } else if (construct === "comprehension") {      
+        } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {      
             returnElementOpenCLType = RiverTrail.Helper.stripToBaseType(funDecl.typeInfo.result.OpenCLType);
             boilerplate.returnType = returnElementOpenCLType;
             s = s + "__global " + returnElementOpenCLType + "* retVal"; // We need to deal with the other constructs.

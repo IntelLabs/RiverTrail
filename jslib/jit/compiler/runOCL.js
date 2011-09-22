@@ -35,7 +35,7 @@ if (RiverTrail === undefined) {
 // kernelString - either a JavaScript code string or a precompiled kernel (dpoIKernel object)
 // ast          - result from parsing
 // f            - function to compile
-// construct    - outer construct in {combine,,map,comprehension}
+// construct    - outer construct in {combine,,map,comprehension,comprehensionScalar}
 // rankOrShape  - either the rank of the iteration space, or for comprehension the shape of the interationspace
 // actualArgs   - extra kernel arguments
 
@@ -46,7 +46,7 @@ RiverTrail.compiler.runOCL = function () {
     // kernelString - either a JavaScript code string or a precompiled kernel (dpoIKernel object)
     // ast          - result from parsing
     // f            - function to compile
-    // construct    - outer construct in {combine,map,comprehension}
+    // construct    - outer construct in {combine,map,comprehension,comprehensionScalar}
     // rankOrShape  - either the rank of the iteration space, or for comprehension the shape of the interationspace
     // actualArgs   - extra kernel arguments
     var runOCL = function runOCL(paSource, kernelString, ast, f, construct, rankOrShape, actualArgs,
@@ -66,7 +66,7 @@ RiverTrail.compiler.runOCL = function () {
         if (!kernelName) {
             throw new CompilerBug("Invalid ast: Function expected at top level");
         }
-        if (construct === "comprehension") {
+        if ((construct === "comprehension") || (construct === "comprehensionScalar")) {
             // comprehensions do not have a source, so we derive the required information
             // from rank and the ast
             sourceType = undefined;
@@ -130,7 +130,7 @@ RiverTrail.compiler.runOCL = function () {
             }
             return args;
         }
-        if (construct !== "comprehension") {
+        if ((construct !== "comprehension") && (construct !== "comprehensionScalar")) {
             jsObjectToKernelArg(kernelArgs, paSource);
             // console.log("jsObjectToKernelArg:kernelArgs.length: "+kernelArgs.length);
         }
@@ -237,7 +237,7 @@ RiverTrail.compiler.runOCL = function () {
             }
         }, kernel);
 
-        if ((construct === "map") || (construct == "combine") || (construct == "comprehension")) {
+        if ((construct === "map") || (construct == "combine") || (construct == "comprehension") || (construct == "comprehensionScalar")) {
             // The differences are to do with args to the elemental function and are dealt with there so we can use the same routine.
             // kernel.run(rank, shape, tiles)
             try {

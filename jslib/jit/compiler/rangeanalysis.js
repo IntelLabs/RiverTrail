@@ -811,6 +811,9 @@ RiverTrail.RangeAnalysis = function () {
         } else if (construct === "comprehension") {
             var range = rankOrShape.map(function (val) { return new Range(0, val - 1, true); });
             env.update(ast.params[0], range);
+        } else if (construct === "comprehensionScalar") {
+            var range = new Range(0, rankOrShape[0] - 1, true);
+            env.update(ast.params[0], range);
         }
 
         try {

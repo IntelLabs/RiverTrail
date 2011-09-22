@@ -66,8 +66,8 @@ RiverTrail.compiler = (function () {
     // main hook to start the compilation/execution process for running a construct using OpenCL
     // paSource -> 'this' inside kernel
     // f -> function to run
-    // construct -> [combine|map|comprehension]
-    // rankOrShape -> either rank of iterationspace or in case of comprehension the shape of the iterationspace
+    // construct -> [combine|map|comprehension|comprehensionScalar]
+    // rankOrShape -> either rank of iterationspace or in case of comprehension and comprehensionScalar the shape of the iterationspace
     // args -> additional arguments to the kernel
     var compileAndGo = function compileAndGo (paSource, f, construct, rankOrShape, args, enable64BitFloatingPoint) {
         var paResult = null;
@@ -198,7 +198,7 @@ RiverTrail.compiler = (function () {
                 (lowPrecision === entry.lowPrecision) &&
                 (entry.source === f) &&
                 argumentsMatch(argumentTypes, entry.argumentTypes) &&
-                ((construct === "comprehension") && (rankOrShape = entry.iterSpace) ||
+                ((((construct === "comprehension") || (construct === "comprehensionScalar")) && equalsShape(rankOrShape, entry.iterSpace)) || 
                   argumentMatches(RiverTrail.Helper.inferPAType(paSource), entry.paType)
                 )
                ) {
@@ -219,6 +219,10 @@ RiverTrail.compiler = (function () {
             // the kernel is called with an index as first argument, which has type int[rankOrShape.length]
             // and an extra isIndex attribute to differentiate it from the rest
             argumentTypes.push({ inferredType: "int", dimSize: [rankOrShape.length], attributes: { isIndex: true} });
+        } else if (construct == "comprehensionScalar") {
+            // the kernel is called with an index as first argument, which has type int
+            // and an extra isIndex attribute to differentiate it from the rest
+            argumentTypes.push({ inferredType: "int", dimSize: [], attributes: { isIndex: true} });
         }
 
         //

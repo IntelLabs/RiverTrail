@@ -1111,14 +1111,30 @@ RiverTrail.Typeinference = function () {
         openCLUseLowPrecision = (lowPrecision === true);
         tEnv.openCLFloatType = (openCLUseLowPrecision ? "float" : "double");
         // create type info for this
-        if (construct !== "comprehension") {
+        if (construct === "combine") {
             var thisT = TObject.makeType("ParallelArray", pa);
             thisT.properties.addressSpace = "__global";
             tEnv.bind("this");
             tEnv.update("this", thisT);
             tEnv.addRoot(thisT);
             argT.push(thisT);
+        } else if (construct === "map") {
+            var thisT;
+            thisT = TObject.makeType("ParallelArray", pa);
+            if (pa.getShape().lenght > rank) {
+                thisT.properties.addressSpace = "__global";
+                thisT.properties.shape.splice(0,rank);
+            } else {
+                thisT = thisT.properties.elements;
+            }
+            tEnv.bind("this");
+            tEnv.update("this", thisT);
+            if (thisT.isObjectType()) {
+                tEnv.addRoot(thisT);
+            }
+            argT.push(thisT);
         }
+
         // create type info for index, if present
         if ((construct === "combine") || (construct === "comprehension")) {
             var ivType = new TObject(TObject.ARRAY);
@@ -1130,6 +1146,12 @@ RiverTrail.Typeinference = function () {
             tEnv.bind(params[0]);
             tEnv.update(params[0], ivType);
             tEnv.addRoot(ivType);
+            params = params.slice(1);
+            argT.push(ivType);
+        } else if (construct === "comprehensionScalar") {
+            var ivType = new TLiteral(TLiteral.NUMBER);
+            tEnv.bind(params[0]);
+            tEnv.update(params[0], ivType);
             params = params.slice(1);
             argT.push(ivType);
         }
