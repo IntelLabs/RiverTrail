@@ -730,15 +730,21 @@ var ParallelArray = function () {
         var i;
         var result;
         var extraArgs; 
+        var extraArgOffset = 2;
+        if (typeof(depth) === 'function') {
+            f = depth;
+            depth = 1;
+            extraArgOffset = 1;
+        }
         if (!this.isRegular()) {
             throw new TypeError("ParallelArray.combineSeq this is not a regular ParallelArray.");
         }
-        if (arguments.length == 2) {
+        if (arguments.length == extraArgOffset) {
             extraArgs = new Array();
         } else {
-            extraArgs = new Array(arguments.length-2);
+            extraArgs = new Array(arguments.length-extraArgOffset);
             for (i=0;i<extraArgs.length;i++) {
-               extraArgs[i] = arguments[i+2];
+               extraArgs[i] = arguments[i+extraArgOffset];
             }
         }
         result = buildRaw(this, (new Array(0)), this.getShape(depth), f, extraArgs);
@@ -779,16 +785,22 @@ var ParallelArray = function () {
         var i;
         var paResult;
         var extraArgs; 
+        var extraArgOffset = 2;
+        if (typeof(depth) === 'function') {
+            f = depth;
+            depth = 1;
+            extraArgOffset = 1;
+        }
         if (!this.isRegular()) {
             throw new TypeError("ParallelArray.combine this is not a regular ParallelArray.");
         }
-        if (arguments.length == 2) {
+        if (arguments.length == extraArgOffset) {
             extraArgs = new Array(0);
         } else {
             // depth is _not_ part of the arguments passed to the elemental function
-            extraArgs = new Array(arguments.length-2); // depth and function account for the 2
+            extraArgs = new Array(arguments.length-extraArgOffset); // depth and function account for the 2
             for (i=0;i<extraArgs.length;i++) {
-               extraArgs[i] = arguments[i+2];
+               extraArgs[i] = arguments[i+extraArgOffset];
             }
         }
 
@@ -810,12 +822,7 @@ var ParallelArray = function () {
      **/
         
     /***
-    map
-
-    Arguments
-    	Depth – the number of dimensions used to implicitly access this.
-        Elemental function described below
-        Optional arguments passed unchanged to elemental function 
+    mapSeq
 
     Elemental Function 
         this - an element from the ParallelArray
@@ -833,7 +840,7 @@ var ParallelArray = function () {
         pa.map(function(){return this;})
     ***/
         
-    var map = function map (f) { // extra args passed unchanged and unindexed.
+    var mapSeq = function mapSeq (f) { // extra args passed unchanged and unindexed.
         var len = this.shape[0];
         var i, j;
         var fTemp = f;
@@ -871,11 +878,11 @@ var ParallelArray = function () {
     };
     
     //
-    // mapOCL - 
-    //      Same as map but uses the OpenCL optimized version.
+    // map - 
+    //      Same as mapSeq but uses the OpenCL optimized version.
     //
 
-    var mapOCL = function mapOCL (f) { // extra args passed unchanged and unindexed.
+    var map = function map (f) { // extra args passed unchanged and unindexed.
         var len = this.shape[0];
             var i;
             var args = new Array(arguments.length-1);
@@ -890,22 +897,6 @@ var ParallelArray = function () {
         }
         return paResult;
     };
-    var mapNOCL = function mapNOCL (rank, f) { // extra args passed unchanged and unindexed.
-        var len = this.shape[0];
-            var i;
-            var args = new Array(arguments.length-2);
-            var paResult;
-        if (arguments.length == 2) { // Just a 1 arg function.
-            paResult = RiverTrail.compiler.compileAndGo(this, f, "map", rank, args, enable64BitFloatingPoint);
-        } else {            
-            for (j=2;j<arguments.length;j++) {
-                args[j-2] = arguments[j];                    
-            }
-            paResult = RiverTrail.compiler.compileAndGo(this, f, "map", rank, args, enable64BitFloatingPoint); 
-        }
-        return paResult;
-    };
-    
         
     /***
     reduce
@@ -1883,8 +1874,7 @@ var ParallelArray = function () {
         "isRegular" : isRegular,
         "getShape" : getShape,
         "map" : map,
-        "mapOCL" : mapOCL,
-        "mapNOCL" : mapNOCL,
+        "mapSeq" : mapSeq,
         "combine" : combine,
         "combineSeq" : combineSeq,
         "reduce" : reduce,
