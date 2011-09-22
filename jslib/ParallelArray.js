@@ -47,10 +47,14 @@
 //            values in the array to populate the new ParallelArray 
 
 //        argument 1 is an instanceOf Function (the elemental function), 
-//                argument 0 is the "size vector", remaining .. arguments 
+//                argument 0 is the "size", remaining .. arguments 
 //            	return a ParallelArray of "size" where each value is the result 
 //                of calling the elemental function with the index where its 
 //                result goes and any remaining ... arguments
+//                If the size argument is a vector, the index passed to
+//                the elemental function will be a vector, too. If, however,
+//                the size vector is a single scalar value, the index passed to
+//                the elemental value will be a value, as well.
 
 //       argument 0 is a function and there is one more argument then construct
 //                a new parallel array as above but use the first 
@@ -482,11 +486,13 @@ var ParallelArray = function () {
     var createComprehensionParallelArray = function createComprehensionParallelArray(sizeVector, theFunction, extraArgs) {
         var results;
         var tempVector;
+        var scalarIndex = false;
         if (!(sizeVector instanceof Array)) {
             // Handles just passing the size of a 1 d array in as a number.
             tempVector = new Array(1);
             tempVector[0] = sizeVector;
             sizeVector = tempVector;
+            scalarIndex = true;
         }
         // try to execute the comprehension in OpenCL
         try {
@@ -495,7 +501,7 @@ var ParallelArray = function () {
             console.log("comprehension failed: " + e);
         }
         var left = new Array(0);
-        results = buildRaw(this, left, sizeVector, arguments[1], extraArgs);
+        results = buildRaw(this, left, sizeVector, arguments[1], extraArgs, scalarIndex);
         // SAH: once we have computed the values, we can fall back to the simple case.
         createSimpleParallelArray.call(this, results);
         return this;
@@ -552,6 +558,7 @@ var ParallelArray = function () {
                     if right has only one index then the actual calls to fTemp are done for all indices from 0 to right[0]
             fTemp: The first arg is an array holding the indices of where the resulting element belongs along with any extraArg
             extraArgs: Args that are passed on to fTemp unchanged.
+            scalarindex: If true, the index passed to the elemental function will be a scalar value
         Returns
             A freshly minted JS Array whose elements are the results of applying f to 
             the original ParallelArray (this) along with the indices holding where the resulting
@@ -562,7 +569,7 @@ var ParallelArray = function () {
             The expected use case for the constructors is to construct the element using the indices and the 
             extra args.
     ***/
-    var buildRaw = function buildRaw(theThisArray, left, right, fTemp, extraArgs) {
+    var buildRaw = function buildRaw(theThisArray, left, right, fTemp, extraArgs, scalarIndex) {
         var i;
         var elementalResult;
         var result;
@@ -578,8 +585,12 @@ var ParallelArray = function () {
                 indices[i] = left[i]; // Transfer the non-changing indices.
             }
             for (i=0; i<right[0]; i++) {
-                indices[left.length] = i; // This is the index that changes.
-                applyArgs[0] = indices;
+                if (scalarIndex) {
+                    applyArgs[0] = i;
+                } else {
+                    indices[left.length] = i; // This is the index that changes.
+                    applyArgs[0] = indices;
+                }
                 
                 elementalResult = fTemp.apply(theThisArray, applyArgs);
                 if (elementalResult instanceof Array) {
@@ -592,7 +603,9 @@ var ParallelArray = function () {
             }
             return result;
         }
-        
+        if (scalarIndex) {
+            throw new CompilerBug("buildRaw called with scalarIndex === true but higher rank interation space");
+        }
         // Build the new index vectors for the recursive call by moving an index from the right to the left.
         var newLeft = new Array(left.length+1);
         var newRight = right.slice(1); // Move the first right to the left.
@@ -604,7 +617,7 @@ var ParallelArray = function () {
         result = new Array(range);
         for (i=0; i<range; i++) {
             newLeft[newLeft.length-1] = i;
-            result[i] = buildRaw(theThisArray, newLeft, newRight, fTemp, extraArgs);
+            result[i] = buildRaw(theThisArray, newLeft, newRight, fTemp, extraArgs, scalarIndex);
         }
         return result;
     };
@@ -747,7 +760,7 @@ var ParallelArray = function () {
                extraArgs[i] = arguments[i+extraArgOffset];
             }
         }
-        result = buildRaw(this, (new Array(0)), this.getShape(depth), f, extraArgs);
+        result = buildRaw(this, (new Array(0)), this.getShape(depth), f, extraArgs, false);
         // SAH temporarily until cast is implemented
         return new ParallelArray(result);
         return new ParallelArray(this.data.constructor, result);
