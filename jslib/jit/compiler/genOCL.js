@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = false;
+    const verboseDebug = true;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -58,19 +58,6 @@ RiverTrail.compiler.codeGen = (function() {
     eval(definitions.consts);
     eval(RiverTrail.definitions.consts);
         
-    //
-    // The idea here is that we return a pointer into the array if you are pointing to a sub array.
-    var getTypeString = function (node) {
-        var s;
-        var i;
-        s = node.inferredType ? node.inferredType.inferredType : "getTypeString undefined";
-        if (node.inferredType && node.inferredType.dimSize && (node.inferredType.dimSize.length > 0)) {
-            // We specify 1 indirection since we will be calculating the offset ourselves for n dimensional arrays.
-            s = s + "*";
-        }
-        return s;
-    };
-
     //
     // The Ast is set up so that formalsAst.params holds the names of the params specified in the signature
     // of the function.
