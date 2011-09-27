@@ -1,0 +1,90 @@
+<!--
+ Copyright (c) 2011, Intel Corporation
+ All rights reserved.
+ 
+ Redistribution and use in source and binary forms, with or without 
+ modification, are permitted provided that the following conditions are met:
+
+ - Redistributions of source code must retain the above copyright notice, 
+   this list of conditions and the following disclaimer.
+ - Redistributions in binary form must reproduce the above copyright notice, 
+   this list of conditions and the following disclaimer in the documentation 
+   and/or other materials provided with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+ THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<html>
+<head>
+<title>Compiler Playground</title>
+<script type="application/javascript" src="../ParallelArray.js"></script>
+<script type="application/javascript" src="narcissus/jsdefs.js"></script>
+<script type="application/javascript" src="narcissus/jslex.js"></script>
+<script type="application/javascript" src="narcissus/jsparse.js"></script>
+<script type="application/javascript" src="narcissus/jsdecomp.js"></script>
+<script type="application/javascript" src="narcissus/jsdecomp.js"></script>
+<script type="application/javascript" src="compiler/helper.js"></script>
+<script type="application/javascript" src="compiler/definitions.js"></script>
+<script type="application/javascript" src="compiler/driver.js"></script>
+<script type="application/javascript" src="compiler/dotviz.js"></script>
+<script type="application/javascript" src="compiler/typeinference.js"></script>
+<script type="application/javascript" src="compiler/rangeanalysis.js"></script>
+<script type="application/javascript" src="compiler/genOCL.js"></script>
+<script type="application/javascript" src="compiler/runOCL.js"></script>
+<script type="application/javascript">
+var reportResult = function reportResult(s) {
+    var elm = document.getElementById('status');
+    var node = document.createTextNode(s);
+    elm.appendChild(node);
+    elm.appendChild(document.createElement('br'));
+}
+var compileTextArea = function compileTextArea() {
+    var d = document;
+    var source = d.getElementById("source").value;
+    eval( source);
+    try {
+        var res = RiverTrail.compiler.compileAndGo(eval(d.getElementById("array").value),
+                                                   eval(d.getElementById("function").value),
+                                                   d.getElementById("construct").value,
+                                                   eval(d.getElementById("rank").value),
+                                                   eval(d.getElementById("args").value));
+    } catch (e) {
+	reportResult("FAIL: " + e.toString());
+	return;
+    }
+    reportResult("SUCCESS: " + res.toString());
+}
+</script>
+</head>
+<body>
+<p>
+<textarea id="source" style="width:100%; height:10em;">
+// Some JavaScript here
+var pa = new ParallelArray([1,2,3]);
+var foo = function foo(iv) { return this.get(iv); };
+</textarea>
+</p>
+<p>
+array: <input type="text" id="array" value="pa" style="width:8em;"/>
+construct: <select id="construct">
+<option value="combine">combine</option>
+<option value="map">map</option>
+</select>
+rank: <input type="text" id="rank" value="1" style="width:2em;"/>
+kernel: <input type="text" id="function" value="foo" style="width:8em;" />
+args: <input type="text" id="args" value="[]" style="width:10em;" />
+<input type="button" value="compile!" onclick="compileTextArea();"/>
+<input type="button" value="clear!" onclick="clearStatus();"/>
+</p>
+<div id="status" />
+</body>
+</html>

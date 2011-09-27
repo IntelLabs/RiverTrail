@@ -1,0 +1,153 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd" />
+<!--
+ Copyright (c) 2011, Intel Corporation
+ All rights reserved.
+ 
+ Redistribution and use in source and binary forms, with or without 
+ modification, are permitted provided that the following conditions are met:
+
+ - Redistributions of source code must retain the above copyright notice, 
+   this list of conditions and the following disclaimer.
+ - Redistributions in binary form must reproduce the above copyright notice, 
+   this list of conditions and the following disclaimer in the documentation 
+   and/or other materials provided with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+ THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<html>
+<head>
+    <title>River Trail Interactive Playground</title>
+    <script type="text/javascript" src="../jslib/ParallelArray.js"></script>
+    <script type="text/javascript" src="../jslib/jit/narcissus/jsdefs.js"></script>
+    <script type="text/javascript" src="../jslib/jit/narcissus/jslex.js"></script>
+    <script type="text/javascript" src="../jslib/jit/narcissus/jsparse.js"></script>
+    <script type="text/javascript" src="../jslib/jit/narcissus/jsdecomp.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/definitions.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/helper.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/driver.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/dotviz.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/typeinference.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/rangeanalysis.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/genOCL.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/runOCL.js"></script>
+    <style type="text/css">
+        span.exception {color: #ff0000;}
+        span.undefined {color: #333333; font-style: italic;}
+        span.result {font-weight: bold;}
+    </style>
+</head>
+<body>
+<div id="output" style="font-family:courier;overflow:scroll;position:fixed;top:0pt;bottom:3em;left:0em;right:0em;">
+<em>Welcome to interactive River Trail.</em><br/>
+<br/> 
+Type some JavaScript into the input field at the bottom of the page and press <i>enter</i>. The result will appear below.
+To get some inspiration, here are some River Trail one liners:<br/>
+<br/>
+Create your first array:<br>
+<br/>
+<b>var first = new ParallelArray(1,2,3,4);</b><br/>
+<br/>
+If you then type<br/>
+<br/>
+<b>first</b><br/>
+<br/>
+You will get the string representation of your first ParallelArray as output:<br/>
+<br/>
+<b>[ 1 2 3 4 ]</b></br>
+<br/>
+Or you can create the same array using a comprehension:<br/>
+<br/>
+<b>var second = new ParallelArray(4, function f(idx) { return idx+1; });</b><br/>
+<br/>
+Some more idioms to play with: <br/>
+<br />
+<i>increment: </i><b>var result = first.map(function f() {return this+1;})</b><br/>
+<i>add: </i><b>var result = first.combine(function f(idx,snd) {return this.get(idx)+snd.get(idx);}, second)</b><br/>
+<i>sum: </i><b>var result = first.reduce(function f(acc) {return this+acc;})</b><br/>
+<br/>
+Enjoy!<br/>
+<br/>
+PS: This page uses the sequential library implementation of River Trail. You won't need the extension but there will be no speedup either.<br/>
+<br/>
+</div>
+<div id="input" style="position:fixed;bottom:0pt;height:2em;width:100%">
+<input type="text" id="command" style="width:100%;" />
+</div>
+</body>
+<script type="text/javascript">
+// disable compilation
+var PAT = ParallelArray.prototype;
+PAT.combine = PAT.combineSeq;
+PAT.map = PAT.mapSeq;
+delete PAT.combineSeq;
+delete PAT.mapSeq;
+delete PAT;
+// very simple command line handler with history
+document.getElementById('command').onkeypress = function (e) {
+        if (e.keyCode == KeyEvent.DOM_VK_RETURN) {
+            var command = e.target.value;
+            var result, text;
+            var out = document.getElementById('output');
+            var span = document.createElement('span');
+            out.appendChild(span);
+            if (e.target.history === undefined) {
+                e.target.history = [];
+            }
+            if (e.target.historyPos !== undefined) {
+                e.target.history.pop();
+            }
+            delete e.target.historyPos;
+            e.target.history.push(e.target.value);
+            e.target.value = "";
+            try {
+                result = eval.call(null, command);
+            } catch (e) {
+                text = document.createTextNode(e.toString());
+                span.setAttribute("class", "exception");
+            }
+            if (result !== undefined) {
+                if (typeof(result.toString) === 'function') {
+                    text = document.createTextNode(result.toString());
+                    span.setAttribute("class", "result");
+                } else {
+                    text = document.createTextNode('[no toString available]');
+                    span.setAttribute("class", "undefined");
+                }
+            } else if (text == undefined) {
+                text = document.createTextNode("undefined");
+                span.setAttribute("class", "undefined");
+            }
+            span.appendChild(text);
+            out.appendChild(document.createElement('br'));
+            out.scrollTop = out.scrollHeight;
+        } else if (e.keyCode == KeyEvent.DOM_VK_UP) {
+            if (e.target.historyPos == undefined) {
+                e.target.history.push(e.target.value);
+                e.target.historyPos = e.target.history.length - 1;
+            }
+            if (e.target.historyPos > 0) {
+                e.target.history[e.target.historyPos] = e.target.value;
+                e.target.historyPos--;
+                e.target.value = e.target.history[e.target.historyPos];
+           }
+        } else if (e.keyCode == KeyEvent.DOM_VK_DOWN) {
+            if ((e.target.historyPos !== undefined) && 
+               (e.target.historyPos < e.target.history.length - 1)) {
+                e.target.history[e.target.historyPos] = e.target.value;
+                e.target.historyPos++;
+                e.target.value = e.target.history[e.target.historyPos];
+            }
+        }
+    }
+</script>
+</html>

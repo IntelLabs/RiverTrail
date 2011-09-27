@@ -1,0 +1,178 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd" />
+<!--
+ Copyright (c) 2011, Intel Corporation
+ All rights reserved.
+ 
+ Redistribution and use in source and binary forms, with or without 
+ modification, are permitted provided that the following conditions are met:
+
+ - Redistributions of source code must retain the above copyright notice, 
+   this list of conditions and the following disclaimer.
+ - Redistributions in binary form must reproduce the above copyright notice, 
+   this list of conditions and the following disclaimer in the documentation 
+   and/or other materials provided with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+ THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<html>
+<head>
+
+<title>River Trail Particle Demo </title>  
+<meta http-equiv="content-script-type" content="text/javascript" />  
+ 
+    <script type="text/javascript" src="../../jslib/ParallelArray.js"></script>
+
+    <script type="text/javascript" src="NBody.js"> </script>    
+    <script type="application/javascript" src="../../jslib/jit/narcissus/jsdefs.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/narcissus/jslex.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/narcissus/jsparse.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/narcissus/jsdecomp.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/definitions.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/helper.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/driver.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/dotviz.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/typeinference.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/rangeanalysis.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/genOCL.js"></script>
+    <script type="application/javascript" src="../../jslib/jit/compiler/runOCL.js"></script>
+       
+    <!-- helper code for nbodyGLDisplay.js -->
+    <script type="text/javascript" src="contrib/glMatrix-0.9.5.js"></script> 
+     
+    
+
+    <style TYPE="text/css"> 
+
+
+
+    .fps-mon
+    {
+        color:#fbfbff;
+    }
+
+    .body
+    {
+        overflow-x:hidden;
+        overflow-y:hidden;   
+        overflow:hidden;
+        background-color:#1a1a1a;
+       
+    }
+
+    #fps-display
+    {
+        font-size:2.5em;
+    }
+    
+    #controls
+    {
+        position:fixed;
+        top:-1px;
+        z-index:4;
+        font-size:1.5em;
+        font-family:Sans-Serif, Arial;
+        color:#fbfbff;
+        margin-left:15px;
+    }
+    
+  .keynote-text
+  { 
+        
+        position:fixed;
+        margin-left:20px;
+        margin-top:30px;
+        font-size:100px;
+        color:#fbfbff;
+        opacity:1;
+        font-family:Sans-Serif, Arial;
+        cursor:pointer;
+        
+        text-shadow: 8px 8px 8px #000;
+        
+  }
+  
+  #sequential-display
+  {
+      display:inline-block;
+  }
+  
+   #parallel-display
+  {
+      display:inline-block;
+      z-index:5;
+      margin-top: -100px;
+      margin-left:50px;
+  }
+    </style>
+
+
+    <!-- Config -->
+    <script type="text/javascript" src="Config.js"></script> 
+    <script type="text/javascript" src="Setup.js"></script> 
+
+<!-- Now load the code to display the bodies. -->
+<script type="text/javascript" src="nbodyGLDisplay.js"> </script>
+ 
+</head>
+
+<!-- size and then number of bodies -->
+<!-- width and height of canvas is first arg, number of bodies is secons. -->
+<!-- must be change in init call, the canvas and the vertex shader -->
+
+
+<body onload="NBody.resetButtons();" style="background-color:#5c5c5c;">
+<div id="container">
+
+
+<div id="controls">
+<p>
+    <input type="button" id="startSequential" value="Start Sequential" onclick="goSequential();"/>
+    <input type="button" id="startParallel" value="Start Parallel" onclick="goParallel();"/>
+    <input type="button" id="buttonStop" value="Pause" onclick="NBody.pause();" disabled/>
+
+    <select id="bodies" onchange="NBody.display.resetScoreboard();">
+        <option value="10">10</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="200">200</option>
+        <option value="400">400</option>
+        <option value="800">800</option>
+        <option value="1024" selected>1024</option>
+         <option value="1536">1536</option>
+        <option value="2000">2000</option>
+        <option value="4000" >4000</option>
+        <option value="8000">8000</option>
+    </select>
+    
+</p>
+</div>
+<div id="keynote-display"></div>
+<div id="animation-time" style="font-size:20px"></div>
+
+<div id="left-scene" style="border: none; display:inline-block; margin-left:-3px" ></div>
+
+
+
+<script type="text/javascript" src="contrib/Three.js"></script>
+<script type="text/javascript" src="Render.js"></script> 
+
+
+    <div style="opacity:.75;position:fixed;top:0pt;right:0pt;padding:2em;font-family:sans-serif;height:100%;" >
+    
+     <div  class="fps-mon"><div id="fps-display" style="text-align:right;">--</div></div>
+     </div>
+
+   </div>
+
+</body>
+</html>
