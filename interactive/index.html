@@ -85,69 +85,79 @@ PS: This page uses the sequential library implementation of River Trail. You won
 </div>
 </body>
 <script type="text/javascript">
-// disable compilation
-var PAT = ParallelArray.prototype;
-PAT.combine = PAT.combineSeq;
-PAT.map = PAT.mapSeq;
-delete PAT.combineSeq;
-delete PAT.mapSeq;
-delete PAT;
 // very simple command line handler with history
-document.getElementById('command').onkeypress = function (e) {
-        if (e.keyCode == KeyEvent.DOM_VK_RETURN) {
-            var command = e.target.value;
-            var result, text;
-            var out = document.getElementById('output');
-            var span = document.createElement('span');
-            out.appendChild(span);
-            if (e.target.history === undefined) {
-                e.target.history = [];
-            }
-            if (e.target.historyPos !== undefined) {
-                e.target.history.pop();
-            }
-            delete e.target.historyPos;
-            e.target.history.push(e.target.value);
-            e.target.value = "";
-            try {
-                result = eval.call(null, command);
-            } catch (e) {
-                text = document.createTextNode(e.toString());
-                span.setAttribute("class", "exception");
-            }
-            if (result !== undefined) {
-                if (typeof(result.toString) === 'function') {
-                    text = document.createTextNode(result.toString());
-                    span.setAttribute("class", "result");
-                } else {
-                    text = document.createTextNode('[no toString available]');
+document.getElementById('command').onkeydown = function (e) {
+        if ((e.which == 0) || (e.charCode == 0)) { // special key
+            if (e.keyCode == 13) { // ENTER
+                var command = e.target.value;
+                var result, text;
+                var out = document.getElementById('output');
+                var span = document.createElement('span');
+                out.appendChild(span);
+                if (e.target.history === undefined) {
+                    e.target.history = [];
+                }
+                if (e.target.historyPos !== undefined) {
+                    e.target.history.pop();
+                }
+                delete e.target.historyPos;
+                e.target.history.push(e.target.value);
+                e.target.value = "";
+                try {
+                    result = eval.call(null, command);
+                } catch (e) {
+                    text = document.createTextNode(e.toString());
+                    span.setAttribute("class", "exception");
+                }
+                if (result !== undefined) {
+                    if (typeof(result.toString) === 'function') {
+                        text = document.createTextNode(result.toString());
+                        span.setAttribute("class", "result");
+                    } else {
+                        text = document.createTextNode('[no toString available]');
+                        span.setAttribute("class", "undefined");
+                    }
+                } else if (text == undefined) {
+                    text = document.createTextNode("undefined");
                     span.setAttribute("class", "undefined");
                 }
-            } else if (text == undefined) {
-                text = document.createTextNode("undefined");
-                span.setAttribute("class", "undefined");
-            }
-            span.appendChild(text);
-            out.appendChild(document.createElement('br'));
-            out.scrollTop = out.scrollHeight;
-        } else if (e.keyCode == KeyEvent.DOM_VK_UP) {
-            if (e.target.historyPos == undefined) {
-                e.target.history.push(e.target.value);
-                e.target.historyPos = e.target.history.length - 1;
-            }
-            if (e.target.historyPos > 0) {
-                e.target.history[e.target.historyPos] = e.target.value;
-                e.target.historyPos--;
-                e.target.value = e.target.history[e.target.historyPos];
-           }
-        } else if (e.keyCode == KeyEvent.DOM_VK_DOWN) {
-            if ((e.target.historyPos !== undefined) && 
-               (e.target.historyPos < e.target.history.length - 1)) {
-                e.target.history[e.target.historyPos] = e.target.value;
-                e.target.historyPos++;
-                e.target.value = e.target.history[e.target.historyPos];
+                span.appendChild(text);
+                out.appendChild(document.createElement('br'));
+                out.scrollTop = out.scrollHeight;
+            } else if (e.keyCode == 38) { // UP
+                if (e.target.historyPos == undefined) {
+                    e.target.history.push(e.target.value);
+                    e.target.historyPos = e.target.history.length - 1;
+                }
+                if (e.target.historyPos > 0) {
+                    e.target.history[e.target.historyPos] = e.target.value;
+                    e.target.historyPos--;
+                    e.target.value = e.target.history[e.target.historyPos];
+               }
+            } else if (e.keyCode == 40) { // DOWN
+                if ((e.target.historyPos !== undefined) && 
+                   (e.target.historyPos < e.target.history.length - 1)) {
+                    e.target.history[e.target.historyPos] = e.target.value;
+                    e.target.historyPos++;
+                    e.target.value = e.target.history[e.target.historyPos];
+                }
             }
         }
     }
+// disable compilation
+try {
+    var PAT = ParallelArray.prototype;
+    PAT.combine = PAT.combineSeq;
+    PAT.map = PAT.mapSeq;
+    delete PAT.combineSeq;
+    delete PAT.mapSeq;
+    delete PAT;
+} catch (e) {
+    var out = document.getElementById('output');
+    var span = document.createElement('span');
+    span.innerHTML = 'It appears that the library implementation of River Trail does not support your browser. Please <a href="http://github.com/RiverTrail/RiverTrail/issues">open an issue</a>.';
+    span.setAttribute("class", "exception");
+    out.appendChild(span);
+}
 </script>
 </html>
