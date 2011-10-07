@@ -454,6 +454,9 @@ RiverTrail.RangeAnalysis = function () {
                     if (ast.update) {
                         drive(ast.update, bodyVE);
                     }
+                } else {
+                    // we need to propagate what we have found to the conditional, too
+                    drive(ast.condition, bodyVE);
                 }
                 // Take the union of both execution paths, as we never know which one is taken
                 varEnv.merge(bodyVE);
@@ -992,15 +995,11 @@ RiverTrail.RangeAnalysis = function () {
             case DECREMENT:
             case MINUS:
             case MUL:
-            case LSH:
-            case RSH:
-            case URSH:
             case DIV:
             case MOD:    
             case NOT:
             case UNARY_PLUS:
             case UNARY_MINUS:
-            case BITWISE_NOT:
                 ast.children = ast.children.map( function (child) { return push(child, tEnv, isIntValue(ast)); });
                 break;
 
@@ -1020,6 +1019,10 @@ RiverTrail.RangeAnalysis = function () {
                 break;
 
             // bitwise operations: these always require INT32 arguments
+            case LSH:
+            case RSH:
+            case URSH:
+            case BITWISE_NOT:
             case BITWISE_OR:
             case BITWISE_XOR:
             case BITWISE_AND:
