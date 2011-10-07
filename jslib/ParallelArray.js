@@ -116,8 +116,12 @@ var ParallelArray = function () {
     
     // check whether the new extension is installed.
     var useFF4Interface = false;
-    if (Components.interfaces.dpoIInterface !== undefined) {
-        useFF4Interface = true;
+    try {
+        if (Components.interfaces.dpoIInterface !== undefined) {
+            useFF4Interface = true;
+        }
+    } catch (ignore) {
+        // useFF4Interface = false;
     }
     // check whether the OpenCL implementation supports double
     var enable64BitFloatingPoint = false;
@@ -163,7 +167,7 @@ var ParallelArray = function () {
     var fingerprint = 0;
     var fingerprintTracker = [];
 
-    const Constants = {
+    var Constants = {
         // Some constants, when constants are added to JS adjust accordingly 
         "zeroStrideConstant"    : [ ],
         "oneStrideConstant"     : [1],
@@ -1693,7 +1697,7 @@ var ParallelArray = function () {
         }
         Fast1DPA.prototype = {
             "get" : function fastGet1D (index) {
-                const aLen = arguments.length;
+                var aLen = arguments.length;
                 if (aLen === 1) {
                     if (typeof(index) === "number") {
                         return this.data[this.offset + index];
@@ -1731,7 +1735,7 @@ var ParallelArray = function () {
         Fast2DPA.prototype = {
             "get" : function fastGet2D (index, index2) {
                 var result;
-                const aLen = arguments.length;
+                var aLen = arguments.length;
                 if (aLen === 2) {
                     return this.data[this.offset + index * this.strides[0] + index2];
                 } else if (aLen === 1) {
@@ -1776,7 +1780,7 @@ var ParallelArray = function () {
         Fast3DPA.prototype = {
             "get" : function fastGet3D (index, index2, index3) {
                 var result;
-                const aLen = arguments.length;
+                var aLen = arguments.length;
                 if (aLen === 3) {
                         return this.data[this.offset + index * this.strides[0] + index2 * this.strides[1] + index3];
                 } else if (aLen === 2) {
