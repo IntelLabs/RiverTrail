@@ -82,6 +82,9 @@ RiverTrail.compiler.codeGen = (function() {
             // ignore the first argument, the index
             formalsTypes = formalsTypes.slice(1);
             formalsNames = formalsNames.slice(1);
+        } else if (construct === "map") {
+            // Skip the extra type for this
+            formalsTypes = formalsTypes.slice(1);
         }
         
         for (i = 0; i < formalsTypes.length; i++) {
@@ -284,7 +287,6 @@ RiverTrail.compiler.codeGen = (function() {
         var rank;
         var funDecl;
         var thisSymbolType;
-        var returnElementOpenCLType;
 
         funDecl = ast;
         if (funDecl.value != "function") {
@@ -299,12 +301,18 @@ RiverTrail.compiler.codeGen = (function() {
             // derive iteration space and type information from rankOrShape and this
             thisSymbolType = funDecl.typeInfo.parameters[0];
             rank = rankOrShape;
-            thisIsScalar = thisSymbolType.properties.shape.length === 0;
+            thisIsScalar = thisSymbolType.isNumberType();
             paShape = pa.getShape();
             iterSpace = paShape.slice(0,rank);
             // add this formal parameter
-            s = s + " __global " + thisSymbolType.OpenCLType + " opThisVect " + 
-                ", int opThisVect__offset, ";
+            if (thisIsScalar && (construct === "map")) {
+                // for map, the this argument has a different type than the this inside the kernel
+                // so we have to lift it to a pointer if it isn't one yet.
+                s = s + " __global " + thisSymbolType.OpenCLType + "* opThisVect ";
+            } else {
+                s = s + " __global " + thisSymbolType.OpenCLType + " opThisVect ";
+            }
+            s = s + ", int opThisVect__offset, ";
         } else {
             // special case where we do not have this to derive iteration space. Here, rankOrShape
             // will be the shape of the iteration space, so use rankOrShape as iteration space and 
@@ -319,23 +327,16 @@ RiverTrail.compiler.codeGen = (function() {
             s = s + formals + ",";
         }
         // Dump the standard output parameters.
-        //CR this else clause needs to change into an internal error at some point.
-        // Warning it seems that the result.OpenCLType is just wrong.
+        // Note that result.openCLType is the type of the result of a single iteration!
          if ((construct === "combine") || (construct === "map")) {
-            // You need to cast the return values to this in the return statement
-            if (funDecl.typeInfo.parameters[0].OpenCLType.slice(-1) === "*") {
-                returnElementOpenCLType = funDecl.typeInfo.parameters[0].OpenCLType.slice(0, -1); // drop the *
-                boilerplate.returnType = returnElementOpenCLType;
-            } else {
-                console.log("funDecl.typeInfo.parameters[0].OpenCLType for return is not a pointer.");
-            }
-            s = s + "__global " + funDecl.typeInfo.parameters[0].OpenCLType + " retVal"; // * since they will be collected.
-        } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {      
-            returnElementOpenCLType = RiverTrail.Helper.stripToBaseType(funDecl.typeInfo.result.OpenCLType);
-            boilerplate.returnType = returnElementOpenCLType;
-            s = s + "__global " + returnElementOpenCLType + "* retVal"; // We need to deal with the other constructs.
+             // combine and map inherit the type of this!
+             boilerplate.returnType = RiverTrail.Helper.stripToBaseType(thisSymbolType.OpenCLType);
+             s = s + "__global " + boilerplate.returnType + "* retVal";
+         } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {      
+             boilerplate.returnType = RiverTrail.Helper.stripToBaseType(funDecl.typeInfo.result.OpenCLType);
+             s = s + "__global " + boilerplate.returnType + "* retVal"; 
         } else {
-            s = s + "__global " + "funDecl.typeInfo error in genKernel:257" + " retVal"; // We need to deal with the other constructs.
+             throw "unimplemented construct " + construct;
         }
         s = s + ", int retVal__offset";
         // Close the param list
@@ -358,8 +359,9 @@ RiverTrail.compiler.codeGen = (function() {
         // add code to compute offset 'readoffset' into flat vector when using map
         if (construct === "map") {
             s = s + "int _readoffset = " + pa.offset;
-            if ((paShape.length === rank + ast.inferredType.dimSize.length) &&
-                (ast.inferredType.dimSize.every(function(e,idx) { return (e === paShape[idx+rank]);}))) {
+            var resShape = ast.typeInfo.result.getOpenCLShape();
+            if ((paShape.length === rank + resShape.length) &&
+                (resShape.every(function(e,idx) { return (e === paShape[idx+rank]);}))) {
                 // result has same shape as input, so the offsets are the same
                 s = s + " + _writeoffset"
             } else {
@@ -375,21 +377,24 @@ RiverTrail.compiler.codeGen = (function() {
 
         // Add code to declare tempThis
         if (boilerplate.hasThis) {
+            var thisShape = thisSymbolType.getOpenCLShape();
             s = s + (thisIsScalar ? " " : " __global ") + thisSymbolType.OpenCLType + " "+ boilerplate.localThisName + ";";
             
             // initialise tempThis
             s = s + boilerplate.localThisName + " = " + (thisIsScalar ? "(" : "&(") + boilerplate.localThisDefinition + ");"; 
 
             // declare shape;
-            s = s + boilerplate.thisShapeLength + thisSymbolType.properties.shape.length + ";";
-            s = s + boilerplate.thisShapeDeclPre + "[" + thisSymbolType.properties.shape.length + "] = { ";
+            s = s + boilerplate.thisShapeLength + thisShape.length + ";";
+            if (thisShape.length > 0) {
+                s = s + boilerplate.thisShapeDeclPre + "[" + thisShape.length + "] = { ";
 
-            s = s + thisSymbolType.properties.shape[0];
+                s = s + thisShape[0];
 
-            for (i = 1; i < thisSymbolType.properties.shape.length; i++) {
-                s = s + ", " + thisSymbolType.properties.shape[i];
-            }
-            s = s + "};";
+                for (i = 1; i < thisShape.length; i++) {
+                    s = s + ", " + thisShape[i];
+                }
+                s = s + "};";
+            } 
         }
 
         // declare tempResult
