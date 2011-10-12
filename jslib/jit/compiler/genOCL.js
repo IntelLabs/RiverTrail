@@ -1029,13 +1029,25 @@ RiverTrail.compiler.codeGen = (function() {
             // unary functions on numbers (incl bool)
             case INCREMENT:
             case DECREMENT:
-                // SAH: BAD BAD HACK
-                s = "(" + stripCasts(ast.children[0]).value + " += ((" + ast.children[0].typeInfo.OpenCLType + ") 1))";
-                break;
-                if (ast.postfix) {
-                    s = s + oclExpression(ast.children[0]) + ast.value;
-                } else {
-                    s = s + ast.value + oclExpression(ast.children[0]);
+                var incArg = stripCasts(ast.children[0]).value;
+                var incType = ast.children[0].typeInfo.OpenCLType;
+                switch (incType) {
+                    case "float":
+                    case "double":
+                        // SAH: OpenCL does not have ++/-- for float and double, so we emulate it
+                        if (ast.postfix) {
+                            s = "(" + incArg.value + " " + ast.value.substring(0, 1) + "= ((" + incType + ") 1))";
+                        } else {
+                            // we would need a temp here. For now, just fail. This seems sufficiently uncommon...
+                            throw new Error("prefix increment/decrement on floats is not implemented, yet.");
+                        }
+                        break;
+                    default:
+                        if (ast.postfix) {
+                            s = s + oclExpression(ast.children[0]) + ast.value;
+                        } else {
+                            s = s + ast.value + oclExpression(ast.children[0]);
+                        }
                 }
                 break;
 
