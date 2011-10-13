@@ -173,6 +173,12 @@ nsresult dpoCContext::InitContext(cl_platform_id platform)
 
 	nsMemory::Free(devices);
 
+	kernelFailureMem = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int), NULL, &err_code);
+	if (err_code != CL_SUCCESS) {
+		DEBUG_LOG_ERROR("InitContext", err_code);
+		return NS_ERROR_NOT_AVAILABLE;
+	}
+
 	return NS_OK;
 }
 
@@ -268,7 +274,8 @@ DONE:
 		return NS_ERROR_OUT_OF_MEMORY;
 	}
 
-	result = ret->InitKernel(cmdQueue, kernel);
+	/* all kernels share the single buffer for the failure code */
+	result = ret->InitKernel(cmdQueue, kernel, kernelFailureMem);
 	if (result != NS_OK) {
 		clReleaseKernel(kernel);
 		return result;

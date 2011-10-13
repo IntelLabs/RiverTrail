@@ -35,7 +35,7 @@
 interface dpoIInterface : nsISecurityCheckedComponent
 {
 	dpoIPlatform getPlatform();
-	
+	readonly attribute PRUint32 version;
 	//DPO_SCOPE_TRIAL this should someday live somewhere else
 	//[implicit_jscontext]
 	//jsval searchScope( in jsval scope, in AString name);

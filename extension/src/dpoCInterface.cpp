@@ -145,6 +145,13 @@ NS_IMETHODIMP dpoCInterface::GetPlatform(dpoIPlatform **_retval NS_OUTPARAM)
 	return NS_ERROR_NOT_AVAILABLE;
 }
 
+NS_IMETHODIMP dpoCInterface::GetVersion(PRUint32 *aVersion) 
+{ 
+	*aVersion = DPO_INTERFACE_VERSION; 
+
+	return NS_OK;
+}
+
 #ifdef DPO_SCOPE_TRIAL
 /* [implicit_jscontext] jsval searchScope (in jsval scope, in AString name); */
 NS_IMETHODIMP dpoCInterface::SearchScope(const jsval & scope, const nsAString & name, JSContext *cx, jsval *_retval NS_OUTPARAM)

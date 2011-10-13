@@ -92,7 +92,7 @@ dpoCKernel::~dpoCKernel()
 	}
 }
 
-nsresult dpoCKernel::InitKernel(cl_command_queue aCmdQueue, cl_kernel aKernel)
+nsresult dpoCKernel::InitKernel(cl_command_queue aCmdQueue, cl_kernel aKernel, cl_mem aFailureMem)
 {
 	cl_int err_code;
 
@@ -103,6 +103,14 @@ nsresult dpoCKernel::InitKernel(cl_command_queue aCmdQueue, cl_kernel aKernel)
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 	cmdQueue = aCmdQueue;
+
+	failureMem = aFailureMem;
+
+	err_code = clSetKernelArg(kernel, 0, sizeof(cl_mem), &failureMem);
+	if (err_code != CL_SUCCESS) {
+		DEBUG_LOG_ERROR("initCData", err_code);
+		return NS_ERROR_NOT_AVAILABLE;
+	}
 
 	return NS_OK;
 }
@@ -119,7 +127,8 @@ NS_IMETHODIMP dpoCKernel::GetNumberOfArgs(PRUint32 *aNumberOfArgs)
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 
-	*aNumberOfArgs = result;
+	/* skip internal arguments when counting */
+	*aNumberOfArgs = result - DPO_NUMBER_OF_ARTIFICIAL_ARGS;
 
     return NS_OK;
 }
@@ -129,6 +138,9 @@ NS_IMETHODIMP dpoCKernel::SetArgument(PRUint32 number, dpoIData *argument)
 {
 	cl_int err_code;
 	cl_mem buffer;
+
+	/* skip internal arguments */
+	number = number + DPO_NUMBER_OF_ARTIFICIAL_ARGS;
 
 	buffer = ((dpoCData *) argument)->GetContainedBuffer();
 	DEBUG_LOG_STATUS("SetArgument", "buffer is " << buffer);
@@ -151,6 +163,9 @@ NS_IMETHODIMP dpoCKernel::SetScalarArgument(PRUint32 number, const jsval & argum
 	cl_int err_code;
 	bool isIntegerB;
 	bool isHighPrecisionB;
+
+	/* skip internal arguments */
+	number = number + DPO_NUMBER_OF_ARTIFICIAL_ARGS;
 
 	if (!JSVAL_IS_BOOLEAN(isInteger)) {
 		DEBUG_LOG_STATUS("SetScalarArgument", "illegal isInteger argument.");
@@ -225,13 +240,14 @@ NS_IMETHODIMP dpoCKernel::SetScalarArgument(PRUint32 number, const jsval & argum
 	return NS_OK;
 }
 
-/* void run (in PRUint32 rank, [array, size_is (rank)] in PRUint32 shape, [array, size_is (rank), optional] in PRUint32 tile); */
-NS_IMETHODIMP dpoCKernel::Run(PRUint32 rank, PRUint32 *shape, PRUint32 *tile)
+/* PRUint32 run (in PRUint32 rank, [array, size_is (rank)] in PRUint32 shape, [array, size_is (rank), optional] in PRUint32 tile); */
+NS_IMETHODIMP dpoCKernel::Run(PRUint32 rank, PRUint32 *shape, PRUint32 *tile, PRUint32 *_retval)
 {
 	cl_int err_code;
-	cl_event event;
+	cl_event runEvent, readEvent, writeEvent;
 	size_t *global_work_size;
 	size_t *local_work_size;
+	const int zero = 0;
 
 	DEBUG_LOG_STATUS("Run", "preparing execution of kernel");
 
@@ -269,14 +285,29 @@ NS_IMETHODIMP dpoCKernel::Run(PRUint32 rank, PRUint32 *shape, PRUint32 *tile)
 	local_work_size = NULL;
 #endif /* USE_LOCAL_WORKSIZE */
 
+	DEBUG_LOG_STATUS("Run", "setting failure code to 0");
+
+	err_code = clEnqueueWriteBuffer(cmdQueue, failureMem, CL_FALSE, 0, sizeof(int), &zero, 0, NULL, &writeEvent);
+	if (err_code != CL_SUCCESS) {
+		DEBUG_LOG_ERROR("Run", err_code);
+		return NS_ERROR_ABORT;
+	}
+
 	DEBUG_LOG_STATUS("Run", "enqueing execution of kernel");
 
 #ifdef WINDOWS_ROUNDTRIP
 	dpoCContext::RecordBeginOfRoundTrip(parent);
 #endif /* WINDOWS_ROUNDTRIP */
 
-	err_code = clEnqueueNDRangeKernel(cmdQueue, kernel, rank, NULL, global_work_size, NULL, 0, NULL, &event);
+	err_code = clEnqueueNDRangeKernel(cmdQueue, kernel, rank, NULL, global_work_size, NULL, 1, &writeEvent, &runEvent);
+	if (err_code != CL_SUCCESS) {
+		DEBUG_LOG_ERROR("Run", err_code);
+		return NS_ERROR_ABORT;
+	}
 
+	DEBUG_LOG_STATUS("Run", "reading failure code");
+
+	err_code = clEnqueueReadBuffer(cmdQueue, failureMem, CL_FALSE, 0, sizeof(int), _retval, 1, &runEvent, &readEvent);
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("Run", err_code);
 		return NS_ERROR_ABORT;
@@ -286,7 +317,7 @@ NS_IMETHODIMP dpoCKernel::Run(PRUint32 rank, PRUint32 *shape, PRUint32 *tile)
 	
 	// For now we always wait for the run to complete.
 	// In the long run, we may want to interleave this with JS execution and only sync on result read.
-	err_code = clWaitForEvents( 1, &event);
+	err_code = clWaitForEvents( 1, &readEvent);
 	
 	DEBUG_LOG_STATUS("Run", "first event fired");
 
@@ -300,7 +331,7 @@ NS_IMETHODIMP dpoCKernel::Run(PRUint32 rank, PRUint32 *shape, PRUint32 *tile)
 	
 #ifdef CLPROFILE
 #ifdef CLPROFILE_ASYNC
-	err_code = clSetEventCallback( event, CL_COMPLETE, &dpoCContext::CollectTimings, parent);
+	err_code = clSetEventCallback( readEvent, CL_COMPLETE, &dpoCContext::CollectTimings, parent);
 	
 	DEBUG_LOG_STATUS("Run", "second event fired");
 	if (err_code != CL_SUCCESS) {
@@ -308,7 +339,7 @@ NS_IMETHODIMP dpoCKernel::Run(PRUint32 rank, PRUint32 *shape, PRUint32 *tile)
 		return NS_ERROR_ABORT;
 	}
 #else /* CLPROFILE_ASYNC */
-	dpoCContext::CollectTimings(event,CL_COMPLETE,parent);
+	dpoCContext::CollectTimings(readEvent,CL_COMPLETE,parent);
 #endif /* CLPROFILE_ASYNC */
 #endif /* CLPROFILE */
 		
@@ -323,7 +354,10 @@ NS_IMETHODIMP dpoCKernel::Run(PRUint32 rank, PRUint32 *shape, PRUint32 *tile)
 	}
 #endif /* USE_LOCAL_WORKSIZE */
 	
-	err_code = clReleaseEvent(event);
+	err_code = clReleaseEvent(readEvent);
+	err_code = clReleaseEvent(runEvent);
+	err_code = clReleaseEvent(writeEvent);
+
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("Run", err_code);
 		return NS_ERROR_ABORT;

@@ -42,5 +42,5 @@ interface dpoIKernel : nsISecurityCheckedComponent
 	void setScalarArgument( in PRUint32 number, in jsval argument, in jsval isInteger, in jsval highPrecision);
 
 	// Methods to run a kernel
-	void run( in PRUint32 rank, [array, size_is(rank)] in PRUint32 shape, [optional, array, size_is(rank)] in PRUint32 tile);
+	PRUint32 run( in PRUint32 rank, [array, size_is(rank)] in PRUint32 shape, [optional, array, size_is(rank)] in PRUint32 tile);
 };

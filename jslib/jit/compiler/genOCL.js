@@ -297,6 +297,9 @@ RiverTrail.compiler.codeGen = (function() {
 
         s = "__kernel void " + funDecl.name + "(";
 
+        // add the special return parameter used to detect failure
+        s = s + "__global int *_FAILRET, ";
+
         if (boilerplate.hasThis) {
             // derive iteration space and type information from rankOrShape and this
             thisSymbolType = funDecl.typeInfo.parameters[0];
@@ -409,7 +412,8 @@ RiverTrail.compiler.codeGen = (function() {
         s = s + adjustFormalsWithOffsets(funDecl, construct);
         // Generate the statements;
         s = s + oclStatements(funDecl.body);
-        // add the epilog.       
+        // close the kernel body. Note that what ever is placed here is never executed, as the compilation
+        // of RETURN emit an explicit return...
         s = s + "}";
         return s;
     };
@@ -461,6 +465,7 @@ RiverTrail.compiler.codeGen = (function() {
                 s = s + "}";
             }
         }
+        s = s + "if (_FAIL) {*_FAILRET = 1;}";
         s = s + " return; ";
         return s;
     }

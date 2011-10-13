@@ -27,6 +27,9 @@
 #ifndef _DPO_CONFIG_H_
 #define _DPO_CONFIG_H_
 
+#define DPO_INTERFACE_VERSION			2	/* running version number of the interface */
+#define DPO_NUMBER_OF_ARTIFICIAL_ARGS	1	/* number of internal kernel arguments used by runtime */
+
 #define CLPROFILE				/* enable cl profiling support */
 #undef CLPROFILE_ASYNC			/* use event callbacks for profiling */
 #undef OUTOFORDERQUEUE			/* enable out of order execution. Needs to be off on certain platforms. */

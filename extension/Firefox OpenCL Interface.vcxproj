@@ -57,6 +57,12 @@
       <AdditionalLibraryDirectories>$(INTELOCLSDKROOT)\lib\x86;gecko-sdk\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>xpcomglue_s.lib;xpcom.lib;nspr4.lib;mozjs.lib;mozalloc.lib;opencl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>call bin\deploy-components.cmd $(OutDir) $(MSBuildProjectDirectory)</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>populate xpi-contents directory</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -76,6 +82,8 @@
       <AdditionalLibraryDirectories>$(INTELOCLSDKROOT)\lib\x86;gecko-sdk\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>xpcomglue_s.lib;xpcom.lib;nspr4.lib;mozjs.lib;mozalloc.lib;opencl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent />
+    <PostBuildEvent />
     <PostBuildEvent>
       <Command>call bin\deploy-components.cmd $(OutDir) $(MSBuildProjectDirectory)</Command>
     </PostBuildEvent>

@@ -69,9 +69,10 @@ private:
 protected:
   /* additional members */
   nsCOMPtr<dpoIPlatform> parent;
-  cl_context context;
-  cl_command_queue cmdQueue;
-  char *buildLog;
+  cl_context context;			/* the corresponding OpenCL context object */
+  cl_command_queue cmdQueue;	/* command queue shared by all child objects (e.g. kernels) */
+  char *buildLog;				/* shared string used to store the build log in compileKernel */
+  cl_mem kernelFailureMem;		/* memory buffer used to communicate abortion of kernels; shared among all kernels */
 
   nsresult ExtractArray(const jsval &source, js::TypedArray **result);
   

@@ -48,7 +48,7 @@ public:
 
   dpoCKernel(dpoIContext *parent);
 
-  nsresult InitKernel(cl_command_queue aCmdQueue, cl_kernel aKernel);
+  nsresult InitKernel(cl_command_queue aCmdQueue, cl_kernel aKernel, cl_mem failureMem);
 
 private:
   ~dpoCKernel();
@@ -58,4 +58,5 @@ protected:
 	nsCOMPtr<dpoIContext> parent;
 	cl_kernel kernel;
 	cl_command_queue cmdQueue;
+	cl_mem failureMem;
 };
