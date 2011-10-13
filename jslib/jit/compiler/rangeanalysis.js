@@ -349,11 +349,18 @@ RiverTrail.RangeAnalysis = function () {
         RiverTrail.Helper.traverseAst(ast, function (v) { delete v.rangeInfo; return v;});
     }
 
+    function annotateRangeInfo(ast, range, mode) {
+        if (mode) {
+            ast.rangeInfo = range;
+        }
+    }
+
     //
     // The abstract interpretation uses the following signature
-    //   (source, variable bindings, current constraint set, constraint to assign, inverse constraints) -> range information
+    //   (source, variable bindings, whether to update the tree with new findings,
+    //    current constraint set, constraint to assign, inverse constraints) -> range information
     // The last two arguments might be undefined
-    function drive(ast, varEnv, constraints, constraintAccu, inverse) {
+    function drive(ast, varEnv, doAnnotate, constraints, constraintAccu, inverse) {
         var result;
 
         if (!ast) {
@@ -370,7 +377,7 @@ RiverTrail.RangeAnalysis = function () {
                 ast.rangeSymbols = varEnv;
                 // fallthrough
             case BLOCK:
-                ast.children.forEach(function (ast) { drive(ast, varEnv); });
+                ast.children.forEach(function (ast) { drive(ast, varEnv, doAnnotate); });
                 break;
 
             //
@@ -380,7 +387,7 @@ RiverTrail.RangeAnalysis = function () {
                 // this is not an applied occurence but the declaration, so we do not do anything here
                 break;
             case RETURN:
-                result = drive(ast.value, varEnv);
+                result = drive(ast.value, varEnv, doAnnotate);
                 break;
             //
             // loops (SAH)
@@ -404,12 +411,12 @@ RiverTrail.RangeAnalysis = function () {
             //
             case DO:
                 // do loops always execute the body once
-                drive(ast.body, varEnv);
+                drive(ast.body, varEnv, doAnnotate);
                 // fallthrough;
             case FOR:
                 // setup is run once
                 if (ast.setup) {
-                    drive(ast.setup, varEnv);
+                    drive(ast.setup, varEnv, doAnnotate);
                 }
                 // fallthrough;
             case WHILE:
@@ -417,25 +424,26 @@ RiverTrail.RangeAnalysis = function () {
                 // in the predicate for now. To catch this, use a new VE.
                 var bodyC = new Constraints();
                 var predVE = new VarEnv(varEnv);
-                drive(ast.condition, predVE, bodyC);
+                drive(ast.condition, predVE, doAnnotate, bodyC);
                 // the body is only evaluated if the constraints hold, so its effects might not be visible
                 // in the exit path
                 var bodyVE = new VarEnv(varEnv);
                 bodyVE.enforceConstraints(bodyC); 
-                drive(ast.body, bodyVE);
+                drive(ast.body, bodyVE, doAnnotate);
                 // now we execute the update, if we have one
                 if (ast.update) {
-                    drive(ast.update, bodyVE);
+                    drive(ast.update, bodyVE, doAnnotate);
                 }
                 // now we do a second pass of the body to see whether the ranges we have cover
-                // further iterations
+                // further iterations. We do not update the tree while we do this, as we have
+                // incorrect lower bound information (its the second iteration!)
                 var bodyVE2 = new VarEnv(bodyVE);
                 bodyVE2.enforceConstraints(bodyC);
-                drive(ast.body, bodyVE2);
+                drive(ast.body, bodyVE2, false); 
                 // the second iteration includes the update, as this happens
                 // before we exit
                 if (ast.update) {
-                    drive(ast.update, bodyVE2);
+                    drive(ast.update, bodyVE2, false);
                 }
                 // the range information is only valid iff the second environment is covered
                 // by the first. In this case, the constraints delimit all non-invariant loop
@@ -449,59 +457,59 @@ RiverTrail.RangeAnalysis = function () {
                     bodyVE.merge(predVE);
 
                     // push the invalidation through the ast
-                    drive(ast.condition, bodyVE);
-                    drive(ast.body, bodyVE);
+                    drive(ast.condition, bodyVE, doAnnotate);
+                    drive(ast.body, bodyVE, doAnnotate);
                     if (ast.update) {
-                        drive(ast.update, bodyVE);
+                        drive(ast.update, bodyVE, doAnnotate);
                     }
                 } else {
                     // we need to propagate what we have found to the conditional, too
-                    drive(ast.condition, bodyVE);
+                    drive(ast.condition, bodyVE, doAnnotate);
                 }
                 // Take the union of both execution paths, as we never know which one is taken
                 varEnv.merge(bodyVE);
                 break;
             case IF:
                 var predC = new Constraints();
-                drive(ast.condition, varEnv, predC);
+                drive(ast.condition, varEnv, doAnnotate, predC);
                 var thenVE = new VarEnv(varEnv);
                 thenVE.applyConstraints(predC);
-                drive(ast.thenPart, thenVE);
+                drive(ast.thenPart, thenVE, doAnnotate);
                 var predCE = new Constraints();
-                drive(ast.condition, varEnv, predCE, undefined, true); // compute inverse
+                drive(ast.condition, varEnv, doAnnotate, predCE, undefined, true); // compute inverse
                 var elseVE = new VarEnv(varEnv);
                 elseVE.applyConstraints(predCE);
                 if (ast.elsePart) {
                     // we can just use the main env for this alternative path as 
                     // the join in the end will keep whatever we have found if it
                     // is not present in the other part.
-                    drive(ast.elsePart, elseVE);
+                    drive(ast.elsePart, elseVE, doAnnotate);
                 }
                 thenVE.merge(elseVE);
                 varEnv.merge(thenVE);
                 break;
             case SEMICOLON:
-                result = drive(ast.expression, varEnv);
+                result = drive(ast.expression, varEnv, doAnnotate);
                 break;
             case VAR:
             case CONST:
                 ast.children.forEach(function (ast) {
                                          if (ast.initializer) {
-                                             varEnv.update(ast.value, drive(ast.initializer, varEnv));
+                                             varEnv.update(ast.value, drive(ast.initializer, varEnv, doAnnotate));
                                          }
-                                         ast.rangeInfo = varEnv.lookup(ast.value);
+                                         annotateRangeInfo(ast, varEnv.lookup(ast.value), doAnnotate);
                                      });
                 break;
             case ASSIGN:
                 // children[0] is the left hand side, children[1] is the right hand side.
                 // both can be expressions. 
-                drive(ast.children[0], varEnv);
-                var right = drive(ast.children[1], varEnv);
+                drive(ast.children[0], varEnv, doAnnotate);
+                var right = drive(ast.children[1], varEnv, doAnnotate);
                 switch (ast.children[0].type) {
                     case IDENTIFIER:
                         // simple case of a = expr
                         varEnv.update(ast.children[0].value, right);
-                        ast.children[0].rangeInfo = right.clone();
+                        annotateRangeInfo(ast.children[0], right.clone(), doAnnotate);
                         result = right; // assignment yields the rhs as value
                         break;
                     case INDEX:
@@ -520,26 +528,26 @@ RiverTrail.RangeAnalysis = function () {
             //
             case COMMA:
                 // we keep the type of the last child
-                ast.children.forEach(function (ast) { result = drive(ast, varEnv, constraints, constraintAccu);});
+                ast.children.forEach(function (ast) { result = drive(ast, varEnv, doAnnotate, constraints, constraintAccu);});
                 break;
             case HOOK:
                 // the hook (?) is badly designed. The first child is the condition, second child
                 // the then expression, third child the else expression
                 var predC = new Constraints();
-                drive(ast.children[0], varEnv, predC);
+                drive(ast.children[0], varEnv, doAnnotate, predC);
                 var thenVE = new VarEnv(varEnv);
                 thenVE.applyConstraints(predC);
-                drive(ast.children[1], thenVE); // we do not forward constraints here, nor collect new ones, as we do 
-                drive(ast.children[2], varEnv); // not know which branch will be taken
+                drive(ast.children[1], thenVE, doAnnotate); // we do not forward constraints here, nor collect new ones, as we do 
+                drive(ast.children[2], varEnv, doAnnotate); // not know which branch will be taken
                 varEnv.merge(thenVE);
                 break;
                 
             // binary operations on all literals
             case INCREMENT:
             case PLUS: 
-                var left = drive(ast.children[0], varEnv);
+                var left = drive(ast.children[0], varEnv, doAnnotate);
                 if (ast.children[1]) {
-                    var right = drive(ast.children[1], varEnv);
+                    var right = drive(ast.children[1], varEnv, doAnnotate);
                 } else {
                     var right = new Range(1,1, true);
                 }
@@ -550,9 +558,9 @@ RiverTrail.RangeAnalysis = function () {
                 break;
             case DECREMENT:
             case MINUS:
-                var left = drive(ast.children[0], varEnv);
+                var left = drive(ast.children[0], varEnv, doAnnotate);
                 if (ast.children[1]) {
-                    var right = drive(ast.children[1], varEnv);
+                    var right = drive(ast.children[1], varEnv, doAnnotate);
                 } else {
                     var right = new Range(1,1, true);
                 }
@@ -562,8 +570,8 @@ RiverTrail.RangeAnalysis = function () {
                 }
                 break;
             case MUL:
-                var left = drive(ast.children[0], varEnv);
-                var right = drive(ast.children[1], varEnv);
+                var left = drive(ast.children[0], varEnv, doAnnotate);
+                var right = drive(ast.children[1], varEnv, doAnnotate);
                 if ((left.lb >= 0) && (left.ub >= 0) && (right.lb >= 0) && (right.ub >= 0)) {
                     result = left.map( right, function (a,b) { return a*b; }, left.isInt && right.isInt);
                 } else {
@@ -580,8 +588,8 @@ RiverTrail.RangeAnalysis = function () {
             case LE:
             case GE:
             case GT:
-                var right = drive(ast.children[1], varEnv, constraints, undefined, inverse); // grab rhs range
-                var left = drive(ast.children[0], varEnv, constraints, {"type" : ast.type, "range" : right, "inverse" : inverse}, inverse); // apply constraint to lhs
+                var right = drive(ast.children[1], varEnv, doAnnotate, constraints, undefined, inverse); // grab rhs range
+                var left = drive(ast.children[0], varEnv, doAnnotate, constraints, {"type" : ast.type, "range" : right, "inverse" : inverse}, inverse); // apply constraint to lhs
                 result = new Range(0, 1, true); // result is a bool
                 break;
 
@@ -594,8 +602,8 @@ RiverTrail.RangeAnalysis = function () {
             case URSH:
             case DIV:
             case MOD:    
-                var left = drive(ast.children[0], varEnv);
-                var right = drive(ast.children[1], varEnv);
+                var left = drive(ast.children[0], varEnv, doAnnotate);
+                var right = drive(ast.children[1], varEnv, doAnnotate);
                 result = new Range(undefined, undefined, false);
                 break;
 
@@ -604,13 +612,13 @@ RiverTrail.RangeAnalysis = function () {
             case OR:
                 if (((ast.type === AND) && !inverse) ||
                     ((ast.type === OR ) && inverse)) { // merge both branches
-                    drive(ast.children[0], varEnv, constraints, undefined, inverse);
-                    drive(ast.children[1], varEnv, constraints, undefined, inverse);
+                    drive(ast.children[0], varEnv, doAnnotate, constraints, undefined, inverse);
+                    drive(ast.children[1], varEnv, doAnnotate, constraints, undefined, inverse);
                 } else { // intersect branches
                     var leftC = new Constraints();
-                    drive(ast.children[0], varEnv, leftC, undefined, inverse);
+                    drive(ast.children[0], varEnv, doAnnotate, leftC, undefined, inverse);
                     var rightC = new Constraints();
-                    drive(ast.children[1], varEnv, rightC, undefined, inverse);
+                    drive(ast.children[1], varEnv, doAnnotate, rightC, undefined, inverse);
                     leftC.intersect(rightC);
                     constraints.merge(leftC);
                 }
@@ -618,20 +626,20 @@ RiverTrail.RangeAnalysis = function () {
                 break;
             // unary functions on all literals
             case NOT:
-                drive(ast.children[0], varEnv, constraints, undefined, !inverse); 
+                drive(ast.children[0], varEnv, doAnnotate, constraints, undefined, !inverse); 
                 result = new Range(0, 1, true); // the result is a boolean :)
                 break;
             case UNARY_PLUS:
-                result = drive(ast.children[0], varEnv);
+                result = drive(ast.children[0], varEnv, doAnnotate);
                 break;
             case UNARY_MINUS:
-                var left = drive(ast.children[0], varEnv);
+                var left = drive(ast.children[0], varEnv, doAnnotate);
                 result = new Range((left.ub === undefined) ? undefined : -left.ub,
                                    (left.lb === undefined) ? undefined : -left.lb,
                                    left.isInt);
                 break;
             case BITWISE_NOT:
-                drive(ast.children[0], varEnv);
+                drive(ast.children[0], varEnv, doAnnotate);
                 result = new Range(undefined, undefined, false);
                 break;
 
@@ -645,8 +653,8 @@ RiverTrail.RangeAnalysis = function () {
                 break;
             case DOT:
                 // we support array.length and PA.getShape() as it is somewhat a common loop bound. Could be more elaborate
-                drive(ast.children[0], varEnv);
-                //drive(ast.children[1], varEnv); // this needs to be an identifier, so no need to range infer it
+                drive(ast.children[0], varEnv, doAnnotate);
+                //drive(ast.children[1], varEnv, doAnnotate); // this needs to be an identifier, so no need to range infer it
                 if ((ast.children[1].value === "length") &&
                     ((ast.children[0].typeInfo.isObjectType("Array") ||
                       ast.children[0].typeInfo.isObjectType("ParallelArray")))) {
@@ -668,8 +676,8 @@ RiverTrail.RangeAnalysis = function () {
 
             // array operations
             case INDEX:
-                var index = drive(ast.children[1], varEnv);
-                var array = drive(ast.children[0], varEnv);
+                var index = drive(ast.children[1], varEnv, doAnnotate);
+                var array = drive(ast.children[0], varEnv, doAnnotate);
                 // special case for selecting elements from the index vector
                 if (index.fixedValue()) {
                     if (constraintAccu && constraints && (ast.children[0].type === IDENTIFIER)) { // we have new constraint information to assign
@@ -685,13 +693,13 @@ RiverTrail.RangeAnalysis = function () {
                 break;
 
             case ARRAY_INIT:
-                result = ast.children.map(function (ast) { return drive(ast, varEnv);});
+                result = ast.children.map(function (ast) { return drive(ast, varEnv, doAnnotate);});
                 break;
 
             // function application
             case CALL:
-                drive(ast.children[0], varEnv);
-                drive(ast.children[1], varEnv);
+                drive(ast.children[0], varEnv, doAnnotate);
+                drive(ast.children[1], varEnv, doAnnotate);
                 switch (ast.children[0].type) {
                     case DOT:
                         // we support getShape on Parallel Arrays, as it is a common bound for
@@ -713,12 +721,12 @@ RiverTrail.RangeAnalysis = function () {
 
             // argument lists
             case LIST:      
-                result = ast.children.map(function (ast) { return drive(ast, varEnv); });
+                result = ast.children.map(function (ast) { return drive(ast, varEnv, doAnnotate); });
                 break;
 
             case CAST:
                 // TODO: be more sensible here
-                drive(ast.children[0], varEnv);
+                drive(ast.children[0], varEnv, doAnnotate);
                 result = new Range(undefined, undefined, false);
                 break;
 
@@ -791,7 +799,7 @@ RiverTrail.RangeAnalysis = function () {
                 throw "unhandled node type in analysis: " + ast.type;
         }
 
-        ast.rangeInfo = result;
+        annotateRangeInfo(ast, result, doAnnotate);
         if (debug && result) {
             console.log(RiverTrail.Helper.wrappedPP(ast) + " has range " + result.toString());
         }
@@ -819,7 +827,7 @@ RiverTrail.RangeAnalysis = function () {
         }
 
         try {
-            drive(ast.body, env);
+            drive(ast.body, env, true);
         } catch (e) {
             if ((e instanceof TypeError) || (e instanceof ReferenceError)) {
                 throw e;
