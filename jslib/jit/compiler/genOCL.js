@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = false;
+    const verboseDebug = true;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -343,6 +343,9 @@ RiverTrail.compiler.codeGen = (function() {
         s = s + ")";
         s = s + " {";
 
+        // add declaration of bounds checks helper variables
+        s = s + "int _sel_idx_tmp; bool _FAIL = 0;";
+
         // add code to declare id_x for each iteration dimension
         for (i = 0; i < rank; i++) {
             s = s + "int _id_" + i + " = (int)get_global_id(" + i + ");";
@@ -509,29 +512,59 @@ RiverTrail.compiler.codeGen = (function() {
         }
     }
 
-    function checkOneRange(range, val) {
-        return ((val !== undefined) && 
-                (range.lb !== undefined) && (range.lb >= 0) &&
-                (range.ub !== undefined) && (range.ub < val));
+    // Creates a potentially checked array index.
+    // If the index is statically known to be correct, this
+    // just returns the index itself (expr).
+    // Otherwise an expression is created that checks whether
+    // the index is in bounds and, if the index turns out to be 
+    // out of bounds, returns 0. If the index is in bounds,
+    // the value of expr is returned.
+    //
+    // The emmited code relies on a global variable
+    // int _sel_idx_tmp
+    // to store the intermediate result of evaluation expr.
+    // This variable should be declared at the top-level of the
+    // function.
+    //
+    // As a side effect, the global variable _FAIL is set to 1
+    // if a bounds check failed.
+    function wrapIntoCheck(range, bound, expr) {
+        var postfix = "";
+        var result = "";
+        var dynCheck = false;
+
+        if (bound === 0) {
+            // we have an empty array => you cannot select from those
+            // (yeah, yeah, I know, a real corner case :=D)
+            throw new Error("selection from empty array encountered!");
+        }
+
+        if (checkBounds && 
+            ((range.lb === undefined) ||
+             (range.lb < 0))) {
+            // emit lower bound check
+            result += "(_sel_idx_tmp < 0 ? (_FAIL = 1, 0) : ";
+            postfix = ")" + postfix;
+            dynCheck = true;
+        }
+
+        if (checkBounds &&
+            ((range.ub === undefined) ||
+             (range.ub >= bound))) {
+            // emit upper bound check
+            result += "(_sel_idx_tmp >= " + bound + " ? (_FAIL = 1, 0) : ";
+            postfix = ")" + postfix;
+            dynCheck = true;
+        }
+
+        if (dynCheck) {
+            result = "(_sel_idx_tmp = " + expr + ", " + result + "_sel_idx_tmp" + postfix + ")";
+        } else {
+            result = expr;
+        }
+
+        return result;
     }
-
-    function ensureStaticallySafe(source, index) {
-        var rangeInfo = index.rangeInfo;
-        var shape = source.typeInfo.getOpenCLShape();
-
-        if (!rangeInfo || !shape) {
-            return false;
-        }
-
-        if (rangeInfo instanceof Array) { // get call
-            if (rangeInfo[0] instanceof Array) { // get call with index vector
-                rangeInfo = rangeInfo[0];
-            }
-            return rangeInfo.every(function (rI, idx) { return checkOneRange(rI, shape[idx]); });
-        } else { // INDEX
-            return checkOneRange(rangeInfo, shape[0]);
-        }
-    };
 
     //
     // Given we have a source and an arrayOfIndices. If the result is
@@ -542,62 +575,48 @@ RiverTrail.compiler.codeGen = (function() {
     var compileSelectionOperation = function (ast, source, arrayOfIndices) {
         "use strict";
     
-        // returns ocl code to compute the offset for a given identifier.
-        function oclGetOffset(ast) {
-           // if ((ast.type === IDENTIFIER) && (ast.isArgument) 
-           //         && (!ast.inferredType.isIndex) && 
-           //         (ast.inferredType.dimSize.length !== 0)) {
-           //     return ast.value + "__offset";
-           // } else {
-                return "0";
-           // };
-        };
-
         var s = "";
         var i;
         var elemSize;
         var stride;
         var indexLen;
         var dynamicSel;
+        var rangeInfo;
         // If arrayOfIndices has an inferredType of an array (dimSize > 0) then it is get([x, y...]);
         // If that is the case then elemRank will be the sourceRank - the length of the argument.
         var sourceType = source.typeInfo;
-        //if (source.type === THIS) {
-        //    sourceType = source.typeInfo;
-        //} else if (source.type === IDENTIFIER) {
-        //    sourceType = source.typeInfo;
-        //}
-
-        var sourceRank = sourceType.getOpenCLShape().length;
+        var sourceShape = sourceType.getOpenCLShape();
+        var sourceRank = sourceShape.length;
         var elemRank = ast.typeInfo.getOpenCLShape().length;
         if (elemRank !== 0) {
             // The result is a pointer to a sub dimension.
             s = s + "( &";
         }
         elemSize = ast.typeInfo.getOpenCLShape().reduce( function (p,n) { return p*n;}, 1);
-        s = s + " ( " + oclExpression(source) + "[";
+        s = s + " ( " + oclExpression(source) + "[0 ";
 
         stride = elemSize;
         
-        s = s + oclGetOffset(source);
         if (arrayOfIndices.type !== LIST) {
             // we have a single scalar index from an INDEX op
-            s = s + " + " + stride + " * ("+oclExpression(arrayOfIndices) + ")";
+            rangeInfo = arrayOfIndices.rangeInfo;
+            s = s + " + " + stride + " * ("+wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ")";
         } else {
             // this is a get
             if (arrayOfIndices.children[0] && (arrayOfIndices.children[0].type === ARRAY_INIT)) { 
                 // We might have get([0,0]); instead of get(0,0);
                 arrayOfIndices = arrayOfIndices.children[0];
             }
+            rangeInfo = arrayOfIndices.rangeInfo;
             // the first argument could be an index vector, in which case we have to produce dynamic
             // selection code
             dynamicSel = arrayOfIndices.children[0].typeInfo.getOpenCLShape().length !== 0;
             for (i = sourceRank - elemRank - 1; i >= 0; i--) { // Ususally only 2 or 3 dimensions so ignore complexity
                 s = s + " + " + stride + " * ("
                 if (dynamicSel) {
-                    s = s + oclExpression(arrayOfIndices.children[0]) + "[" + i + "])";
+                    s = s + wrapIntoCheck(rangeInfo[0][i], sourceShape[i], oclExpression(arrayOfIndices.children[0]) + "[" + i + "]") + ")";
                 } else {
-                    s = s + oclExpression(arrayOfIndices.children[i]) + ")";
+                    s = s + wrapIntoCheck(rangeInfo[i], sourceShape[i], oclExpression(arrayOfIndices.children[i])) + ")";
                 }
                 stride = stride * sourceType.getOpenCLShape()[i];
             }
@@ -608,15 +627,6 @@ RiverTrail.compiler.codeGen = (function() {
         if (elemRank !== 0) {
             // The result is a pointer to a sub dimension.
             s = s + " )";
-        }
-
-        //
-        // SAH: this is a temporary measure until we emit proper dynamic bounds checks. We do this 
-        //      down here because by now arrayOfIndices has been normalised to either scalar or 
-        //      array of scalars!
-        //
-        if (checkBounds && !ensureStaticallySafe(source, arrayOfIndices)) {
-           throw new Error("static bounds check failed");
         }
 
         return s;
