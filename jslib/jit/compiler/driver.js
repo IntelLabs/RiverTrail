@@ -202,6 +202,7 @@ RiverTrail.compiler = (function () {
             RiverTrail.RangeAnalysis.analyze(ast, paSource, construct, rankOrShape, args);
             RiverTrail.RangeAnalysis.propagate(ast);
             RiverTrail.InferBlockFlow.infer(ast);
+            RiverTrail.InferMem.infer(ast);
         } catch (e) {
             RiverTrail.Helper.debugThrow(e);
         }

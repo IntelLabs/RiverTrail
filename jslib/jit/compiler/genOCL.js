@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = true;
+    const verboseDebug = false;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -492,9 +492,9 @@ RiverTrail.compiler.codeGen = (function() {
          } else if (statements.type === SCRIPT) {
             for(x in statements.varDecls) {
                 var name = statements.varDecls[x].value;
-                var type = statements.symbols.lookup(name);
-                if (type && type.type) {
-                    s = s + " " + type.type.OpenCLType + " " + name + "; ";
+                var type = statements.symbols.getType(name);
+                if (type) {
+                    s = s + " " + type.getOpenCLAddressSpace() + " " + type.OpenCLType + " " + name + "; ";
                 } else {
                     // This variable isn't used so drop on floor for now.
                 }
@@ -961,7 +961,11 @@ RiverTrail.compiler.codeGen = (function() {
                 switch (ast.children[0].type) {
                     case IDENTIFIER:
                         // simple case of a = expr
-                        s = s + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")"; // no ; because ASSIGN is an expression!
+                        if (ast.allocatedMem) {
+                                throw new Error("a memcopy would be required to compile this code.");
+                        } else {
+                            s = s + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")"; // no ; because ASSIGN is an expression!
+                        }
                         break;
                     case INDEX:
                         // array update <expr>[iv] = expr

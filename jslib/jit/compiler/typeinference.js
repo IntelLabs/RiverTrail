@@ -99,6 +99,12 @@ RiverTrail.Typeinference = function () {
     Tp.getOpenCLShape = function () {
         return []; // everything is a scalar unless defined otherwise
     };
+    Tp.getOpenCLSize = function () {
+        reportBug("size of type not known:" + this.kind);
+    };
+    Tp.getOpenCLAddressSpace = function () {
+        return "";
+    }
 
     //
     // literal type for all literals
@@ -134,6 +140,20 @@ RiverTrail.Typeinference = function () {
         result.OpenCLType = this.OpenCLType;
 
         return result;
+    };
+    TLp.getOpenCLSize = function getOpenCLSize() {
+        switch (this.OpenCLType) {
+            case "float":
+            case "int":
+                return 4;
+                break;
+            case "double":
+                return 8;
+                break;
+            default:
+                reportBug("size of type not known:" + this.OpenCLType);
+                break;
+        }
     };
 
     //
@@ -233,6 +253,12 @@ RiverTrail.Typeinference = function () {
     TOp.getOpenCLShape = function () {
         return this.getHandler().getOpenCLShape.call(this) || [];
     };
+    TOp.getOpenCLSize = function () {
+        return this.getHandler().getOpenCLSize.call(this) || reportBug("unknown OpenCL size for object: " + this.name);
+    };
+    TOp.getOpenCLAddressSpace = function () {
+        return this.properties.addressSpace || "";
+    }
 
     //
     // Bottom type for error states
@@ -261,6 +287,14 @@ RiverTrail.Typeinference = function () {
     TEp.lookup = function (name) {
         return (this.bindings[name] !== undefined) ? this.bindings[name] : ((this.parent && this.parent.lookup(name)) || undefined);
     }
+    TEp.getType = function (name) {
+        var entry = this.lookup(name);
+        if (entry) {
+            return entry.type;
+        } else {
+            return undefined;
+        }
+    };
     TEp.bind = function (name, duplicates) {
         if (name instanceof Array) {
             name.forEach( this.bind);
@@ -526,6 +560,9 @@ RiverTrail.Typeinference = function () {
         getOpenCLShape : function () {
             return this.properties.shape.concat(this.properties.elements.getOpenCLShape());
         },
+        getOpenCLSize : function () {
+            return this.properties.shape.reduce(function (prev, curr) { return prev*curr; }, 1) * this.properties.elements.getOpenCLSize();
+        },
         equals : function (other) {
             return (this.properties.shape.length === other.properties.shape.length) &&
                    this.properties.shape.every( function (val, idx) { return val === other.properties.shape[idx]; }) &&
@@ -634,6 +671,9 @@ RiverTrail.Typeinference = function () {
         },
         getOpenCLShape : function () {
             return this.properties.shape.concat(this.properties.elements.getOpenCLShape());
+        },
+        getOpenCLSize : function () {
+            return this.properties.shape.reduce(function (prev, curr) { return prev*curr; }, 1) * this.properties.elements.getOpenCLSize();
         },
         equals : function (other) {
             return (this.properties.shape.length === other.properties.shape.length) &&
