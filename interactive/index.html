@@ -38,10 +38,13 @@
     <script type="text/javascript" src="../jslib/jit/compiler/dotviz.js"></script>
     <script type="text/javascript" src="../jslib/jit/compiler/typeinference.js"></script>
     <script type="text/javascript" src="../jslib/jit/compiler/rangeanalysis.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/inferblockflow.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/infermem.js"></script>
     <script type="text/javascript" src="../jslib/jit/compiler/genOCL.js"></script>
     <script type="text/javascript" src="../jslib/jit/compiler/runOCL.js"></script>
     <style type="text/css">
         span.exception {color: #ff0000;}
+        span.info {color: #22aa22;}
         span.undefined {color: #333333; font-style: italic;}
         span.result {font-weight: bold;}
     </style>
@@ -146,12 +149,22 @@ document.getElementById('command').onkeydown = function (e) {
     }
 // disable compilation
 try {
-    var PAT = ParallelArray.prototype;
-    PAT.combine = PAT.combineSeq;
-    PAT.map = PAT.mapSeq;
-    delete PAT.combineSeq;
-    delete PAT.mapSeq;
-    delete PAT;
+    if (RiverTrail.compiler === undefined) {
+        var PAT = ParallelArray.prototype;
+        PAT.combine = PAT.combineSeq;
+        PAT.map = PAT.mapSeq;
+        delete PAT.combineSeq;
+        delete PAT.mapSeq;
+        delete PAT;
+    } else {
+        var out = document.getElementById('output');
+        var span = document.createElement('span');
+        span.innerHTML = 'It appears that you have River Trail installed. Enabling compiled mode...';
+        span.setAttribute("class", "info");
+        out.appendChild(span);
+    }
+
+
 } catch (e) {
     var out = document.getElementById('output');
     var span = document.createElement('span');

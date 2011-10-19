@@ -444,7 +444,7 @@ RiverTrail.compiler.codeGen = (function() {
             // elements = rhs.inferredType.dimSize.reduce(function (a,b) { return a*b;});
             convPre = "((" + boilerplate.returnType + ") ";
             convPost = ")";
-            while (rhs.type === CAST && (rhs.children[0].type === ARRAY_INIT)) {
+            while (rhs.type === CAST) {
                 // detect casts to facilitate direct assign
                 convPre = convPre + "((" + rhs.typeInfo.OpenCLType + ")";
                 convPost = ")" + convPost;
@@ -462,7 +462,7 @@ RiverTrail.compiler.codeGen = (function() {
                 s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                 s = s + "{ int _writeback_idx = 0; for (;_writeback_idx < " + elements + "; _writeback_idx++) { ";
                 s = s + " retVal[_writeoffset + _writeback_idx] = " + convPre + "tempResult[_writeback_idx]" + convPost + ";",
-                s = s + "}";
+                s = s + "}}";
             }
         }
         s = s + "if (_FAIL) {*_FAILRET = 1;}";
@@ -499,6 +499,9 @@ RiverTrail.compiler.codeGen = (function() {
                     // This variable isn't used so drop on floor for now.
                 }
             }
+            
+            // declare memory variables associated with this script
+            s = s + statements.memVars.declare();
 
             for (i=0; i<statements.children.length;i++) {
                 s = s + oclStatement(statements.children[i]) + ";";
@@ -1098,14 +1101,22 @@ RiverTrail.compiler.codeGen = (function() {
                 break;
 
             case ARRAY_INIT:
-                s += "{";
-                for (var i=0;i<ast.children.length;i++) {
+                if (ast.typeInfo.properties.elements.getOpenCLShape().length > 0) {
+                    // nested array
+                    throw new Error("compilation of nested local arrays not implemented");
+                } else {
+                    s = s + "(";
+                    for (var i=0;i<ast.children.length;i++) {
+                        if (i>0) {
+                            s += ", ";
+                        }
+                        s += "((" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem + ")[" + i + "] = " + oclExpression(ast.children[i]);
+                    }
                     if (i>0) {
                         s += ", ";
                     }
-                    s += oclExpression(ast.children[i]);
+                    s = s + ast.allocatedMem + ")";
                 }
-                s += "}"
                 break;
 
             // function application

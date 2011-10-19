@@ -84,6 +84,23 @@ RiverTrail.InferMem = function () {
             }
         }
     };
+    MSP.declare = function declare (size) {
+        var result = "";
+        for (var name in this._store) {
+            result += "char " + name + "[" + size + "];";
+            if (this._store[name] !== null) {
+                result += this._store[name].declareAlias(name);
+            }
+        };
+        return result;
+    };
+    MSP.declareAlias = function declareAlias (alias) {
+        result = "";
+        for (var name in this._store) {
+            result += "int *" + name + " = " + alias + ";";
+        }
+        return result;
+    }
 
     // A memory list models a mapping from memory sizes to memory variables.
     // I sort them by sizes so that I can more easily overlay different
