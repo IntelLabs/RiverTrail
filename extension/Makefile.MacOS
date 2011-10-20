@@ -26,8 +26,10 @@
 
 OUTPUTDIR = Release/MacOS
 OUTPUTNAME = extension.bundle
+OUTPUTNAME32 = extension.32.bundle
 EXTENSIONDIR = xpi-contents
 GECKODIR = gecko-sdk
+GECKODIR32 = $(wildcard gecko-sdk-32)
 EXCLUDEFILES = src/dllmain.cpp
 
 #
@@ -36,9 +38,9 @@ EXCLUDEFILES = src/dllmain.cpp
 
 LIBS =
 XPIDL = $(GECKODIR)/bin/xpidl
-IDLDIR = $(GECKODIR)/idl
-GECKOLIB = $(GECKODIR)/lib
-GECKOINC = $(GECKODIR)/include
+IDLDIR = idl
+GECKOLIB = lib
+GECKOINC = include
 GECKOFLAGS = -fno-rtti -fno-exceptions -fshort-wchar -fPIC -fno-common
 GECKODEF = -DXP_UNIX -DXP_MACOS
 IDLFILES = $(filter-out $(EXCLUDEFILES),$(wildcard src/*.idl))
@@ -49,37 +51,51 @@ SED = sed
 TYPELIBS = $(patsubst %.idl,%.xpt,$(IDLFILES))
 HEADERS = $(patsubst %.idl,%.h,$(IDLFILES))
 OBJFILES = $(patsubst %.cpp,%.o,$(CPPFILES))
-DEPFILES = $(patsubst %.cpp,%.d,$(CPPFILES))
+OBJFILES32 = $(patsubst %.cpp,%.32.o,$(CPPFILES))
+DEPFILES := $(patsubst %.cpp,%.d,$(CPPFILES))
+
+OUTPUTS := $(OUTPUTDIR)/$(OUTPUTNAME)
+
+ifdef GECKODIR32
+OUTPUTS := $(OUTPUTS) $(OUTPUTDIR)/$(OUTPUTNAME32)
+DEPFILES := $(DEPFILES) $(patsubst %.cpp,%.32.d,$(CPPFILES))
+endif
 
 .PHONY: all clean deploy
 
 -include $(DEPFILES)
 
-all: $(TYPELIBS) $(HEADERS) $(OUTPUTDIR)/$(OUTPUTNAME)
+all: $(TYPELIBS) $(HEADERS) $(OUTPUTS)
 
 clean:
-	rm -f $(TYPELIBS) $(HEADERS) $(OBJFILES) $(DEPFILES) $(OUTPUTDIR)/$(OUTPUTNAME)
+	rm -f $(TYPELIBS) $(HEADERS) $(OBJFILES) $(OBJFILES32) $(DEPFILES) $(OUTPUTS)
 
 deploy: all
-	cp $(OUTPUTDIR)/$(OUTPUTNAME) $(EXTENSIONDIR)/components/
+	cp $(OUTPUTS) $(EXTENSIONDIR)/components/
 	cp $(TYPELIBS) $(EXTENSIONDIR)/components/
 
 $(OUTPUTDIR):
 	mkdir -p $(OUTPUTDIR)
 
 $(OUTPUTDIR)/$(OUTPUTNAME): $(OUTPUTDIR) $(OBJFILES)
-	$(CXX) $(OBJFILES) -bundle -framework OpenCL -L$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKOLIB)/XUL -o $@
+	$(CXX) $(OBJFILES) -bundle -framework OpenCL -L$(GECKODIR)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR)/$(GECKOLIB)/XUL -o $@
+
+$(OUTPUTDIR)/$(OUTPUTNAME32): $(OUTPUTDIR) $(OBJFILES32)
+	$(CXX) $(OBJFILES32) -bundle -framework OpenCL -L$(GECKODIR32)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR32)/$(GECKOLIB)/XUL -arch i386 -o $@ 
 
 %.xpt: %.idl
-	$(XPIDL) -w -m typelib -e $@ -I $(IDLDIR) -I $(dir $<) $< 
+	$(XPIDL) -w -m typelib -e $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 
 
 %.h: %.idl
-	$(XPIDL) -w -m header -e $@ -I $(IDLDIR) -I $(dir $<) $< 
+	$(XPIDL) -w -m header -e $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 
 
 %.o: %.cpp 
-	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKOINC) $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.o:|' > $*.d
-	$(CXX) -c $< -o $@ -I $(dir $<) -I $(GECKOINC) $(GECKOFLAGS) $(GECKODEF)
+	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR)/$(GECKOINC) $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.o:|' > $*.d
+	$(CXX) -c $< -o $@ -I $(dir $<) -I $(GECKODIR)/$(GECKOINC) $(GECKOFLAGS) $(GECKODEF)
 
+%.32.o: %.cpp 
+	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR32)/$(GECKOINC) $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.32.o:|' > $*.32.d
+	$(CXX) -c $< -o $@ -I $(dir $<) -I $(GECKODIR32)/$(GECKOINC) $(GECKOFLAGS) $(GECKODEF) -arch i386
 
 
 

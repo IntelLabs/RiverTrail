@@ -10,8 +10,14 @@ be found at
 https://developer.mozilla.org/en/gecko_sdk
 
 Download the windows or Mac OS archive and extract at least the bin, lib, idl and
-include directories to the gecko-sdk directory. For MacOS, you will usually want
-to download the 64 bit version.
+include directories to the gecko-sdk directory. For MacOS, you need to download the 
+64 bit version. 
+
+If you want your build to include support for 32 bit mode on MacOS create a
+new directory named gecko-sdk-32. Download and extract the 32 bit version of the
+Gecko SDK as described above into that newly created directory. The build
+process will automatically pick up the 32 bit dependencies and create a
+corresponding version of the extension.
 
 OpenCL Stack
 ------------
@@ -27,8 +33,8 @@ Building the extension - MacOS
 Open a terminal and navigate to the extension subdirectory. Execute the following
 commands:
 
-make
-make deploy
+make -f Makefile.MacOS
+make -f Makefile.MacOS deploy
 
 This will build the C++ part of the extension and populate the xpi-contents directory.
 
