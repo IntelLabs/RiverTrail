@@ -352,7 +352,7 @@ RiverTrail.RangeAnalysis = function () {
     function annotateRangeInfo(ast, range, mode) {
         if (mode) {
             ast.rangeInfo = range;
-        } else {
+        } else if (range) {
             ast.rangeInfo.isInt = range.isInt;
         }
     }
