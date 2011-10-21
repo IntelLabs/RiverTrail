@@ -82,6 +82,9 @@ RiverTrail.compiler.codeGen = (function() {
             // ignore the first argument, the index
             formalsTypes = formalsTypes.slice(1);
             formalsNames = formalsNames.slice(1);
+        } else if (construct === "map") {
+            // Skip the extra type for this
+            formalsTypes = formalsTypes.slice(1);
         }
         
         for (i = 0; i < formalsTypes.length; i++) {
@@ -251,7 +254,7 @@ RiverTrail.compiler.codeGen = (function() {
         "use strict";
         var kernelCode;
         try {        
-            kernelCode = genKernelHelper(ast.children[0], pa, rank, construct);
+            kernelCode = genKernelHelper(ast, pa, rank, construct);
             if (verboseDebug) {
                 console.log(kernelCode);
             }
@@ -284,7 +287,6 @@ RiverTrail.compiler.codeGen = (function() {
         var rank;
         var funDecl;
         var thisSymbolType;
-        var returnElementOpenCLType;
 
         funDecl = ast;
         if (funDecl.value != "function") {
@@ -295,16 +297,25 @@ RiverTrail.compiler.codeGen = (function() {
 
         s = "__kernel void " + funDecl.name + "(";
 
+        // add the special return parameter used to detect failure
+        s = s + "__global int *_FAILRET, ";
+
         if (boilerplate.hasThis) {
             // derive iteration space and type information from rankOrShape and this
             thisSymbolType = funDecl.typeInfo.parameters[0];
             rank = rankOrShape;
-            thisIsScalar = thisSymbolType.properties.shape.length === 0;
+            thisIsScalar = thisSymbolType.isNumberType();
             paShape = pa.getShape();
             iterSpace = paShape.slice(0,rank);
             // add this formal parameter
-            s = s + " __global " + thisSymbolType.OpenCLType + " opThisVect " + 
-                ", int opThisVect__offset, ";
+            if (thisIsScalar && (construct === "map")) {
+                // for map, the this argument has a different type than the this inside the kernel
+                // so we have to lift it to a pointer if it isn't one yet.
+                s = s + " __global " + thisSymbolType.OpenCLType + "* opThisVect ";
+            } else {
+                s = s + " __global " + thisSymbolType.OpenCLType + " opThisVect ";
+            }
+            s = s + ", int opThisVect__offset, ";
         } else {
             // special case where we do not have this to derive iteration space. Here, rankOrShape
             // will be the shape of the iteration space, so use rankOrShape as iteration space and 
@@ -319,28 +330,24 @@ RiverTrail.compiler.codeGen = (function() {
             s = s + formals + ",";
         }
         // Dump the standard output parameters.
-        //CR this else clause needs to change into an internal error at some point.
-        // Warning it seems that the result.OpenCLType is just wrong.
+        // Note that result.openCLType is the type of the result of a single iteration!
          if ((construct === "combine") || (construct === "map")) {
-            // You need to cast the return values to this in the return statement
-            if (funDecl.typeInfo.parameters[0].OpenCLType.slice(-1) === "*") {
-                returnElementOpenCLType = funDecl.typeInfo.parameters[0].OpenCLType.slice(0, -1); // drop the *
-                boilerplate.returnType = returnElementOpenCLType;
-            } else {
-                console.log("funDecl.typeInfo.parameters[0].OpenCLType for return is not a pointer.");
-            }
-            s = s + "__global " + funDecl.typeInfo.parameters[0].OpenCLType + " retVal"; // * since they will be collected.
-        } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {      
-            returnElementOpenCLType = RiverTrail.Helper.stripToBaseType(funDecl.typeInfo.result.OpenCLType);
-            boilerplate.returnType = returnElementOpenCLType;
-            s = s + "__global " + returnElementOpenCLType + "* retVal"; // We need to deal with the other constructs.
+             // combine and map inherit the type of this!
+             boilerplate.returnType = RiverTrail.Helper.stripToBaseType(thisSymbolType.OpenCLType);
+             s = s + "__global " + boilerplate.returnType + "* retVal";
+         } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {      
+             boilerplate.returnType = RiverTrail.Helper.stripToBaseType(funDecl.typeInfo.result.OpenCLType);
+             s = s + "__global " + boilerplate.returnType + "* retVal"; 
         } else {
-            s = s + "__global " + "funDecl.typeInfo error in genKernel:257" + " retVal"; // We need to deal with the other constructs.
+             throw "unimplemented construct " + construct;
         }
         s = s + ", int retVal__offset";
         // Close the param list
         s = s + ")";
         s = s + " {";
+
+        // add declaration of bounds checks helper variables
+        s = s + "int _sel_idx_tmp; bool _FAIL = 0;";
 
         // add code to declare id_x for each iteration dimension
         for (i = 0; i < rank; i++) {
@@ -358,8 +365,9 @@ RiverTrail.compiler.codeGen = (function() {
         // add code to compute offset 'readoffset' into flat vector when using map
         if (construct === "map") {
             s = s + "int _readoffset = " + pa.offset;
-            if ((paShape.length === rank + ast.inferredType.dimSize.length) &&
-                (ast.inferredType.dimSize.every(function(e,idx) { return (e === paShape[idx+rank]);}))) {
+            var resShape = ast.typeInfo.result.getOpenCLShape();
+            if ((paShape.length === rank + resShape.length) &&
+                (resShape.every(function(e,idx) { return (e === paShape[idx+rank]);}))) {
                 // result has same shape as input, so the offsets are the same
                 s = s + " + _writeoffset"
             } else {
@@ -375,21 +383,24 @@ RiverTrail.compiler.codeGen = (function() {
 
         // Add code to declare tempThis
         if (boilerplate.hasThis) {
+            var thisShape = thisSymbolType.getOpenCLShape();
             s = s + (thisIsScalar ? " " : " __global ") + thisSymbolType.OpenCLType + " "+ boilerplate.localThisName + ";";
             
             // initialise tempThis
             s = s + boilerplate.localThisName + " = " + (thisIsScalar ? "(" : "&(") + boilerplate.localThisDefinition + ");"; 
 
             // declare shape;
-            s = s + boilerplate.thisShapeLength + thisSymbolType.properties.shape.length + ";";
-            s = s + boilerplate.thisShapeDeclPre + "[" + thisSymbolType.properties.shape.length + "] = { ";
+            s = s + boilerplate.thisShapeLength + thisShape.length + ";";
+            if (thisShape.length > 0) {
+                s = s + boilerplate.thisShapeDeclPre + "[" + thisShape.length + "] = { ";
 
-            s = s + thisSymbolType.properties.shape[0];
+                s = s + thisShape[0];
 
-            for (i = 1; i < thisSymbolType.properties.shape.length; i++) {
-                s = s + ", " + thisSymbolType.properties.shape[i];
-            }
-            s = s + "};";
+                for (i = 1; i < thisShape.length; i++) {
+                    s = s + ", " + thisShape[i];
+                }
+                s = s + "};";
+            } 
         }
 
         // declare tempResult
@@ -401,7 +412,8 @@ RiverTrail.compiler.codeGen = (function() {
         s = s + adjustFormalsWithOffsets(funDecl, construct);
         // Generate the statements;
         s = s + oclStatements(funDecl.body);
-        // add the epilog.       
+        // close the kernel body. Note that what ever is placed here is never executed, as the compilation
+        // of RETURN emit an explicit return...
         s = s + "}";
         return s;
     };
@@ -432,7 +444,7 @@ RiverTrail.compiler.codeGen = (function() {
             // elements = rhs.inferredType.dimSize.reduce(function (a,b) { return a*b;});
             convPre = "((" + boilerplate.returnType + ") ";
             convPost = ")";
-            while (rhs.type === CAST && (rhs.children[0].type === ARRAY_INIT)) {
+            while (rhs.type === CAST) {
                 // detect casts to facilitate direct assign
                 convPre = convPre + "((" + rhs.typeInfo.OpenCLType + ")";
                 convPost = ")" + convPost;
@@ -450,9 +462,10 @@ RiverTrail.compiler.codeGen = (function() {
                 s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                 s = s + "{ int _writeback_idx = 0; for (;_writeback_idx < " + elements + "; _writeback_idx++) { ";
                 s = s + " retVal[_writeoffset + _writeback_idx] = " + convPre + "tempResult[_writeback_idx]" + convPost + ";",
-                s = s + "}";
+                s = s + "}}";
             }
         }
+        s = s + "if (_FAIL) {*_FAILRET = 1;}";
         s = s + " return; ";
         return s;
     }
@@ -479,13 +492,16 @@ RiverTrail.compiler.codeGen = (function() {
          } else if (statements.type === SCRIPT) {
             for(x in statements.varDecls) {
                 var name = statements.varDecls[x].value;
-                var type = statements.symbols.lookup(name);
-                if (type && type.type) {
-                    s = s + " " + type.type.OpenCLType + " " + name + "; ";
+                var type = statements.symbols.getType(name);
+                if (type) {
+                    s = s + " " + type.getOpenCLAddressSpace() + " " + type.OpenCLType + " " + name + "; ";
                 } else {
                     // This variable isn't used so drop on floor for now.
                 }
             }
+            
+            // declare memory variables associated with this script
+            s = s + statements.memVars.declare();
 
             for (i=0; i<statements.children.length;i++) {
                 s = s + oclStatement(statements.children[i]) + ";";
@@ -504,29 +520,59 @@ RiverTrail.compiler.codeGen = (function() {
         }
     }
 
-    function checkOneRange(range, val) {
-        return ((val !== undefined) && 
-                (range.lb !== undefined) && (range.lb >= 0) &&
-                (range.ub !== undefined) && (range.ub < val));
+    // Creates a potentially checked array index.
+    // If the index is statically known to be correct, this
+    // just returns the index itself (expr).
+    // Otherwise an expression is created that checks whether
+    // the index is in bounds and, if the index turns out to be 
+    // out of bounds, returns 0. If the index is in bounds,
+    // the value of expr is returned.
+    //
+    // The emmited code relies on a global variable
+    // int _sel_idx_tmp
+    // to store the intermediate result of evaluation expr.
+    // This variable should be declared at the top-level of the
+    // function.
+    //
+    // As a side effect, the global variable _FAIL is set to 1
+    // if a bounds check failed.
+    function wrapIntoCheck(range, bound, expr) {
+        var postfix = "";
+        var result = "";
+        var dynCheck = false;
+
+        if (bound === 0) {
+            // we have an empty array => you cannot select from those
+            // (yeah, yeah, I know, a real corner case :=D)
+            throw new Error("selection from empty array encountered!");
+        }
+
+        if (checkBounds && 
+            ((range.lb === undefined) ||
+             (range.lb < 0))) {
+            // emit lower bound check
+            result += "(_sel_idx_tmp < 0 ? (_FAIL = 1, 0) : ";
+            postfix = ")" + postfix;
+            dynCheck = true;
+        }
+
+        if (checkBounds &&
+            ((range.ub === undefined) ||
+             (range.ub >= bound))) {
+            // emit upper bound check
+            result += "(_sel_idx_tmp >= " + bound + " ? (_FAIL = 1, 0) : ";
+            postfix = ")" + postfix;
+            dynCheck = true;
+        }
+
+        if (dynCheck) {
+            result = "(_sel_idx_tmp = " + expr + ", " + result + "_sel_idx_tmp" + postfix + ")";
+        } else {
+            result = expr;
+        }
+
+        return result;
     }
-
-    function ensureStaticallySafe(source, index) {
-        var rangeInfo = index.rangeInfo;
-        var shape = source.typeInfo.getOpenCLShape();
-
-        if (!rangeInfo || !shape) {
-            return false;
-        }
-
-        if (rangeInfo instanceof Array) { // get call
-            if (rangeInfo[0] instanceof Array) { // get call with index vector
-                rangeInfo = rangeInfo[0];
-            }
-            return rangeInfo.every(function (rI, idx) { return checkOneRange(rI, shape[idx]); });
-        } else { // INDEX
-            return checkOneRange(rangeInfo, shape[0]);
-        }
-    };
 
     //
     // Given we have a source and an arrayOfIndices. If the result is
@@ -537,62 +583,48 @@ RiverTrail.compiler.codeGen = (function() {
     var compileSelectionOperation = function (ast, source, arrayOfIndices) {
         "use strict";
     
-        // returns ocl code to compute the offset for a given identifier.
-        function oclGetOffset(ast) {
-           // if ((ast.type === IDENTIFIER) && (ast.isArgument) 
-           //         && (!ast.inferredType.isIndex) && 
-           //         (ast.inferredType.dimSize.length !== 0)) {
-           //     return ast.value + "__offset";
-           // } else {
-                return "0";
-           // };
-        };
-
         var s = "";
         var i;
         var elemSize;
         var stride;
         var indexLen;
         var dynamicSel;
+        var rangeInfo;
         // If arrayOfIndices has an inferredType of an array (dimSize > 0) then it is get([x, y...]);
         // If that is the case then elemRank will be the sourceRank - the length of the argument.
         var sourceType = source.typeInfo;
-        //if (source.type === THIS) {
-        //    sourceType = source.typeInfo;
-        //} else if (source.type === IDENTIFIER) {
-        //    sourceType = source.typeInfo;
-        //}
-
-        var sourceRank = sourceType.getOpenCLShape().length;
+        var sourceShape = sourceType.getOpenCLShape();
+        var sourceRank = sourceShape.length;
         var elemRank = ast.typeInfo.getOpenCLShape().length;
         if (elemRank !== 0) {
             // The result is a pointer to a sub dimension.
             s = s + "( &";
         }
         elemSize = ast.typeInfo.getOpenCLShape().reduce( function (p,n) { return p*n;}, 1);
-        s = s + " ( " + oclExpression(source) + "[";
+        s = s + " ( " + oclExpression(source) + "[0 ";
 
         stride = elemSize;
         
-        s = s + oclGetOffset(source);
         if (arrayOfIndices.type !== LIST) {
             // we have a single scalar index from an INDEX op
-            s = s + " + " + stride + " * ("+oclExpression(arrayOfIndices) + ")";
+            rangeInfo = arrayOfIndices.rangeInfo;
+            s = s + " + " + stride + " * ("+wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ")";
         } else {
             // this is a get
             if (arrayOfIndices.children[0] && (arrayOfIndices.children[0].type === ARRAY_INIT)) { 
                 // We might have get([0,0]); instead of get(0,0);
                 arrayOfIndices = arrayOfIndices.children[0];
             }
+            rangeInfo = arrayOfIndices.rangeInfo;
             // the first argument could be an index vector, in which case we have to produce dynamic
             // selection code
             dynamicSel = arrayOfIndices.children[0].typeInfo.getOpenCLShape().length !== 0;
             for (i = sourceRank - elemRank - 1; i >= 0; i--) { // Ususally only 2 or 3 dimensions so ignore complexity
                 s = s + " + " + stride + " * ("
                 if (dynamicSel) {
-                    s = s + oclExpression(arrayOfIndices.children[0]) + "[" + i + "])";
+                    s = s + wrapIntoCheck(rangeInfo[0][i], sourceShape[i], oclExpression(arrayOfIndices.children[0]) + "[" + i + "]") + ")";
                 } else {
-                    s = s + oclExpression(arrayOfIndices.children[i]) + ")";
+                    s = s + wrapIntoCheck(rangeInfo[i], sourceShape[i], oclExpression(arrayOfIndices.children[i])) + ")";
                 }
                 stride = stride * sourceType.getOpenCLShape()[i];
             }
@@ -603,15 +635,6 @@ RiverTrail.compiler.codeGen = (function() {
         if (elemRank !== 0) {
             // The result is a pointer to a sub dimension.
             s = s + " )";
-        }
-
-        //
-        // SAH: this is a temporary measure until we emit proper dynamic bounds checks. We do this 
-        //      down here because by now arrayOfIndices has been normalised to either scalar or 
-        //      array of scalars!
-        //
-        if (checkBounds && !ensureStaticallySafe(source, arrayOfIndices)) {
-           throw new Error("static bounds check failed");
         }
 
         return s;
@@ -941,7 +964,11 @@ RiverTrail.compiler.codeGen = (function() {
                 switch (ast.children[0].type) {
                     case IDENTIFIER:
                         // simple case of a = expr
-                        s = s + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")"; // no ; because ASSIGN is an expression!
+                        if (ast.allocatedMem) {
+                                throw new Error("a memcopy would be required to compile this code.");
+                        } else {
+                            s = s + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")"; // no ; because ASSIGN is an expression!
+                        }
                         break;
                     case INDEX:
                         // array update <expr>[iv] = expr
@@ -1024,13 +1051,25 @@ RiverTrail.compiler.codeGen = (function() {
             // unary functions on numbers (incl bool)
             case INCREMENT:
             case DECREMENT:
-                // SAH: BAD BAD HACK
-                s = "(" + stripCasts(ast.children[0]).value + " += ((" + ast.children[0].typeInfo.OpenCLType + ") 1))";
-                break;
-                if (ast.postfix) {
-                    s = s + oclExpression(ast.children[0]) + ast.value;
-                } else {
-                    s = s + ast.value + oclExpression(ast.children[0]);
+                var incArg = stripCasts(ast.children[0]).value;
+                var incType = ast.children[0].typeInfo.OpenCLType;
+                switch (incType) {
+                    case "float":
+                    case "double":
+                        // SAH: OpenCL does not have ++/-- for float and double, so we emulate it
+                        if (ast.postfix) {
+                            s = "(" + incArg.value + " " + ast.value.substring(0, 1) + "= ((" + incType + ") 1))";
+                        } else {
+                            // we would need a temp here. For now, just fail. This seems sufficiently uncommon...
+                            throw new Error("prefix increment/decrement on floats is not implemented, yet.");
+                        }
+                        break;
+                    default:
+                        if (ast.postfix) {
+                            s = s + oclExpression(ast.children[0]) + ast.value;
+                        } else {
+                            s = s + ast.value + oclExpression(ast.children[0]);
+                        }
                 }
                 break;
 
@@ -1062,14 +1101,22 @@ RiverTrail.compiler.codeGen = (function() {
                 break;
 
             case ARRAY_INIT:
-                s += "{";
-                for (var i=0;i<ast.children.length;i++) {
+                if (ast.typeInfo.properties.elements.getOpenCLShape().length > 0) {
+                    // nested array
+                    throw new Error("compilation of nested local arrays not implemented");
+                } else {
+                    s = s + "(";
+                    for (var i=0;i<ast.children.length;i++) {
+                        if (i>0) {
+                            s += ", ";
+                        }
+                        s += "((" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem + ")[" + i + "] = " + oclExpression(ast.children[i]);
+                    }
                     if (i>0) {
                         s += ", ";
                     }
-                    s += oclExpression(ast.children[i]);
+                    s = s + ast.allocatedMem + ")";
                 }
-                s += "}"
                 break;
 
             // function application

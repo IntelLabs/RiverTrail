@@ -527,6 +527,7 @@ var ParallelArray = function () {
             requiresData(this, "join");
             requiresData(this, "slice");
             requiresData(this, "toString");
+            requiresData(this, "getArray");
         } else {
             this.materialize();
         }
@@ -1281,14 +1282,19 @@ var ParallelArray = function () {
       If the element is a ParallelArray then it's elemets are also copied in to a JS Array.
      ***/
     var getArray = function getArray () {
-        var i;
-        var result = new Array(this.length);
-        for (i=0; i<this.length; i++) {
-            if (index instanceof ParallelArray) {
-                result[i] = this.get(i).getArray();
-            } else {
-                result[i] = this.get(i);
-            }            
+        var i, result;
+        if ((this.flat) && (this.shape.length === 1)) {
+            result = Array.prototype.slice.apply(this.data);
+        } else {
+            result = new Array(this.length);
+            for (i=0; i<this.length; i++) {
+                var elem = this.get(i);
+                if (elem instanceof ParallelArray) {
+                    result[i] = elem.getArray();
+                } else {
+                    result[i] = elem;
+                }
+            }
         }
         return result;
     };

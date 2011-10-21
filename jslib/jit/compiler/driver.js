@@ -59,8 +59,15 @@ RiverTrail.compiler = (function () {
         dpoPlatform = dpoInterface.getPlatform(); 
         openCLContext = dpoPlatform.createContext();
     } catch (e) {
-        console.log ("Cannot initialise OpenCL interface. Please check the extension's options and try again.");
+        console.log ("Cannot initialise OpenCL interface. Please check the whether the extension was installed and try again.");
         throw Error("Cannot initialise OpenCL Interface: " + JSON.stringify(e));
+    }
+
+    // check whether we have the right version of the extension; as the user has some extension installed, he probably wants to use
+    // the right one for this library, so we alert him
+    if (dpoInterface.version !== 2) {
+        alert("This webpage requires a newer version of the RiverTrail Firefox extension. Please visit http://github.com/rivertrail/rivertrail/downloads.");
+        throw Error("RiverTrail extension out of date");
     }
 
     // main hook to start the compilation/execution process for running a construct using OpenCL
@@ -154,7 +161,7 @@ RiverTrail.compiler = (function () {
                 try {
                     RiverTrail.Helper.debugThrow(e + RiverTrail.compiler.openCLContext.buildLog);
                 } catch (e2) {
-                    RiverTrail.Helper.debugThrow(e + e2);
+                    RiverTrail.Helper.debugThrow(e); // ignore e2. If buildlog throws, there simply is none.
                 }
             }
         }
@@ -163,17 +170,39 @@ RiverTrail.compiler = (function () {
     };
 
     //
+    // Name generator to ensure that function names are unique if we parse
+    // multiple functions with the same name
+    //
+    var nameGen = function () {
+        var counter = 0;
+
+        return function nameGen (postfix) {
+            return "f" + (counter++) + "_" + (postfix || "nameless");
+        };
+    }();
+
+    //
     // Driver method to steer compilation process
     //
     function parse(paSource, construct, rankOrShape, kernel, args, lowPrecision) {
         var parser = Narcissus.parser;
         var kernelJS = kernel.toString();
-        var ast = parser.parse(kernelJS);        
+        // We want to parse a function that was used in expression position
+        // without creating a <script> node around it, nor requiring it to
+        // have a name. So we have to take a side entry into narcissus here.
+        var t = new parser.Tokenizer(kernelJS);
+        t.get(true); // grab the first token
+        var ast = parser.FunctionDefinition(t, undefined, false, parser.EXPRESSED_FORM);        
+        // Ensure that the function has a unique, valid name to simplify
+        // the treatment downstream
+        ast.name = nameGen(ast.name);
         var rank = rankOrShape.length || rankOrShape;
         try {
-            RiverTrail.Typeinference.analyze(ast.children[0], paSource, construct, rank, args, lowPrecision);
-            RiverTrail.RangeAnalysis.analyze(ast.children[0], paSource, construct, rankOrShape, args);
-            RiverTrail.RangeAnalysis.propagate(ast.children[0]);
+            RiverTrail.Typeinference.analyze(ast, paSource, construct, rank, args, lowPrecision);
+            RiverTrail.RangeAnalysis.analyze(ast, paSource, construct, rankOrShape, args);
+            RiverTrail.RangeAnalysis.propagate(ast);
+            RiverTrail.InferBlockFlow.infer(ast);
+            RiverTrail.InferMem.infer(ast);
         } catch (e) {
             RiverTrail.Helper.debugThrow(e);
         }
