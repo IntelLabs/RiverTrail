@@ -62,7 +62,7 @@ RiverTrail.compiler.runOCL = function () {
         var rank;
         var resShape;
         var resSize;
-        var kernelName = getKernelName(ast);
+        var kernelName = ast.name;
         if (!kernelName) {
             throw new CompilerBug("Invalid ast: Function expected at top level");
         }
@@ -72,7 +72,7 @@ RiverTrail.compiler.runOCL = function () {
             sourceType = undefined;
             iterSpace = rankOrShape;
             rank = iterSpace.length;
-            resultElemType = RiverTrail.Helper.stripToBaseType(ast.children[0].typeInfo.result.OpenCLType);
+            resultElemType = RiverTrail.Helper.stripToBaseType(ast.typeInfo.result.OpenCLType);
         } else {
             sourceType = RiverTrail.Helper.inferPAType(paSource);
             resultElemType = sourceType.inferredType;
@@ -80,8 +80,8 @@ RiverTrail.compiler.runOCL = function () {
             iterSpace = sourceType.dimSize.slice(0, rank);
         }
 
-        if (ast.children[0].typeInfo.result.properties) {
-            resShape = iterSpace.concat(ast.children[0].typeInfo.result.properties.shape);
+        if (ast.typeInfo.result.properties) {
+            resShape = iterSpace.concat(ast.typeInfo.result.properties.shape);
         } else {
             resShape = iterSpace;
         }
@@ -196,7 +196,7 @@ RiverTrail.compiler.runOCL = function () {
                 if (useKernelCaching && (f !== undefined)) {
                     // save ast information required for future use
                     var cacheEntry = { "ast": ast,
-                        "name": ast.children[0].name,
+                        "name": ast.name,
                         "source": f,
                         "paType": sourceType,
                         "kernel": kernel,
@@ -270,19 +270,6 @@ RiverTrail.compiler.runOCL = function () {
         }
         return result;
     };
-
-    var getKernelName = function (ast) {
-        if (ast) {
-            if (ast.children) {
-                if (ast.children[0].name) {
-                    return ast.children[0].name;
-                }
-            }
-        }
-        throw new CompilerBug("Invalid ast: Function expected at top level");
-    };
-
-
 
     return runOCL;
 } ();

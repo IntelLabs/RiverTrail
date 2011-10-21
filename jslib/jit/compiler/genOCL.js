@@ -254,7 +254,7 @@ RiverTrail.compiler.codeGen = (function() {
         "use strict";
         var kernelCode;
         try {        
-            kernelCode = genKernelHelper(ast.children[0], pa, rank, construct);
+            kernelCode = genKernelHelper(ast, pa, rank, construct);
             if (verboseDebug) {
                 console.log(kernelCode);
             }
