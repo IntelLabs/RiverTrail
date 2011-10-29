@@ -1209,25 +1209,22 @@ var ParallelArray = function () {
         Handling conflicts
             Conflicts result when multiple elements are scattered to the same location.
             Conflicts results in a call to conflictFunction, which is an 
-                optional second argument to scatter
+                optional third argument to scatter
 
             Arguments
-                this is the input array, the same this that scatter sees.
-                index in this being considered
-                this.get(index) is the current value causing the conflict
+                this is value from the source array that is currently being scattered
                 Previous value – value in result placed there by some previous iteration
 
             It is the programmer’s responsibility to provide a conflictFunction that is 
-            associative since there is no guarantee in what order the conflicts will be 
-            resolved. If the function is not associative then the result could be any result 
-            return from the conflict function.
+            associative and commutative since there is no guarantee in what order the 
+            conflicts will be resolved. 
 
             Returns
                 Value to place in result[indices[index]]
 
             Example: Resolve conflict with larger number
-                chooseMax(index, prev){
-                    return (this.get(index)>prev)?this.get(index):prev;
+                chooseMax(prev){
+                    return (this>prev)?this:prev;
                 } 
                 
         ***/
@@ -1254,7 +1251,7 @@ var ParallelArray = function () {
             if (conflictResult[ind]) { // we have already placed a value at this location
                 if (hasConflictFunction) {
                     rawResult[ind] = 
-                        conflictFunction.call(rawResult[ind], this.get(i)); 
+                        conflictFunction.call(this.get(i), rawResult[ind]); 
                 } else {
                     throw new RangeError("Duplicate indices in scatter");
                 }
