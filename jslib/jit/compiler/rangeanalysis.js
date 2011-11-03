@@ -1083,6 +1083,11 @@ RiverTrail.RangeAnalysis = function () {
                         case DOT:
                             // all method calls except "get" on PA expect floating point values.
                             var dot = ast.children[0];
+                            // traverse the lhs of the dot. Although the result 
+                            // is an object, there might be some other calls in 
+                            // there that have constraints. child 1 is a name, 
+                            // so nothing to traverse there.
+                            dot.children[0] = push(dot.children[0], tEnv, undefined);
                             if (dot.children[0].typeInfo.isObjectType("ParallelArray") &&
                                 (dot.children[1].value === "get")) {
                                 ast.children[1] = push(ast.children[1], tEnv, true); 
