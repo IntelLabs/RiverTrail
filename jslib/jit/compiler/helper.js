@@ -166,13 +166,49 @@ RiverTrail.Helper = function () {
         }
     }
 
+    // 
+    // helper functions for using the narcissus parser to parse a single function. The are used by the
+    // driver and by type inference for external references.
+    //
+
+    //
+    // Name generator to ensure that function names are unique if we parse
+    // multiple functions with the same name
+    //
+    var nameGen = function () {
+        var counter = 0;
+
+        return function nameGen (postfix) {
+            return "f" + (counter++) + "_" + (postfix || "nameless");
+        };
+    }();
+
+    //
+    // given a string, return a parsed AST
+    //
+    var parseFunction = function (kernel) {
+        var parser = Narcissus.parser;
+        var kernelJS = kernel.toString();
+        // We want to parse a function that was used in expression position
+        // without creating a <script> node around it, nor requiring it to
+        // have a name. So we have to take a side entry into narcissus here.
+        var t = new parser.Tokenizer(kernelJS);
+        t.get(true); // grab the first token
+        var ast = parser.FunctionDefinition(t, undefined, false, parser.EXPRESSED_FORM);        
+        // Ensure that the function has a unique, valid name to simplify
+        // the treatment downstream
+        ast.name = nameGen(ast.name);
+        return ast;
+    };
+
     return { "traverseAst" : traverseAst,
              "wrappedPP" : wrappedPP,
              "inferPAType" : inferPAType,
              "elementalTypeToConstructor" : elementalTypeToConstructor,
              "stripToBaseType" : stripToBaseType,
-             "Integer": Integer,
-             "debugThrow": debugThrow,
-             "isTypedArray": isTypedArray };
+             "Integer" : Integer,
+             "debugThrow" : debugThrow,
+             "isTypedArray" : isTypedArray,
+             "parseFunction" : parseFunction };
 
 }();
