@@ -74,7 +74,7 @@ protected:
   char *buildLog;				/* shared string used to store the build log in compileKernel */
   cl_mem kernelFailureMem;		/* memory buffer used to communicate abortion of kernels; shared among all kernels */
 
-  nsresult ExtractArray(const jsval &source, js::TypedArray **result);
+  nsresult ExtractArray(const jsval &source, JSObject **result);
   
   #ifdef CLPROFILE
   cl_ulong clp_exec_start;

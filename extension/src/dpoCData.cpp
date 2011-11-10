@@ -139,7 +139,6 @@ nsresult dpoCData::InitCData(JSContext *cx, cl_command_queue aQueue, cl_mem aMem
 NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 {
 	cl_int err_code;
-	js::TypedArray *tdest;
 #ifdef PREALLOCATE_IN_JS_HEAP
 	void *mem;
 #endif /* PREALLOCATE_IN_JS_HEAP */
@@ -147,6 +146,8 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 	if (theArray != JSVAL_VOID) {
 #ifdef PREALLOCATE_IN_JS_HEAP
 		if (!mapped) {
+			JSObject *jsArray;
+
 			void *mem = clEnqueueMapBuffer(queue, memObj, CL_TRUE, CL_MAP_READ, 0, size, 0, NULL, NULL, &err_code);
 
 			if (err_code != CL_SUCCESS) {
@@ -154,13 +155,13 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 				return NS_ERROR_NOT_AVAILABLE;
 			}
 #ifndef DEBUG_OFF
-			tdest = js::TypedArray::fromJSObject(JSVAL_TO_OBJECT(theArray));
-			if (!tdest) {
+			jsArray = JSVAL_TO_OBJECT(theArray);
+			if (js_IsTypedArray(jsArray)) {
 				DEBUG_LOG_STATUS("GetValue", "Cannot access typed array");
 				return NS_ERROR_NOT_AVAILABLE;
 			}
 
-			if (mem != tdest->data) {
+			if (mem != JS_GetTypedArrayData(jsArray)) {
 				DEBUG_LOG_STATUS("GetValue", "EnqueueMap returned wrong pointer");
 			}
 #endif /* DEBUG_OFF */
@@ -182,9 +183,7 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 			return NS_ERROR_OUT_OF_MEMORY;
 		}
 
-		tdest = js::TypedArray::fromJSObject(jsArray);
-	
-		err_code = clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, tdest->data, 0, NULL, NULL);
+		err_code = clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, JS_GetTypedArrayData(jsArray), 0, NULL, NULL);
 		if (err_code != CL_SUCCESS) {
 			DEBUG_LOG_ERROR("GetValue", err_code);
 			return NS_ERROR_NOT_AVAILABLE;
@@ -205,27 +204,24 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 /* [implicit_jscontext] void writeTo (in jsval dest); */
 NS_IMETHODIMP dpoCData::WriteTo(const jsval & dest, JSContext *cx)
 {
-	JSObject * jsArray;
-	js::TypedArray *destArray;
+	JSObject *destArray;
 	cl_int err_code;
 	
 	if (!JSVAL_IS_OBJECT( dest)) {
 		return NS_ERROR_INVALID_ARG;
 	}
 
-	jsArray = JSVAL_TO_OBJECT(dest);
+	destArray = JSVAL_TO_OBJECT(dest);
 
-	if (!js_IsTypedArray( jsArray)) {
+	if (!js_IsTypedArray( destArray)) {
 		return NS_ERROR_CANNOT_CONVERT_DATA;
 	}
 
-	destArray = js::TypedArray::fromJSObject( jsArray);
-
-	if ((destArray->type != type) || (destArray->length != length)) {
+	if ((JS_GetTypedArrayType(destArray) != type) || (JS_GetTypedArrayLength(destArray) != length)) {
 		return NS_ERROR_INVALID_ARG;
 	}
 
-	err_code = clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, destArray->data, 0, NULL, NULL);
+	err_code = clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, JS_GetTypedArrayData(destArray), 0, NULL, NULL);
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("WriteTo", err_code);
 		return NS_ERROR_NOT_AVAILABLE;

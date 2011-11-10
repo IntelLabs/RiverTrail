@@ -34,7 +34,6 @@
 #include "nsIClassInfoImpl.h"
 #include <nsStringAPI.h>
 
-
 /*
  * Implement ClassInfo support to make this class feel more like a JavaScript class, i.e.,
  * it is autmatically casted to the right interface and all methods are available
@@ -299,21 +298,18 @@ NS_IMETHODIMP dpoCContext::GetBuildLog(nsAString & aBuildLog)
 	}
 }
 
-nsresult dpoCContext::ExtractArray(const jsval &source, js::TypedArray **result)
+nsresult dpoCContext::ExtractArray(const jsval &source, JSObject **result)
 {
-	JSObject *jsArray;
-
 	if (!JSVAL_IS_OBJECT( source)) {
 		return NS_ERROR_INVALID_ARG;
 	}
 
-	jsArray = JSVAL_TO_OBJECT( source);
+	*result = JSVAL_TO_OBJECT( source);
 
-	if (!js_IsTypedArray( jsArray)) {
+	if (!js_IsTypedArray( *result)) {
+		*result = NULL;
 		return NS_ERROR_CANNOT_CONVERT_DATA;
 	}
-
-	*result = js::TypedArray::fromJSObject( jsArray);
 
 	return NS_OK;
 }
@@ -323,7 +319,7 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
 {
 	cl_int err_code;
 	nsresult result;
-	js::TypedArray *tArray;
+	JSObject *tArray;
 	nsCOMPtr<dpoCData> data;
 
 	result = ExtractArray( source, &tArray);
@@ -339,13 +335,13 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
 	
 	// USE_HOST_PTR is save as the CData object will keep the associated typed array alive as long as the
 	// memory buffer lives
-	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, tArray->byteLength, tArray->data, &err_code);
+	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, JS_GetTypedArrayByteLength(tArray), JS_GetTypedArrayData(tArray), &err_code);
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("MapData", err_code);
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 
-	result = data->InitCData(cx, cmdQueue, memObj, tArray->type, tArray->length, tArray->byteLength, source);
+	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray), JS_GetTypedArrayLength(tArray), JS_GetTypedArrayByteLength(tArray), source);
 
 	if (result == NS_OK) {
 		NS_ADDREF(data);
@@ -366,7 +362,7 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 {
 	cl_int err_code;
 	nsresult result;
-	js::TypedArray *tArray;
+	JSObject *tArray;
 	size_t bytePerElements;
 	nsCOMPtr<dpoCData> data;
 	jsval jsBuffer;
@@ -389,24 +385,22 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 	
 	if (length == 0) {
 		DEBUG_LOG_STATUS("AllocateData", "size not provided, assuming template's size");
-		length = tArray->length;
+		length = JS_GetTypedArrayLength(tArray);
 	}
 
-	bytePerElements = tArray->byteLength / tArray->length;
+	bytePerElements = JS_GetTypedArrayByteLength(tArray) / JS_GetTypedArrayLength(tArray);
 
 	DEBUG_LOG_STATUS("AllocateData", "length " << length << " bytePerElements " << bytePerElements);
 
 #ifdef PREALLOCATE_IN_JS_HEAP
-	jsArray = js_CreateTypedArray(cx, tArray->type, length);
+	JSObject *jsArray = js_CreateTypedArray(cx, JS_GetTypedArrayType(tArray), length);
 	if (!jsArray) {
 		DEBUG_LOG_STATUS("AllocateData", "Cannot create typed array");
 		return NS_ERROR_OUT_OF_MEMORY;
 	}
 
-	tdest = js::TypedArray::fromJSObject(jsArray);
-
 	jsBuffer = OBJECT_TO_JSVAL(jsArray);
-	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, length * bytePerElements, tdest->data, &err_code);
+	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, length * bytePerElements, JS_GetTypedArrayData(jsArray), &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
 	jsBuffer = JSVAL_VOID;
 	cl_mem memObj = clCreateBuffer(context, CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
@@ -416,7 +410,7 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 
-	result = data->InitCData(cx, cmdQueue, memObj, tArray->type, length, length * bytePerElements, jsBuffer);
+	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray), length, length * bytePerElements, jsBuffer);
 
 	if (result == NS_OK) {
 		NS_ADDREF(data);
@@ -460,16 +454,14 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, PRUint32 length, JSCon
 	DEBUG_LOG_STATUS("AllocateData2", "length " << length << " bytePerElements " << bytePerElements);
 
 #ifdef PREALLOCATE_IN_JS_HEAP
-	jsArray = js_CreateTypedArray(cx, cData->GetType(), length);
+	JSObject *jsArray = js_CreateTypedArray(cx, cData->GetType(), length);
 	if (!jsArray) {
 		DEBUG_LOG_STATUS("AllocateData2", "Cannot create typed array");
 		return NS_ERROR_OUT_OF_MEMORY;
 	}
 
-	tdest = js::TypedArray::fromJSObject(jsArray);
-
+	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, length * bytePerElements, JS_GetTypedArrayData(jsArray), &err_code);
 	jsBuffer = OBJECT_TO_JSVAL(jsArray);
-	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, length * bytePerElements, tdest->data, &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
 	jsBuffer = JSVAL_VOID;
 	cl_mem memObj = clCreateBuffer(context, CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
