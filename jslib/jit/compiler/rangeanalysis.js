@@ -377,6 +377,9 @@ RiverTrail.RangeAnalysis = function () {
             case SCRIPT:
                 varEnv = new VarEnv(varEnv);
                 ast.rangeSymbols = varEnv;
+                ast.funDecls.forEach(function (f) {
+                        drive(f.body, new VarEnv(), true);
+                    });
                 // fallthrough
             case BLOCK:
                 ast.children.forEach(function (ast) { drive(ast, varEnv, doAnnotate); });
@@ -889,6 +892,10 @@ RiverTrail.RangeAnalysis = function () {
 
             switch (ast.type) {
                 case SCRIPT:
+                    // handle nested functions
+                    ast.funDecls.forEach(function (f) {
+                            push(f.body);
+                        });
                     // update types of variable declarations based on range info
                     ast.varDecls.forEach( function (decl) {
                             var rangeInfo = ast.rangeSymbols.lookup(decl.value);

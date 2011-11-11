@@ -120,6 +120,7 @@ RiverTrail.InferBlockFlow = function () {
         }
         switch (ast.type) {
             case SCRIPT:
+                ast.funDecls.forEach(function (f) {infer(f);});
                 // fallthrough
             case BLOCK:
                 var blockIns = new IdSet();

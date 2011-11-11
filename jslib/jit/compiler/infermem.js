@@ -155,6 +155,7 @@ RiverTrail.InferMem = function () {
 
         switch (ast.type) {
             case SCRIPT:
+                ast.funDecls.forEach(function (f) {infer(f.body);});
                 memVars = new MemList();
                 ast.children.forEach(function (child) { infer(child, memVars, ast.ins, ast.outs); });
                 ast.memVars = memVars;
