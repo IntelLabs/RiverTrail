@@ -37,6 +37,7 @@ RiverTrail.Typeinference = function () {
     var inferPAType = RiverTrail.Helper.inferPAType;
     
     const debug = false;
+    const allowGlobalFuns = false;
 
     var openCLUseLowPrecision = false;
 
@@ -699,7 +700,20 @@ RiverTrail.Typeinference = function () {
         if (this.bindings[fname] !== undefined) reportError("functions need to be uniquely defined within a scope", f);
         this.bindings[fname] = f;
     };
-
+    FEp.toFunDecls = function () {
+        var result = [];
+        var fun;
+        for (var name in this.bindings) {
+            fun = this.bindings[name];
+            if (fun.typeInfo) {
+                // this is actually called somewhere, so we keep it
+                // normalize the name (global functions might have a different name than what they were bound to!)
+                fun.name = name;
+                result.push(fun);
+            }
+        }
+        return result;
+    };
     //
     // main analysis driver
     //
@@ -731,9 +745,13 @@ RiverTrail.Typeinference = function () {
                 // from this function. We do this by glueing the function store to the function instance. 
                 fEnv = new FEnv(fEnv);
                 ast.funDecls.forEach(function (f) {fEnv.add(f); f.fEnv = fEnv});
+                ast.children.map(function (ast) { return drive(ast, tEnv, fEnv); });
+                tEnv.resetAccu();
                 // remember symbol table for later phases
                 ast.symbols = tEnv;
-                // fallthrough
+                // add all locally used functions to funDecls (including the globals we dragged into the scope)
+                ast.funDecls = fEnv.toFunDecls();
+                break;
             case BLOCK:
                 ast.children.map(function (ast) { return drive(ast, tEnv, fEnv); });
                 tEnv.resetAccu();
@@ -979,7 +997,23 @@ RiverTrail.Typeinference = function () {
                         var argT = tEnv.accu;
                         tEnv.resetAccu();
                         // grab function
-                        var fun = fEnv.lookup(ast.children[0].value) || reportError("unknown function `" + ast.children[0].value + "`", ast);
+                        var fun = fEnv.lookup(ast.children[0].value);
+                        if (!fun) {
+                           if (allowGlobalFuns) {
+                               // so this is not a local function. first make sure it is not a local variable
+                               !tEnv.lookup(ast.children[0].value) || reportError("not a function `" + ast.children[0].value + "`", ast);
+                               // CHEAT: we would have to inspect the current functions closure here but we cannot. So we just
+                               //        take whatever the name is bound to in the current scope. 
+                               //        This should at least be the global scope, really...
+                               var obj = eval(ast.children[0].value) || reportError("unknown function `" + ast.children[0].value + "`", ast);
+                               (typeof(obj) === 'function') || reportError("not a function `" + ast.children[0].value + "`", ast);
+                               fun = RiverTrail.Helper.parseFunction(obj.toString());
+                               // if we get here, we can just add the function to the function environment for future use
+                               fEnv.add(fun, ast.children[0].value);
+                           } else {
+                               reportError("unknown function `" + ast.children[0].value + "`", ast);
+                           }
+                        }
                         if (fun.typeInfo) {
                             // this function has been called before. If the types match, we are fine. Otherwise we have
                             // to create a specialised version. The latter is a TODO;
