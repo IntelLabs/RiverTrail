@@ -902,7 +902,7 @@ var ParallelArray = function () {
 
     var map = function map (f) { // extra args passed unchanged and unindexed.
         var len = this.shape[0];
-            var i;
+            var i, j;
             var args = new Array(arguments.length-1);
             var paResult;
         if (arguments.length == 1) { // Just a 1 arg function.
