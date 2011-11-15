@@ -255,7 +255,7 @@ RiverTrail.compiler = (function () {
                 // numbers are floats
                 argumentTypes.push({ inferredType: defaultNumberType, dimSize: [] });
             } else {
-                console.log("parseGenRun:482 argument:", argument, " argTypes: ", argTypes);
+                console.log("parseGenRun:482 argument:", argument, " argumentTypes: ", argumentTypes);
                 throw new CompilerBug("parseGenRun:482 - type derivation for argument not implemented yet");
             }
         }
