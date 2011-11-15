@@ -433,7 +433,7 @@ RiverTrail.compiler.codeGen = (function() {
         var convPre = ""; // what to convert the temps into to store them in retval.
         var convPost = "";
         rhs = ast.value;
-        if (rhs.typeInfo.type === "NUMBER") {
+        if (rhs.typeInfo.type === "NUMBER" || rhs.typeInfo.type === "BOOL") {
             // scalar result
             s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
             s = s + boilerplate.resultAssignLhs + "("+boilerplate.returnType+")"+boilerplate.resultAssignRhs+";"; // Need to add cast here.....
