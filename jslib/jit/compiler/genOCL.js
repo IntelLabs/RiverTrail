@@ -57,7 +57,25 @@ RiverTrail.compiler.codeGen = (function() {
     // Set constants in the local scope.
     eval(definitions.consts);
     eval(RiverTrail.definitions.consts);
-        
+    
+    // If you are working inside the top level of actual kernel function then scope is empty.
+    // If you generating code for a called function then this will be true.
+    var calledScope = function () {
+        "use strict";
+        // state is private.
+        var state = false;
+        var enter = function enter() {
+            state = true;
+        };
+        var exit = function exit(previous) {
+            state = previous;
+        }
+        var inCalledScope = function () {
+            return state;
+        };
+        return {"enter": enter, "exit": exit, "inCalledScope": inCalledScope};
+    } ();
+
     //
     // The Ast is set up so that formalsAst.params holds the names of the params specified in the signature
     // of the function.
@@ -68,6 +86,41 @@ RiverTrail.compiler.codeGen = (function() {
     //
 
     var genFormalParams = function (formalsAst, construct) {
+        "use strict";
+        if (calledScope.inCalledScope()) {
+            return genSimpleFormalParams(formalsAst);
+        } else {
+            return genKernelFormalParams(formalsAst, construct);
+        }
+    };
+    
+    var genSimpleFormalParams = function (formalsAst) {
+        "use strict";
+        var i;
+        var s = "";
+        var formalsNames = formalsAst.params;
+        var formalsTypes = formalsAst.typeInfo.parameters;
+
+        for (i = 0; i < formalsTypes.length; i++) {
+            if (s !== "" ) { 
+                s = s + ", "; // leave out the , before the first parameter
+            }
+
+            if (formalsTypes[i].isObjectType("ParallelArray") || formalsTypes[i].isObjectType("Array")) {
+                // array argument, so needs address space qualifier
+                s = s + formalsTypes[i].properties.addressSpace + " ";
+            }
+
+            s = s + formalsTypes[i].OpenCLType + " " + formalsNames[i];
+            // array arguments have an extra offset qualifier
+            if (formalsTypes[i].isObjectType("ParallelArray")) {
+                s = s + ", int " + formalsNames[i] + "__offset"; //offset
+            }
+        }
+        return s;
+    };
+
+    var genKernelFormalParams = function (formalsAst, construct) {
         "use strict";
         var i;
         var s = "";
@@ -182,7 +235,32 @@ RiverTrail.compiler.codeGen = (function() {
         }
         return s;
     };
+    
 
+    //
+    // This generates code for a function that is presmable called from the kernel function.
+    // 
+    function genCalledFunction(ast) {
+        "use strict";
+        var s = " ";
+        
+        var previousCalledScope = calledScope.inCalledScope();
+        calledScope.enter();
+        if (ast.value != "function") {
+            throw "expecting function found " + ast.value;
+        }
+        s = s + " " +ast.typeInfo.result.OpenCLType + " " + ast.name;
+        s = s + "("; // start param list.
+        s = s + genFormalParams(ast, "ignore");
+        s = s + " ) ";
+        s = s + " { ";// Generate the statements;
+        s = s + oclStatements(ast.body);
+        s = s + " } ";
+        
+        calledScope.exit(previousCalledScope);
+        return s;
+    }
+    
     //
     // Generate a string representing the kernel function
     // input: The ast (or fragment of the ast)
@@ -292,10 +370,17 @@ RiverTrail.compiler.codeGen = (function() {
         if (funDecl.value != "function") {
             throw new Error("function expected"); // we can't deal with this so execute it sequentially
         }
-        
+        // Dump the helper function first, c99 requires this.
+        // The kernel function has now been dumped.
+        // We now turn our attention to function the kernel function might have called.
+        // Do we need to dump signatures in case there is a forward reference?
+        for (i=0; i<ast.body.funDecls.length; i++) {
+            s = s + genCalledFunction(ast.body.funDecls[i]);            
+        }
+
         boilerplate = boilerplateTemplates[construct];
 
-        s = "__kernel void " + funDecl.name + "(";
+        s = s + "__kernel void " + funDecl.name + "(";
 
         // add the special return parameter used to detect failure
         s = s + "__global int *_FAILRET, ";
@@ -415,16 +500,43 @@ RiverTrail.compiler.codeGen = (function() {
         // close the kernel body. Note that what ever is placed here is never executed, as the compilation
         // of RETURN emit an explicit return...
         s = s + "}";
+
         return s;
     };
 
     // -------------------------------------------------------------------------------------------------
     // --------- Start of genStatement helpers. All are prefixed with gen, for exampe genReturn. -------
+
+    
+    function genReturn (ast) {
+        "use strict";
+        if (calledScope.inCalledScope()) {
+            return genSimpleReturn(ast);
+        } else {
+            return genKernelReturn(ast);
+        }
+    }
+    
+    // Generate a return from a function the kernel calls.
+    function genSimpleReturn (ast) {
+        "use strict";
+        var s = " ";
+        var rhs;    // right-hand-side
+
+        rhs = ast.value;
+        if (rhs.typeInfo.type === "NUMBER") {
+            // scalar result
+            s = " return " + oclExpression(rhs) + ";";
+        }
+        return s;
+    }
+
     //
     // Typically they take the ast as an argument and return the appropriate string.
     //
-    // You need to add a cast here so that the double you see is casted to a float before you store it in retval.
-    function genReturn (ast) {
+    // You need to add a cast here so that the double you see is casted to a float before you store 
+    // it in retval.
+    function genKernelReturn (ast) {
         "use strict";
         var s = " ";
         var elements;
@@ -432,6 +544,7 @@ RiverTrail.compiler.codeGen = (function() {
         var i;
         var convPre = ""; // what to convert the temps into to store them in retval.
         var convPost = "";
+        
         rhs = ast.value;
         if (rhs.typeInfo.type === "NUMBER") {
             // scalar result
@@ -741,7 +854,7 @@ RiverTrail.compiler.codeGen = (function() {
                         s = s + " 628 oclExpression not complete probable some sort of method call ";
                 }
             } else { // It is not a method call.
-                s = "TBD 1651 deal with CALL ";
+                s = s + ast.children[0].value + "(" + oclExpression(ast.children[1]) + ")";
             }
         } else {
             // Everything else can be dealt with according to the more straight forward translation.
