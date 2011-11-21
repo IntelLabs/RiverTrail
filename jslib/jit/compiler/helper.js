@@ -100,34 +100,34 @@ RiverTrail.Helper = function () {
         return undefined;
     };
 
+    function inferTypedArrayType(array) {
+        var i;
+        var elementalType;
+        for (i=0;i<arrayTypeToCType.length;i++) {
+            if (array instanceof arrayTypeToCType[i][0]) {
+                elementalType = arrayTypeToCType[i][1];
+                break;
+            }
+        }
+        if (elementalType === undefined) {
+            // SAH: I fail here as we do not know the type of this typed array. If it had
+            //      a homogeneous type, the constructor would have converted it to a 
+            //      typed array.
+            throw new TypeError("Cannot infer type for given Parallel Array data container.");
+        } 
+        return elementalType;
+    };
+
     function inferPAType(pa) {
         var dimSize = pa.getShape();
         var elementalType;
         //
         // if we already have type information, we return it.
         // 
-        if (pa.elementalType !== undefined) {
-            elementalType = pa.elementalType;
-        } else {
-            var ta = pa.data; // Grab the typed array and deduce its equivelant C type. We do not need to
-                              // materialize it here as for unmaterialized arrays the elementalType will be set!
-            var i;
-            for (i=0;i<arrayTypeToCType.length;i++) {
-                if (ta instanceof arrayTypeToCType[i][0]) {
-                    elementalType = arrayTypeToCType[i][1];
-                    break;
-                }
-            }
-            if (elementalType === undefined) {
-                // SAH: I fail here as we do not know the type of this typed array. If it had
-                //      a homogeneous type, the constructor would have converted it to a 
-                //      typed array.
-                throw new TypeError("Cannot infer type for given Parallel Array data container.");
-            } 
-            // cache type information for next time
-            pa.elementalType = elementalType;
+        if (pa.elementalType === undefined) {
+            pa.elementalType = inferTypedArrayType(pa.data);
         }
-        return {"dimSize": dimSize, "inferredType" : elementalType};
+        return {"dimSize": dimSize, "inferredType" : pa.elementalType};
     }; 
 
     function stripToBaseType(s) {
@@ -209,6 +209,7 @@ RiverTrail.Helper = function () {
              "Integer" : Integer,
              "debugThrow" : debugThrow,
              "isTypedArray" : isTypedArray,
+             "inferTypedArrayType" : inferTypedArrayType,
              "parseFunction" : parseFunction };
 
 }();

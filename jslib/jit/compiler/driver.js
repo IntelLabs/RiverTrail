@@ -98,15 +98,10 @@ RiverTrail.compiler = (function () {
 
         args = Array.prototype.map.call(args, 
                                      function (object) {
-                                         if (object instanceof ParallelArray) {
-                                             return object;
-                                         } else if (object instanceof Array) {
+                                         if (object instanceof Array) {
                                              var result = new ParallelArray( lowPrecision ? Float32Array : Float64Array, object);
                                              result._wasArray = true;
                                              return result;
-                                         } else if (RiverTrail.Helper.isTypedArray(object)) {
-                                             var result = new ParallelArray( object);
-                                             result._wasArray = true;
                                          } else {
                                              return object;
                                          }});
@@ -245,6 +240,8 @@ RiverTrail.compiler = (function () {
                 // SAH: treating all non-PA arrays as float requires a check for regularity and 
                 //      homogeneity! This is done in the transfer code.
                 argumentTypes.push({ inferredType: defaultNumberType, dimSize: [argument.length] });
+            } else if (RiverTrail.Helper.isTypedArray(argument)) {
+                argumentTypes.push({ inferredType: RiverTrail.Helper.inferTypedArrayType(argument), dimSize: [argument.length] });
             } else if (argument instanceof RiverTrail.Helper.Integer) {
                 // These are special integer values used for offsets and the like. 
                 argumentTypes.push({ inferredType: "int", dimSize: [] });
@@ -255,8 +252,7 @@ RiverTrail.compiler = (function () {
                 // numbers are floats
                 argumentTypes.push({ inferredType: defaultNumberType, dimSize: [] });
             } else {
-                console.log("parseGenRun:482 argument:", argument, " argTypes: ", argTypes);
-                throw new CompilerBug("parseGenRun:482 - type derivation for argument not implemented yet");
+                throw new CompilerBug("Type derivation for argument not implemented yet");
             }
         }
         return argumentTypes;

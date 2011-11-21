@@ -203,14 +203,19 @@ RiverTrail.Typeinference = function () {
     };
     TObject.deriveObjectType = function (obj) {
         var name, key;
+        var isInstance = function isInstance (x) { 
+            return (obj instanceof x);
+        };
         for (key in this.prototype.registry) {
-            if (this.prototype.registry[key].constructor &&
-                (obj instanceof this.prototype.registry[key].constructor)) {
+            if (((this.prototype.registry[key].constructor !== undefined) &&
+                 (obj instanceof this.prototype.registry[key].constructor)) ||
+                ((this.prototype.registry[key].constructors !== undefined) &&
+                 this.prototype.registry[key].constructors.some(isInstance))) {
                 name = key;
                 break;
             }
         }
-        return key;
+        return name;
     };
 
     var TOp = TObject.prototype = new Type(Type.OBJECT);
@@ -481,7 +486,7 @@ RiverTrail.Typeinference = function () {
 
             return type;
         },
-        constructor : null,
+        constructor : undefined,
         makeType : null,
         updateOpenCLType : null,
         equals : null
@@ -523,7 +528,9 @@ RiverTrail.Typeinference = function () {
 
             return type;
         },
-        constructor : Array,
+        constructor : undefined,
+        constructors : [Array, Float64Array, Float32Array, Uint32Array, Int32Array, 
+                        Uint16Array, Int16Array, Uint8ClampedArray, Uint8Array, Int8Array],
         makeType : function (val) {
             var type;
             if (typeof(val) === "number") {
@@ -542,6 +549,14 @@ RiverTrail.Typeinference = function () {
                 } else {
                     reportError("empty arrays are not supported yet");
                 }
+                type.updateOpenCLType();
+            } else if (RiverTrail.Helper.isTypedArray(val)) {
+                // This is cheating, as typed arrays do not have the same interface, really.
+                // However, we do not support map/reduce etc. anyway.
+                type = new TObject(TObject.ARRAY);
+                type.properties.shape = [val.length];
+                type.properties.elements = new TLiteral(TLiteral.NUMBER);
+                type.properties.elements.OpenCLType = RiverTrail.Helper.inferTypedArrayType(val);
                 type.updateOpenCLType();
             } else {
                 reportError("unsupported array contents encountered");

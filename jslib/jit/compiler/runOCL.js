@@ -125,6 +125,9 @@ RiverTrail.compiler.runOCL = function () {
                 console.log("(object instanceof RiverTrail.Helper.Integer) encountered unexpectedly");
                 // Integers are passed directly
                 args.push(object);
+            } else if (RiverTrail.Helper.isTypedArray(object)) {
+                // map the typed array
+                args.push(RiverTrail.compiler.openCLContext.mapData(object));
             } else {
                 throw new CompilerError("only typed arrays and scalars are currently supported as OpenCL kernel arguments");
             }
