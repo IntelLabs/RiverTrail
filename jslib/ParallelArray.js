@@ -1281,7 +1281,7 @@ var ParallelArray = function () {
     var getArray = function getArray () {
         var i, result;
         if ((this.flat) && (this.shape.length === 1)) {
-            result = Array.prototype.slice.apply(this.data, this.offset, this.offset + this.length);
+            result = Array.prototype.slice.call(this.data, this.offset, this.offset + this.length);
         } else {
             result = new Array(this.length);
             for (i=0; i<this.length; i++) {
