@@ -85,6 +85,10 @@ RiverTrail.Typeinference = function () {
         return ((this.kind === Type.LITERAL) &&
                 (this.type === TLiteral.BOOL));
     };
+    Tp.isScalarType = function () { // type is a scalar value
+        return ((this.kind === Type.LITERAL) &&
+                ((this.type === TLiteral.BOOL) || (this.type === TLiteral.NUMBER)));
+    };
     Tp.isObjectType = function (name) { // checks whether type is object; name is optional
         return ((this.kind === Type.OBJECT) &&
                 ((name === undefined) ||
