@@ -162,6 +162,7 @@ try {
         span.innerHTML = 'It appears that you have River Trail installed. Enabling compiled mode...';
         span.setAttribute("class", "info");
         out.appendChild(span);
+        out.appendChild(document.createElement('br'));
     }
 
 
@@ -171,6 +172,7 @@ try {
     span.innerHTML = 'It appears that the library implementation of River Trail does not support your browser. Please <a href="http://github.com/RiverTrail/RiverTrail/issues">open an issue</a>.';
     span.setAttribute("class", "exception");
     out.appendChild(span);
+    out.appendChild(document.createElement('br'));
 }
 </script>
 </html>
