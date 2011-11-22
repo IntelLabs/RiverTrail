@@ -1204,7 +1204,7 @@ RiverTrail.Typeinference = function () {
         openCLUseLowPrecision = (lowPrecision === true);
         tEnv.openCLFloatType = (openCLUseLowPrecision ? "float" : "double");
         // create type info for this
-        if (construct === "combine") {
+        if ((construct === "combine") || (construct === "map")) {
             var thisT = TObject.makeType("ParallelArray", pa);
             thisT.properties.addressSpace = "__global";
             tEnv.bind("this");
@@ -1214,7 +1214,7 @@ RiverTrail.Typeinference = function () {
         } else if (construct === "map") {
             var thisT;
             thisT = TObject.makeType("ParallelArray", pa);
-            if (pa.getShape().lenght > rank) {
+            if (pa.getShape().length > rank) {
                 thisT.properties.addressSpace = "__global";
                 thisT.properties.shape.splice(0,rank);
             } else {
@@ -1228,8 +1228,9 @@ RiverTrail.Typeinference = function () {
             argT.push(thisT);
         }
 
-        // create type info for index, if present
+        // create type information for generated arguments
         if ((construct === "combine") || (construct === "comprehension")) {
+            // create type info for vector index argument
             var ivType = new TObject(TObject.ARRAY);
             ivType.properties.shape = [rank];
             ivType.properties.elements = new TLiteral(TLiteral.NUMBER);
@@ -1242,11 +1243,25 @@ RiverTrail.Typeinference = function () {
             params = params.slice(1);
             argT.push(ivType);
         } else if (construct === "comprehensionScalar") {
+            // create type info for scalar index argument
             var ivType = new TLiteral(TLiteral.NUMBER);
             tEnv.bind(params[0]);
             tEnv.update(params[0], ivType);
             params = params.slice(1);
             argT.push(ivType);
+        } else if (construct === "map") {
+            // create type info for current element argument
+            var elemT = tEnv.getType("this").clone();
+            if (pa.getShape().length > rank) {
+                elemT.properties.shape.splice(0,rank);
+            } else {
+                elemT = elemT.properties.elements;
+            }
+            tEnv.bind(params[0]);
+            tEnv.update(params[0], elemT);
+            (!elemT.isObjectType()) || tEnv.addRoot(elemT);
+            params = params.slice(1);
+            argT.push(elemT);
         }
 
         // create type info for all arguments
