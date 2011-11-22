@@ -1161,7 +1161,7 @@ var ParallelArray = function () {
     var filter = function filter(f) {
         var len = this.length;
         // Generate a ParallelArray where t means the corresponding value is in the resulting array.
-        var boolResults = this.map.apply(this, arguments);
+        var boolResults = combineSeq.apply(this, arguments);
         var rawResult;
         var i, j;
         var resultSize = 0;
