@@ -842,8 +842,9 @@ var ParallelArray = function () {
     /***
     mapSeq
 
-    Elemental Function 
-        this - an element from the ParallelArray
+    Elemental Function
+        this - the entire ParallelArray 
+        val - an element from the ParallelArray
         Optional arguments - Same as the optional arguments passed to map 
     
     Result
@@ -855,9 +856,9 @@ var ParallelArray = function () {
             elements in the original ParallelArray plus any optional arguments.
 
     Example: an identity function
-        pa.map(function(){return this;})
+        pa.map(function(val){return val;})
     ***/
-        
+
     var mapSeq = function mapSeq (f) { // extra args passed unchanged and unindexed.
         var len = this.shape[0];
         var i, j;
@@ -873,14 +874,15 @@ var ParallelArray = function () {
 
         if (arguments.length == 1) { // Just a 1 arg function.
             for (i=0;i<len;i++) {
-                result[i] = f.call(this.get(i));
+                result[i] = f.apply(this, [this.get(i)]);
             }
         } else {
             for (i=0;i<len;i++) {
                 for (j=1;j<arguments.length;j++) {
-                    args[j-1] = (arguments[j] instanceof ParallelArray)?arguments[j].get(i):arguments[j];                    
+                    args[j] = arguments[j];
                 }              
-                result[i] = f.apply(this.get(i), args);
+                args[0] = this.get(i);
+                result[i] = f.apply(this, args);
             }
         }
         // SAH: temporary fix until we use cast
