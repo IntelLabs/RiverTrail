@@ -230,7 +230,7 @@ RiverTrail.compiler.codeGen = (function() {
             // The relative argumment is a value found in the ParallelArray.
             indexName = funDecl.params[0];
             indexType = funDecl.typeInfo.parameters[1];
-            s = s + " const "+indexType.OpenCLType+" "+ indexName+" = tempThis[_id_0];"
+            s = s + " const "+indexType.OpenCLType+" "+ indexName+" = tempThis[_readoffset];"
 
         }
         return s;
@@ -288,7 +288,7 @@ RiverTrail.compiler.codeGen = (function() {
         "map": {
             "hasThis": true,
             "localThisName": " tempThis",
-            "localThisDefinition": " opThisVect[_readoffset]",
+            "localThisDefinition": " opThisVect[opThisVect__offset]",
             "thisShapeLength": "const int thisShapeLength = ",
             "thisShapeDeclPre": "const int thisShapeDecl ",
             "localResultName": " tempResult",
