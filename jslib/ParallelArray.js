@@ -902,13 +902,12 @@ var ParallelArray = function () {
 
     var map = function map (f) { // extra args passed unchanged and unindexed.
         var len = this.shape[0];
-            var i;
-            var args = new Array(arguments.length-1);
-            var paResult;
-        if (arguments.length == 1) { // Just a 1 arg function.
+        var args = new Array(arguments.length-1);
+        var paResult;
+        if (arguments.length === 1) { // no extra arguments present
             paResult = RiverTrail.compiler.compileAndGo(this, f, "map", 1, args, enable64BitFloatingPoint);
         } else {            
-            for (j=1;j<arguments.length;j++) {
+            for (var j=1;j<arguments.length;j++) {
                 args[j-1] = arguments[j];                    
             }
             paResult = RiverTrail.compiler.compileAndGo(this, f, "map", 1, args, enable64BitFloatingPoint); 
@@ -1162,7 +1161,7 @@ var ParallelArray = function () {
     var filter = function filter(f) {
         var len = this.length;
         // Generate a ParallelArray where t means the corresponding value is in the resulting array.
-        var boolResults = this.map.apply(this, arguments);
+        var boolResults = combineSeq.apply(this, arguments);
         var rawResult;
         var i, j;
         var resultSize = 0;

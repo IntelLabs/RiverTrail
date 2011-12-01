@@ -524,7 +524,7 @@ RiverTrail.compiler.codeGen = (function() {
         var rhs;    // right-hand-side
 
         rhs = ast.value;
-        if (rhs.typeInfo.type === "NUMBER") {
+        if (rhs.typeInfo.isScalarType()) {
             // scalar result
             s = " return " + oclExpression(rhs) + ";";
         }
@@ -546,7 +546,7 @@ RiverTrail.compiler.codeGen = (function() {
         var convPost = "";
         
         rhs = ast.value;
-        if (rhs.typeInfo.type === "NUMBER") {
+        if (rhs.typeInfo.isScalarType()) {
             // scalar result
             s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
             s = s + boilerplate.resultAssignLhs + "("+boilerplate.returnType+")"+boilerplate.resultAssignRhs+";"; // Need to add cast here.....
