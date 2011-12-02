@@ -129,15 +129,20 @@ RiverTrail.compiler.codeGen = (function() {
         if (construct === "combine") { 
             // Skip the extra type for this and ignore the first argument.
             // the extras do not include |this| and the first formal since that is the index generated in the body.
-            formalsTypes = formalsTypes.slice(2);
-            formalsNames = formalsNames.slice(1);
+            
+            formalsNames = formalsNames.slice(1); // THis skips the index argument
+            formalsTypes = formalsTypes.slice(2); // This skips this and the index argument
         } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {
             // ignore the first argument, the index
             formalsTypes = formalsTypes.slice(1);
             formalsNames = formalsNames.slice(1);
         } else if (construct === "map") {
             // Skip the extra type for this
-            formalsTypes = formalsTypes.slice(1);
+            // Skip the extra type for this and ignore the first argument, which is the value and is set
+            // explicitly based on this and the id.
+            // the extras do not include |this| and the first formal since that is the value generated in the body.
+            formalsTypes = formalsTypes.slice(2); // Skip this and the val argument.
+            formalsNames = formalsNames.slice(1); // Skip the val argument
         }
         
         for (i = 0; i < formalsTypes.length; i++) {
@@ -165,8 +170,8 @@ RiverTrail.compiler.codeGen = (function() {
         var start = 0;
         var formalsNames = formalsAst.params;
         var formalsTypes = formalsAst.typeInfo.parameters;
-        if ((construct === "combine") || (construct === "comprehension") || (construct === "comprehensionScalar")) {
-            // Skip the first argument since it is the index.
+        if ((construct === "map") || (construct === "combine") || (construct === "comprehension") || (construct === "comprehensionScalar")) {
+            // Skip the first argument since it is the index for combine and comprehension and value for map.
             start = 2; // the extras do not include |this| and the first formal since that is the index generated in the body.
         }
         
@@ -180,13 +185,16 @@ RiverTrail.compiler.codeGen = (function() {
         return s;
     };
     // formalsTypeProperty holds "__"+addresSpace+OpenCLType+formalsName+shape
-    var genFormalIndexArg = function (funDecl, construct) { //formalsName, formalsType, formalsTypeProperties, construct) {
+    // Some kernel function formals are calculated in the body, for example index argument to combine and the value
+    // argument to map.
+    var genFormalRelativeArg = function (funDecl, construct) { //formalsName, formalsType, formalsTypeProperties, construct) {
         "use strict";
         var i;
         var dimSizes;
         var s = " ";
         var indexName, indexType;
         if ((construct === "combine") || (construct === "comprehension") || (construct === "comprehensionScalar")) {
+            // The relative argumment is an index.
             if (construct === "combine") {
                 indexType = funDecl.typeInfo.parameters[1];
             } else {
@@ -217,6 +225,13 @@ RiverTrail.compiler.codeGen = (function() {
                 // this path is taken by scalar comprehensions
                 s = s + " const "+indexType.OpenCLType+" "+ indexName+" = _id_0;"; 
             }
+        } else if (construct === "map") {
+            // 
+            // The relative argumment is a value found in the ParallelArray.
+            indexName = funDecl.params[0];
+            indexType = funDecl.typeInfo.parameters[1];
+            s = s + " const "+indexType.OpenCLType+" "+ indexName+" = tempThis[_readoffset];"
+
         }
         return s;
     };
@@ -273,7 +288,7 @@ RiverTrail.compiler.codeGen = (function() {
         "map": {
             "hasThis": true,
             "localThisName": " tempThis",
-            "localThisDefinition": " opThisVect[_readoffset]",
+            "localThisDefinition": " opThisVect[opThisVect__offset]",
             "thisShapeLength": "const int thisShapeLength = ",
             "thisShapeDeclPre": "const int thisShapeDecl ",
             "localResultName": " tempResult",
@@ -491,7 +506,7 @@ RiverTrail.compiler.codeGen = (function() {
         // declare tempResult
         s = s + funDecl.typeInfo.result.OpenCLType + " " + boilerplate.localResultName + ";";
         // define index
-        s = s + genFormalIndexArg(funDecl, construct); // The first param's name.
+        s = s + genFormalRelativeArg(funDecl, construct); // The first param's name.
 
         // Adjust the ParallelArray formals that come with offsets to formal = &formal[formalName_offset]
         s = s + adjustFormalsWithOffsets(funDecl, construct);
