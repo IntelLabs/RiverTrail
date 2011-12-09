@@ -749,10 +749,13 @@ var ParallelArray = function () {
         var result;
         var extraArgs; 
         var extraArgOffset = 2;
-        if (typeof(depth) === 'function') {
+        if ((typeof(depth) === 'function') || (depth instanceof low_precision.wrapper)) {
             f = depth;
             depth = 1;
             extraArgOffset = 1;
+        }
+        if (f instanceof low_precision.wrapper) {
+            f = f.unwrap();
         }
         if (!this.isRegular()) {
             throw new TypeError("ParallelArray.combineSeq this is not a regular ParallelArray.");
