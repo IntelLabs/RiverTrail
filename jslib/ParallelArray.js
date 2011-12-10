@@ -1343,6 +1343,12 @@ var ParallelArray = function () {
                     /* need to fix up shape somehow. */
                     result.shape = this.shape.slice(index.length);
                     result.strides = this.strides.slice(index.length); 
+                    /* changing the shape might invalidate the _fastClasses specialisation, 
+                     * so better ensure things are still fine
+                     */
+                    if (result.__proto__ !== ParallelArray.prototype) {
+                        result.__proto__ = _fastClasses[result.shape.length].prototype;
+                    }
                     return result;
                }
             } 
