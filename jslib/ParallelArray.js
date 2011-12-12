@@ -114,6 +114,9 @@ var ParallelArray = function () {
 //    is nothing more that a reduce using the binary max function.
 
     
+    // use Proxies to emulate square bracket index selection on ParallelArray objects
+    var enableProxies = false;
+
     // check whether the new extension is installed.
     var useFF4Interface = false;
     try {
@@ -397,6 +400,67 @@ var ParallelArray = function () {
         return result;
     };
 
+    // Proxy handler for mapping [<number>] and [<Array>] to call of |get|.
+    // The forwarding part of this proxy is taken from
+    // https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Proxy
+    // which in turn was copied from the ECMAScript wiki at
+    // http://wiki.ecmascript.org/doku.php?id=harmony:proxies&s=proxy
+    var makeIndexOpHandler = function makeIndexOpProxy (obj) {
+        return {  
+            // Fundamental traps  
+            getOwnPropertyDescriptor: function(name) {  
+                var desc = Object.getOwnPropertyDescriptor(obj, name);  
+                // a trapping proxy's properties must always be configurable  
+                if (desc !== undefined) { desc.configurable = true; }  
+                return desc;  
+            },  
+            getPropertyDescriptor:  function(name) {  
+                var desc = Object.getPropertyDescriptor(obj, name); // not in ES5  
+                // a trapping proxy's properties must always be configurable  
+                if (desc !== undefined) { desc.configurable = true; }  
+                return desc;  
+            },  
+            getOwnPropertyNames: function() {  
+                return Object.getOwnPropertyNames(obj);  
+            },  
+            getPropertyNames: function() {  
+                return Object.getPropertyNames(obj);                // not in ES5  
+            },  
+            defineProperty: function(name, desc) {  
+                Object.defineProperty(obj, name, desc);  
+            },  
+            delete: function(name) { return delete obj[name]; },     
+            fix: function() {  
+                if (Object.isFrozen(obj)) {  
+                    return Object.getOwnPropertyNames(obj).map(function(name) {  
+                               return Object.getOwnPropertyDescriptor(obj, name);  
+                           });  
+                }  
+                // As long as obj is not frozen, the proxy won't allow itself to be fixed  
+                return undefined; // will cause a TypeError to be thrown  
+            },  
+
+            // derived traps  
+            has:          function(name) { return name in obj; },  
+            hasOwn:       function(name) { return Object.prototype.hasOwnProperty.call(obj, name); },  
+            get:          function(receiver, name) { 
+                var idx = parseInt(name);
+                if (idx == name) {
+                    return obj.get(idx);
+                } else {
+                    return obj[name];
+                } 
+            },  
+            set:          function(receiver, name, val) { obj[name] = val; return true; }, // bad behavior when set fails in non-strict mode  
+            enumerate:    function() {  
+                var result = [];  
+                for (name in obj) { result.push(name); };  
+                return result;  
+            },  
+            keys: function() { return Object.keys(obj) }  
+        };  
+    }  
+        
 
     // Helper for constructor that generates an empty array.
     var createEmptyParallelArray = function createEmptyParallelArray () {
@@ -1876,6 +1940,12 @@ var ParallelArray = function () {
             result = new _fastClasses[result.shape.length](result);
         }
     
+        if (enableProxies) {
+            try { // for Chrome/Safari compatability
+                result = Proxy.create(makeIndexOpHandler(result), ParallelArray.prototype);
+            } catch (ignore) {}
+        }
+
         return result;
     };
 
