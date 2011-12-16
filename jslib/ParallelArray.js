@@ -920,20 +920,19 @@ var ParallelArray = function () {
     /***
     reduce
     Arguments
-        Elemental function described below
-        Optional- initial value of the accumulator
-            If not provided the value of first element in the array is used.
+        Elemental function described below.
         Optional arguments passed unchanged to elemental function
 
     Elemental Function 
-        this - An element from the ParallelArray
-        Accumulator - Value derived from previous invocation of the elemental function . 
-        Optional arguments - Same as the optional arguments passed to reduce
+        this - the entire ParallelArray 
+        a, b - arguments to be reduced and returned
+        Optional arguments - Same as the optional arguments passed to map 
         Result
-            The accumulator used in further applications of the elemental function.
+            The result of the reducing a and b, typically used in further 
+            applications of the elemental function.
 
     Returns
-        The final value of the accumulator.
+        The final value, if the ParallelArray has only 1 element then that element is returned.
 
     Discussion
         Reduce is free to group calls to the elemental function in arbitrary ways and 
@@ -943,14 +942,16 @@ var ParallelArray = function () {
         always be the same regardless of the order that reduces calls addition. Average 
         is an example of non-associative function. Average(Average(2, 3), 9) is 5 2/3 
         while Average(2, Average(3, 9)) is 4. Reduce is permitted to chose whichever 
-        ordering it finds convenient.
+        call ordering it finds convenient.
 
-        Reduce is only require to return a result consistent with some ordering and 
-        is not required to chose the same ordering on subsequent calls. Furthermore, 
+        Reduce is only required to return a result consistent with some call ordering and 
+        is not required to chose the same call ordering on subsequent calls. Furthermore, 
         reduce does not magically resolve problems related to the well document fact 
         that some floating point numbers are not represented exactly in JavaScript 
         and the underlying hardware.
 
+        Reduce does not require the elemental function be communitive since it does
+        induce reordering of the arguments passed to the elemental function's.
     ***/
 
     var reduce = function reduce(f, optionalInit) {
@@ -963,49 +964,53 @@ var ParallelArray = function () {
         var len = this.shape[0];
         var result;
         var i;
-        if (arguments.length == 2) {
-            result = f.call(this.get(0), optionalInit);
-        } else {
-            result = this.get(0);
-        }
-            
+
+        result = this.get(0);
         for (i=1;i<len;i++) {
-            result = f.call(this.get(i), result);
+            result = f.call(this, result, this.get(i));
         }
+
         return result;
     };
-        /***
+    /***
         scan
+    
         Arguments
             Elemental function described below
             Optional arguments passed unchanged to elemental function
 
         Elemental Function 
-            this - An element from the ParallelArray
-            Accumulator - Value derived from previous invocation of the 
-                         elemental function. 
+            this - the entire ParallelArray 
+            a, b - arguments to be reduced and returned
             Optional arguments - Same as the optional arguments passed to scan
-            Result
-                An element to be placed in the result at the same offset we found “this”
+            Result - The result of the reducing a and b, typically used in further 
+            applications of the elemental function.
  
         Returns
-            A freshly minted ParallelArray whose elements are the results of 
-            applying the elemental function to the elements in the original 
-            ParallelArray and the accumulator plus any optional arguments.
+            A freshly minted ParallelArray whose ith elements is the results of 
+            using the elemental function to reduce the elements between 0 and i
+            in the original ParallelArray.
 
         Example: an identity function
-            pa.scan(function(value){return this;})
+            pa.scan(function(a, b){return b;})
 
         Discussion:
-        Similar to reduce scan can arbitrarily reorder the order the calls to 
-        the elemental functions. This cannot be detected if the elemental 
-        function is associative so using a elemental function such as addition 
-        to create a partial sum will produce the same result regardless of the 
-        order in which the elemental function is called. However using a 
-        non-associative function can produce different results due to the 
-        ordering that scan calls the elemental function. While scan will 
-        produce a result consistent with a legal ordering the ordering and the 
-        result may differ for each call to scan. 
+            We implement what is known as an inclusive scan which means that
+            the value of the ith result is the [0 .. i].reduce(elementalFunction) 
+            result. Notice that the first element of the result is the same as 
+            the first element in the original ParallelArray. An exclusive scan can
+            be implemented by shifting right end off by one the results 
+            of an inclusive scan and inserting the identity at location 0. 
+            Similar to reduce scan can arbitrarily reorder the order the calls to 
+            the elemental functions. Ignoring floating point anomalies, this 
+            cannot be detected if the elemental function is associative so 
+            using a elemental function such as addition to create a partial 
+            sum will produce the same result regardless of the 
+            order in which the elemental function is called. However using a 
+            non-associative function can produce different results due to the 
+            ordering that scan calls the elemental function. While scan will 
+            produce a result consistent with a legal ordering the ordering and the 
+            result may differ for each call to scan. 
 
         Typically the programmer will only call scan with associative functions 
         but there is nothing preventing them doing otherwise.
@@ -1021,13 +1026,15 @@ var ParallelArray = function () {
             // 
             // handle case where we only have one row => the result is the first element
             //
-            return this.get(0);
+            return this;
         }
         var i;
+
         var len = this.length;
         var rawResult = new Array(len);
         var privateThis;
         var callArguments = Array.prototype.slice.call(arguments, 0); // array copy
+        var ignoreLength = callArguments.unshift(0); // callArguments now has 2 free location for a and b.
         if (this.getShape().length < 2) {
             // 
             // Special case where selection yields a scalar element. Offloading the inner
@@ -1037,9 +1044,9 @@ var ParallelArray = function () {
             //
             rawResult[0] = this.get(0);
             for (i=1;i<len;i++) {
-                privateThis = this.get(i);
                 callArguments[0] = rawResult[i-1];
-                rawResult[i] = f.apply(privateThis, callArguments);
+                callArguments[1] = this.get(i);;
+                rawResult[i] = f.apply(this, callArguments);
             }
             return (new ParallelArray(rawResult));
         }
