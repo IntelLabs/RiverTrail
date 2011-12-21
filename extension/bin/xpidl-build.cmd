@@ -25,6 +25,6 @@ REM THE POSSIBILITY OF SUCH DAMAGE.
 
 @ECHO OFF
 ECHO Building headers from %1
-gecko-sdk\bin\xpidl.exe -w -m header -Igecko-sdk\idl -Isrc -e %2.h %1
+C:\mozilla-build\python\python.exe gecko-sdk\sdk\bin\header.py -Igecko-sdk\idl -Isrc -o %2.h %1
 ECHO Building typelib from %1
-gecko-sdk\bin\xpidl.exe -w -m typelib -Igecko-sdk\idl -Isrc -e %2.xpt %1
+C:\mozilla-build\python\python.exe gecko-sdk\sdk\bin\typelib.py -Igecko-sdk\idl -Isrc -o %2.xpt %1

@@ -135,8 +135,7 @@ NS_IMETHODIMP dpoCInterface::GetPlatform(dpoIPlatform **_retval NS_OUTPARAM)
 			if (thePlatform == NULL) {
 				return NS_ERROR_OUT_OF_MEMORY;
 			} else {
-				NS_ADDREF(thePlatform);
-				*_retval = thePlatform;
+				thePlatform.forget((dpoCPlatform **) _retval);
 				return NS_OK;
 			}
 		}
@@ -194,11 +193,15 @@ nsCOMPtr<dpoCInterface> dpoCInterface::singleton = NULL;
 
 dpoCInterface *dpoCInterface::getInstance()
 {
+	dpoCInterface *result;
+
 	if (singleton == NULL) {
 		singleton = new dpoCInterface();
 	}
 
-	NS_ADDREF(singleton);
-	return singleton;
+	result = singleton;
+	NS_ADDREF(result);
+
+	return result;
 }
 
