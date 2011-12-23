@@ -1104,6 +1104,27 @@ RiverTrail.Typeinference = function () {
                 break;
             case NEW:
             case NEW_WITH_ARGS:
+                if ((ast.children[0].type === IDENTIFIER) &&
+                    (ast.children[0].value === "ParallelArray") &&
+                    (ast.children[1].type === LIST) &&
+                    (ast.children[1].children.length === 1)) { 
+                    // special case of new ParallelArray(<expr>)
+                    //
+                    // this turns into the identity modulo type
+                    ast = ast.children[1].children[0];
+                    ast = drive(ast, tEnv, fEnv);
+                    if (tEnv.accu.isObjectType("Array")) {
+                        // Change the type. We have to construct the resulting type
+                        // by hand here, as usually parallel arrays objects do not
+                        // fall from the sky but are passed in or derived from
+                        // selections.
+                        tEnv.accu.name = "ParallelArray";
+                    }
+                    if (!tEnv.accu.isObjectType("ParallelArray")) {
+                        reportError("Only the simple form of ParallelArray's constructor is implemented", ast);
+                    }
+                    break;
+                }
             case OBJECT_INIT:
             case WITH:
                 reportError("general objects not yet implemented", ast);
