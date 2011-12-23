@@ -35,7 +35,8 @@ EXCLUDEFILES = src/dllmain.cpp
 #
 
 LIBS =
-XPIDL = $(GECKODIR)/bin/xpidl
+GENTYPELIB = /usr/bin/python $(GECKODIR)/sdk/bin/typelib.py
+GENHEADER = /usr/bin/python $(GECKODIR)/sdk/bin/header.py
 IDLDIR = idl
 GECKOLIB = lib
 GECKOINC = include
@@ -73,10 +74,10 @@ $(OUTPUTDIR)/$(OUTPUTNAME): $(OUTPUTDIR) $(OBJFILES)
 	$(CXX) $(OBJFILES) -shared -lOpenCL -L$(GECKODIR)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc -o $@
 
 %.xpt: %.idl
-	$(XPIDL) -w -m typelib -e $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 
+	$(GENTYPELIB) -o $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 
 
 %.h: %.idl
-	$(XPIDL) -w -m header -e $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 
+	$(GENHEADER) -o $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 
 
 %.o: %.cpp 
 	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR)/$(GECKOINC) $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.o:|' > $*.d

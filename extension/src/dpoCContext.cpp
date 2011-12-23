@@ -280,9 +280,8 @@ DONE:
 		return result;
 	}
 
-	NS_ADDREF( ret);
-	*_retval = ret;
-
+	ret.forget((dpoCKernel **)_retval);
+	
 	return NS_OK;
 }
 
@@ -344,8 +343,7 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
 	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray), JS_GetTypedArrayLength(tArray), JS_GetTypedArrayByteLength(tArray), source);
 
 	if (result == NS_OK) {
-		NS_ADDREF(data);
-		*_retval = data;
+		data.forget((dpoCData **)_retval);
 	}
 
     return result;
@@ -413,8 +411,7 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray), length, length * bytePerElements, jsBuffer);
 
 	if (result == NS_OK) {
-		NS_ADDREF(data);
-		*_retval = data;
+		data.forget((dpoCData **) _retval);
 	}
 
 	JS_LeaveLocalRootScope(cx);
@@ -474,8 +471,7 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, PRUint32 length, JSCon
 	result = data->InitCData(cx, cmdQueue, memObj, cData->GetType(), length, length * bytePerElements, jsBuffer);
 
 	if (result == NS_OK) {
-		NS_ADDREF(data);
-		*_retval = data;
+		data.forget((dpoCData **) _retval);
 	}
 
 	JS_LeaveLocalRootScope(cx);

@@ -750,9 +750,9 @@ RiverTrail.compiler.codeGen = (function() {
             for (i = sourceRank - elemRank - 1; i >= 0; i--) { // Ususally only 2 or 3 dimensions so ignore complexity
                 s = s + " + " + stride + " * ("
                 if (dynamicSel) {
-                    s = s + wrapIntoCheck(rangeInfo[0][i], sourceShape[i], oclExpression(arrayOfIndices.children[0]) + "[" + i + "]") + ")";
+                    s = s + wrapIntoCheck(rangeInfo.get(0).get(i), sourceShape[i], oclExpression(arrayOfIndices.children[0]) + "[" + i + "]") + ")";
                 } else {
-                    s = s + wrapIntoCheck(rangeInfo[i], sourceShape[i], oclExpression(arrayOfIndices.children[i])) + ")";
+                    s = s + wrapIntoCheck(rangeInfo.get(i), sourceShape[i], oclExpression(arrayOfIndices.children[i])) + ")";
                 }
                 stride = stride * sourceType.getOpenCLShape()[i];
             }

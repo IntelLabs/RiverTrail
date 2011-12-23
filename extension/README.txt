@@ -55,10 +55,15 @@ directory.
 Building the extension - Windows
 --------------------------------
 
-You will need at least Visual C++ Express 2010. Open the project file found in
-the extension directory. From the menu select Build->Build solution or press 
-F7. This will build the C++ part of the extension and populate the xpi-contents 
-directory.
+You will need at least Visual C++ Express 2010 and the mozilla build
+environment available from
+
+http://ftp.mozilla.org/pub/mozilla.org/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe
+
+Install the build environment to the default directory. Open the project file 
+found in the extension directory. From the menu select Build->Build solution 
+or press F7. This will build the C++ part of the extension and populate the 
+xpi-contents directory.
 
 Creating the XPI file
 ---------------------

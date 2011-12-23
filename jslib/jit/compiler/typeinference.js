@@ -339,11 +339,13 @@ RiverTrail.Typeinference = function () {
                 this.bindings[name].initialized = false;
             } else {
                 mType.type.equals(oType.type) || reportError("variable " + name + " is polymorphic: " + mType.type.toString() + "/" + oType.type.toString());
+                mType.type.registerFlow(oType.type);
             }
         }
         for (var name in other.bindings) {
             if (this.bindings[name] === undefined) {
                 this.bindings[name] = {initialized : false, type : other.bindings[name].type};
+                this.bindings[name].type.registerFlow(other.bindings[name].type);
             }
         }
     };
@@ -629,6 +631,7 @@ RiverTrail.Typeinference = function () {
                     } else {
                         type = new TObject(TObject.PARALLELARRAY);
                         type.properties.shape = thisType.properties.shape.slice(idxLen);
+                        type.properties.addressSpace = thisType.properties.addressSpace;
                         type.properties.elements = thisType.properties.elements.clone();
                         type.updateOpenCLType();
                     }
@@ -641,6 +644,8 @@ RiverTrail.Typeinference = function () {
                     type = new TObject(TObject.ARRAY);
                     type.properties.shape = [thisType.properties.shape.length];
                     type.properties.elements = new TLiteral(TLiteral.NUMBER);
+                    type.properties.addressSpace = "__private"
+                    type.updateOpenCLType();
                     tEnv.addRoot(type);
                     tEnv.accu = type;
                     break;
@@ -1099,6 +1104,27 @@ RiverTrail.Typeinference = function () {
                 break;
             case NEW:
             case NEW_WITH_ARGS:
+                if ((ast.children[0].type === IDENTIFIER) &&
+                    (ast.children[0].value === "ParallelArray") &&
+                    (ast.children[1].type === LIST) &&
+                    (ast.children[1].children.length === 1)) { 
+                    // special case of new ParallelArray(<expr>)
+                    //
+                    // this turns into the identity modulo type
+                    ast = ast.children[1].children[0];
+                    ast = drive(ast, tEnv, fEnv);
+                    if (tEnv.accu.isObjectType("Array")) {
+                        // Change the type. We have to construct the resulting type
+                        // by hand here, as usually parallel arrays objects do not
+                        // fall from the sky but are passed in or derived from
+                        // selections.
+                        tEnv.accu.name = "ParallelArray";
+                    }
+                    if (!tEnv.accu.isObjectType("ParallelArray")) {
+                        reportError("Only the simple form of ParallelArray's constructor is implemented", ast);
+                    }
+                    break;
+                }
             case OBJECT_INIT:
             case WITH:
                 reportError("general objects not yet implemented", ast);
@@ -1177,22 +1203,27 @@ RiverTrail.Typeinference = function () {
         var workset = roots.map(function (val) { 
                 !val._flow || reportBug ("leftover flow information!");
                 val._flow = flowInit(val);
+                debug && console.log("FLOW: adding root " + val.toString() + " with _flow " + val._flow);
                 return val;
             });
                    
         while (workset.length > 0) {
             var current = workset.pop();
+            debug && console.log("FLOW: processing " + current.toString() + " with _flow " + current._flow);
             var flowInfo = current._flow;
             delete current._flow;
-            current.flowTo && current.flowTo.forEach(function (val) {
-                var flowIn = (val._flow) ? flowJoin(flowInfo, val._flow) : flowInfo;
-                var flowOut = flowPass(val, flowIn);
-                if (flowOut) {
-                    if (!val._flow) {
-                        workset.push(val);
-                    }
-                    val._flow = flowOut;
-                }});
+            if (current.flowTo !== undefined) {
+                current.flowTo.forEach(function (val) {
+                    var flowIn = (val._flow) ? flowJoin(flowInfo, val._flow) : flowInfo;
+                    var flowOut = flowPass(val, flowIn);
+                    if (flowOut) {
+                        if (!val._flow) {
+                            workset.push(val);
+                            debug && console.log("FLOW: enqueued " + val.toString() + " with flowOut " + flowOut);
+                        }
+                        val._flow = flowOut;
+                    }});
+            }
         }
     }
 
@@ -1284,6 +1315,7 @@ RiverTrail.Typeinference = function () {
                  return val.properties.addressSpace;
              },
              function (val, addressspace) {
+                debug && console.log("flowing address space " + addressspace);
                  if (val.isObjectType()) { // address space qualifiers are only 
                                            // a property of object types (as they 
                                            // are pointers in OpenCL)
@@ -1295,8 +1327,12 @@ RiverTrail.Typeinference = function () {
                         val.properties.addressSpace = "__private";
                         debug && console.log("privatized address space due to conflict");
                         return "__private";
-                    } 
+                    } else {
+                        debug && console.log("address space remains " + val.properties.addressSpace);
+                        return val.properties.addressSpace;
+                    }
                 }
+                return false;
              },
              function (a,b) {
                  if (a===b) {
