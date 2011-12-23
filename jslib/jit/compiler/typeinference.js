@@ -37,7 +37,8 @@ RiverTrail.Typeinference = function () {
     var inferPAType = RiverTrail.Helper.inferPAType;
     
     const debug = false;
-    const allowGlobalFuns = false; // Set to true so kernel functions can call global functions.
+    //const allowGlobalFuns = false; // Set to true so kernel functions can call global functions.
+    const allowGlobalFuns = true; // Set to true so kernel functions can call global functions.
 
     var openCLUseLowPrecision = false;
 

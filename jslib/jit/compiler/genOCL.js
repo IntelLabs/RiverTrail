@@ -88,13 +88,13 @@ RiverTrail.compiler.codeGen = (function() {
     var genFormalParams = function (formalsAst, construct) {
         "use strict";
         if (calledScope.inCalledScope()) {
-            return genSimpleFormalParams(formalsAst);
+            return genNonKernelFormalParams(formalsAst);
         } else {
             return genKernelFormalParams(formalsAst, construct);
         }
     };
-    
-    var genSimpleFormalParams = function (formalsAst) {
+    // This is for called functions, not the top level kernel function.
+    var genNonKernelFormalParams = function (formalsAst) {
         "use strict";
         var i;
         var s = "";
@@ -130,7 +130,7 @@ RiverTrail.compiler.codeGen = (function() {
             // Skip the extra type for this and ignore the first argument.
             // the extras do not include |this| and the first formal since that is the index generated in the body.
             
-            formalsNames = formalsNames.slice(1); // THis skips the index argument
+            formalsNames = formalsNames.slice(1); // This skips the index argument
             formalsTypes = formalsTypes.slice(2); // This skips this and the index argument
         } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {
             // ignore the first argument, the index
@@ -163,6 +163,7 @@ RiverTrail.compiler.codeGen = (function() {
         }
         return s;
     };
+
     var adjustFormalsWithOffsets = function (formalsAst, construct) {
         "use strict";
         var i;
@@ -257,18 +258,35 @@ RiverTrail.compiler.codeGen = (function() {
     // 
     function genCalledFunction(ast) {
         "use strict";
-        var s = " ";
+        var s = "";
+        var formals = "";
         
         var previousCalledScope = calledScope.inCalledScope();
         calledScope.enter();
         if (ast.value != "function") {
             throw "expecting function found " + ast.value;
         }
+        // Need code here to deal with array values being returned.
         s = s + " " +ast.typeInfo.result.OpenCLType + " " + ast.name;
         s = s + "("; // start param list.
-        s = s + genFormalParams(ast, "ignore");
+        formals = formals + genFormalParams(ast, "ignore");
+        if (formals !== "") {
+            s = s + formals;
+        } // else there are no formals to output.
+
+        var returnType = ast.typeInfo.result.OpenCLType;
+
+        if (!(ast.typeInfo.isScalarType())) { // This assumes it is an array.
+            // If the return type of the result is an Array then a pointer to it is passed in.
+            if (formals !== "") {
+                s = s + ", ";
+            }
+            s = s + returnType + " retVal, int _writeoffset ";
+        }
+
         s = s + " ) ";
         s = s + " { ";// Generate the statements;
+        // Add code to allocate array that is to be returned...
         s = s + oclStatements(ast.body);
         s = s + " } ";
         
@@ -536,13 +554,40 @@ RiverTrail.compiler.codeGen = (function() {
     function genSimpleReturn (ast) {
         "use strict";
         var s = " ";
-        var rhs;    // right-hand-side
-
-        rhs = ast.value;
+        var rhs;
+        var i;
+        rhs = ast.value; // right hand side
         if (rhs.typeInfo.isScalarType()) {
             // scalar result
             s = " return " + oclExpression(rhs) + ";";
-        }
+        } else {            
+            // vector result. We have two cases: either it is an identifier, then we do an elementwise assign.
+            // or it is an array expression, in which case we generate code for each element and then assign that.
+            var elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
+            var baseType = RiverTrail.Helper.stripToBaseType(rhs.typeInfo.OpenCLType);
+            var convPre = "((" + baseType + ") ";
+            var convPost = ")";
+            while (rhs.type === CAST) {
+                // detect casts to facilitate direct assign
+                convPre = convPre + "((" + RiverTrail.Helper.stripToBaseType(rhs.typeInfo.OpenCLType) + ")"; 
+                convPost = ")" + convPost;
+                rhs = rhs.children[0];
+            }
+            if (rhs.type === ARRAY_INIT) {
+                // inline array expression, do direct write
+                s = s + "{"; 
+                for (i = 0; i < elements; i++) {
+                    s = s + "retVal[_writeoffset + " + i + "] = " + convPre + oclExpression(rhs.children[i]) + convPost + ";";
+                }
+                s = s + "return retVal; }";
+            } else {
+                // arbitrary expression
+                s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+                s = s + "{ int _writeback_idx = 0; for (;_writeback_idx < " + elements + "; _writeback_idx++) { ";
+                s = s + " retVal[_writeoffset + _writeback_idx] = " + convPre + "tempResult[_writeback_idx]" + convPost + ";",
+                s = s + "} return retVal;}";
+            }
+        } // end else code that returns a non-scalar
         return s;
     }
 
@@ -869,7 +914,16 @@ RiverTrail.compiler.codeGen = (function() {
                         s = s + " 628 oclExpression not complete probable some sort of method call ";
                 }
             } else { // It is not a method call.
-                s = s + ast.children[0].value + "(" + oclExpression(ast.children[1]) + ")";
+                var actuals = "";
+                actuals = oclExpression(ast.children[1]);
+                s = s + ast.children[0].value + "(" + oclExpression(ast.children[1]);
+                if (!(ast.typeInfo.isScalarType())) { 
+                    if (actuals !== "") {
+                        s = s + ", ";
+                    }
+                    s = s + ast.allocatedMem + ", 0"; // 0 is an offset so that the code used in the kernel that needs it can be reused.
+                }
+                s = s + ")";
             }
         } else {
             // Everything else can be dealt with according to the more straight forward translation.

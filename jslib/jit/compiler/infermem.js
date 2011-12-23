@@ -310,7 +310,7 @@ RiverTrail.InferMem = function () {
             case BITWISE_NOT:
             case DOT:
             case INDEX:
-            case CALL:
+            
             case LIST:      
             case CAST:
             case TOINT32:
@@ -318,7 +318,17 @@ RiverTrail.InferMem = function () {
                     ast.children.forEach( function (child) { infer(child, memVars, ins, outs); });
                 }
                 break;
-
+            case CALL: 
+                if (ast.children) {
+                    ast.children.forEach( function (child) { infer(child, memVars, ins, outs); });
+                }
+                // If I am returning an Array space needs to be allocated for it in the caller and 
+                // the name of the space should be left in the CALL nodes allocatedMem field so that when
+                // I generate the call it is available.
+                if (!ast.typeInfo.isScalarType()) { // it is an array
+                    ast.allocatedMem = memVars.allocate(ast.typeInfo.getOpenCLSize(), "CALL");
+                }
+                break;
 
             // 
             // unsupported stuff here
