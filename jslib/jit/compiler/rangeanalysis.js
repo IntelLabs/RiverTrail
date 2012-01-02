@@ -1122,9 +1122,10 @@ RiverTrail.RangeAnalysis = function () {
                 case ARRAY_INIT:
                     // SAH: special case here: If we need the result of an ARRAY literal to be int, we propagate this
                     //      information into the elements. This saves us allocating space for the float array, which 
-                    //      would be copied into the int array anyhow. The generic handler at the end of this
-                    //      function takes this into account, as well.
-                    ast.children = ast.children.map(function (child) { return push(child, tEnv, isIntValue(ast) || expectInt);});
+                    //      would be copied into the int array anyhow. Same holds true the other way round, so if we have 
+                    //      an int array, but floats are expected, we propagate this on. 
+                    //      The generic handler at the end of this function takes this into account, as well.
+                    ast.children = ast.children.map(function (child) { return push(child, tEnv, isIntValue(ast) && expectInt);});
                     break;
 
                 // function application
@@ -1231,11 +1232,18 @@ RiverTrail.RangeAnalysis = function () {
             // postprocess all but LIST nodes.
             if (ast.type !== LIST) {
                 if (isIntValue(ast)) {
-                    // change type information to be int
-                    ast.typeInfo && updateToNew(ast.typeInfo, "int");
-                    // if the node one level up cannot live with int, cast to a float representation
-                    if (expectInt === false) {
-                        ast = makeCast(ast, tEnv.openCLFloatType);
+                    if (ast.type !== ARRAY_INIT) {
+                        // change type information to be int
+                        ast.typeInfo && updateToNew(ast.typeInfo, "int");
+                        // if the node one level up cannot live with int, cast to a float representation
+                        if (expectInt === false) {
+                            ast = makeCast(ast, tEnv.openCLFloatType);
+                        }
+                    } else {
+                        // SAH: special case for array literals: we propagate the double requirement to
+                        //      the elements, so those will already be doubles or CAST nodes.
+                        updateToNew(ast.typeInfo.properties.elements, "double");
+                        ast.typeInfo.updateOpenCLType();
                     }
                 } else {
                     if (expectInt) {

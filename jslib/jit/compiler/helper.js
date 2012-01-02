@@ -38,7 +38,7 @@ RiverTrail.Helper = function () {
         if (ast) {
             ast = f(ast, env);
 
-            for (field in nodeNames) {
+            for (var field in nodeNames) {
                 if (ast[nodeNames[field]]) {
                     if (ast[nodeNames[field]] instanceof Array) {
                         ast[nodeNames[field]] = ast[nodeNames[field]].map(function (x) { return traverseAst(x, f, env); });
@@ -201,6 +201,13 @@ RiverTrail.Helper = function () {
         return ast;
     };
 
+    // helper to clone the AST for function specialisation. We do not aim to deep clone here, just the 
+    // structure of the spine as created by Narcissus. All extra annotations are discarded.
+    var cloneAST = function (ast) {
+        var funAsString = wrappedPP(ast);
+        return parseFunction(funAsString);
+    }
+
     return { "traverseAst" : traverseAst,
              "wrappedPP" : wrappedPP,
              "inferPAType" : inferPAType,
@@ -210,6 +217,8 @@ RiverTrail.Helper = function () {
              "debugThrow" : debugThrow,
              "isTypedArray" : isTypedArray,
              "inferTypedArrayType" : inferTypedArrayType,
+             "cloneAST" : cloneAST,
+             "nameGen" : nameGen,
              "parseFunction" : parseFunction };
 
 }();

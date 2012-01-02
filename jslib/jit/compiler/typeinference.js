@@ -730,11 +730,9 @@ RiverTrail.Typeinference = function () {
         var fun;
         for (var name in this.bindings) {
             fun = this.bindings[name];
-            if (fun.typeInfo) {
-                // this is actually called somewhere, so we keep it
-                // normalize the name (global functions might have a different name than what they were bound to!)
-                fun.name = name;
-                result.push(fun);
+            if (fun.specStore) {
+                // this is actually called somewhere, so we keep it and all its specialisations
+                fun.specStore.forEach(function (f) { result.push(f); });
             }
         }
         return result;
@@ -752,6 +750,13 @@ RiverTrail.Typeinference = function () {
         }
 
         switch (ast.type) {
+            case CAST:
+            case TOINT32:
+                // These can only be encountered during a function specialisation. As we recompute
+                // them, we can safely scrap those here.
+                ast = ast.children[0];
+                // fallthrough!
+                
             case SCRIPT:
                 // create a new type environment for local bindings
                 tEnv = new TEnv(tEnv);
@@ -1036,7 +1041,9 @@ RiverTrail.Typeinference = function () {
                     case IDENTIFIER: // function call
                         // grab argument types
                         ast.children[1] = drive(ast.children[1], tEnv, fEnv);
-                        var argT = tEnv.accu;
+                        // we clone the argument types here to ensure that later type
+                        // upgrades do not propagate to function signatures!
+                        var argT = tEnv.accu.map(function (t) { return t.clone();});
                         tEnv.resetAccu();
                         // grab function
                         var fun = fEnv.lookup(ast.children[0].value);
@@ -1056,15 +1063,27 @@ RiverTrail.Typeinference = function () {
                                reportError("unknown function `" + ast.children[0].value + "`", ast);
                            }
                         }
+                        var resType = undefined;
+                        var rootFun = fun;
                         if (fun.typeInfo) {
-                            // this function has been called before. If the types match, we are fine. Otherwise we have
-                            // to create a specialised version. The latter is a TODO;
-                            if (argT.some(function(t, idx) { return !t.equals(fun.typeInfo.parameters[idx]); })) {
-                                reportBug("specialisation required :(", ast);
-                            } else {
-                                tEnv.accu = fun.typeInfo.result;
+                            // this function has been called before. Try and find the correct specialisation
+                            var found;
+                            for (var cnt = 0; cnt < fun.specStore.length; cnt++) {
+                                if (argT.every(function(t, idx) { return t.equals(fun.specStore[cnt].typeInfo.parameters[idx]);})) {
+                                    found = fun.specStore[idx].fun;
+                                    break;
+                                }
                             }
-                        } else {
+                            if (found) {
+                                resType = found.typeInfo.result;
+                                fun = found;
+                            } else {
+                                // specialize
+                                fun = RiverTrail.Helper.cloneAST(fun);
+                            }
+                        } 
+                        
+                        if (!resType) {
                             // create a new function frame
                             var innerTEnv = new TEnv(tEnv, true);
                             // add parameter / value type mapping
@@ -1073,9 +1092,16 @@ RiverTrail.Typeinference = function () {
                             // go derive
                             fun.body = drive(fun.body, innerTEnv, fEnv);
                             fun.typeInfo = new TFunction(argT, innerTEnv.functionResult);
+                            // initialize specialisation store
+                            if (rootFun.specStore === undefined) {
+                                rootFun.specStore = [];
+                            }
+                            rootFun.specStore.push(fun);
                             debug && console.log(fun.name + " has type " + fun.typeInfo.toString());
-                            tEnv.accu = innerTEnv.functionResult;
+                            resType = innerTEnv.functionResult;
                         }
+                        tEnv.accu = resType;
+                        ast.children[0].value = fun.name;
                         break;
 
                     default:
@@ -1088,7 +1114,7 @@ RiverTrail.Typeinference = function () {
                 left = [];
                 for (var idx in ast.children) {
                     ast.children[idx] = drive(ast.children[idx], tEnv, fEnv);
-                    left.push(tEnv.accu);
+                    left.push(tEnv.accu.clone());
                 }
                 tEnv.accu = left;
                 break;
@@ -1180,7 +1206,7 @@ RiverTrail.Typeinference = function () {
 
             case DEBUGGER:  // whatever this is...
             default:
-                throw "unhandled node type in analysis: " + ast.type;
+                throw "unhandled node type in analysis: " + ast.type + " is " + RiverTrail.Helper.wrappedPP(ast);
         }
         ast.typeInfo = tEnv.accu;
         debug && ast.typeInfo && console.log(Narcissus.decompiler.pp(ast) + " has type " + ast.typeInfo.toString());
