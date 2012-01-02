@@ -1640,10 +1640,13 @@ var ParallelArray = function () {
     
     // toString()   Converts an array to a string, and returns the result
     var toString = function toString (arg1) {
-        if (useFF4Interface && isTypedArray(this.data)) {
-            return Array.prototype.reduce.call(this.data, function (res, element) { return res + " " + element; }, "[") + " ]";
+        var max = this.shape.reduce(function (v, p) { return v*p; }) + this.offset;
+        var res = "[";
+        for (var pos = this.offset; pos < max; pos++) {
+            res += ((pos === this.offset) ? "" : ", ") + this.data[pos];
         }
-        return this.data.toString();
+        res += "]";
+        return res;
     };
     
     // unshift()    Adds new elements to the beginning of an array, and returns the new length
