@@ -149,8 +149,18 @@ RiverTrail.Typeinference = function () {
     };
     TLp.getOpenCLSize = function getOpenCLSize() {
         switch (this.OpenCLType) {
+            case "signed char":
+            case "unsigned char":
+            case "unsigned /* clamped */ char":
+                return 1;
+                break;
+            case "short":
+            case "unsigned short":
+                return 2;
+                break;
             case "float":
             case "int":
+            case "unsigned int":
                 return 4;
                 break;
             case "double":
