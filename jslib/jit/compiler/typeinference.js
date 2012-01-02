@@ -983,10 +983,27 @@ RiverTrail.Typeinference = function () {
                 ast.children[1] = drive(ast.children[1], tEnv, fEnv);
                 tEnv.accu.isArithType() || reportError("index not a number", ast);
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
-                tEnv.accu.isObjectType("Array") || reportError("Index operator applied to non array value", ast);
-                left = tEnv.accu.properties.elements.clone();
-                left.registerFlow(tEnv.accu);
-                tEnv.accu = left;
+                if (tEnv.accu.isObjectType("Array")) {
+                    left = tEnv.accu.properties.elements.clone();
+                    left.registerFlow(tEnv.accu);
+                    tEnv.accu = left;
+                } else if (tEnv.accu.isObjectType("ParallelArray")) {
+                    if (tEnv.accu.properties.shape.length === 1) {
+                        // result is a scalar
+                        left = tEnv.accu.properties.elements.clone();
+                        left.registerFlow(tEnv.accu);
+                    } else {
+                        // result is a ParallelArray again
+                        left = new TObject(TObject.PARALLELARRAY);
+                        left.properties.shape = tEnv.accu.properties.shape.slice(idxLen);
+                        left.properties.addressSpace = tEnv.accu.properties.addressSpace;
+                        left.properties.elements = tEnv.accu.properties.elements.clone();
+                        left.updateOpenCLType();
+                    }
+                    tEnv.accu = left;
+                } else {
+                    reportError("Index operator applied to non array value", ast);
+                }
                 break;
 
             case ARRAY_INIT:
