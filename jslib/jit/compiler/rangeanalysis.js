@@ -902,6 +902,7 @@ RiverTrail.RangeAnalysis = function () {
         }
 
         function updateToNew(type, target) {
+            debug && console.log("updating " + type.toString() + " to " + target);
             if (type.isNumberType()) {
                 type.OpenCLType = target;
             } else if (type.isObjectType("Array") || type.isObjectType("ParallelArray")) {
@@ -944,8 +945,8 @@ RiverTrail.RangeAnalysis = function () {
                             var typeInfo = ast.symbols.lookup(decl.value).type;
                             var makeInt = false;
                             if (rangeInfo) { // dead variables may not carry any range information
-                                if (rangeInfo instanceof Array) {
-                                    makeInt = rangeInfo.every( function (info) { return info.isInt; });
+                                if (rangeInfo instanceof RangeArray) {
+                                    makeInt = rangeInfo.isInt();
                                 } else {
                                     makeInt = rangeInfo.isInt;
                                 }
