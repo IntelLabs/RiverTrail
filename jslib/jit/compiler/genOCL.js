@@ -112,10 +112,6 @@ RiverTrail.compiler.codeGen = (function() {
             }
 
             s = s + formalsTypes[i].OpenCLType + " " + formalsNames[i];
-            // array arguments have an extra offset qualifier
-            if (formalsTypes[i].isObjectType("ParallelArray")) {
-                s = s + ", int " + formalsNames[i] + "__offset"; //offset
-            }
         }
         return s;
     };
@@ -281,13 +277,13 @@ RiverTrail.compiler.codeGen = (function() {
             if (formals !== "") {
                 s = s + ", ";
             }
-            s = s + returnType + " retVal, int _writeoffset ";
+            s = s + returnType + " retVal";
         }
 
         s = s + " ) ";
-        s = s + " { ";// Generate the statements;
-        // Add code to allocate array that is to be returned...
-        s = s + oclStatements(ast.body);
+        s = s + " { ";// function body
+        s = s + " const int _writeoffset = 0; "; // add a write offset to fool the rest of code generation
+        s = s + oclStatements(ast.body); // Generate the statements;
         s = s + " } ";
         
         calledScope.exit(previousCalledScope);
@@ -916,12 +912,12 @@ RiverTrail.compiler.codeGen = (function() {
             } else { // It is not a method call.
                 var actuals = "";
                 actuals = oclExpression(ast.children[1]);
-                s = s + ast.children[0].value + "(" + oclExpression(ast.children[1]);
+                s = s + ast.children[0].value + "(" + actuals;
                 if (!(ast.typeInfo.isScalarType())) { 
                     if (actuals !== "") {
                         s = s + ", ";
                     }
-                    s = s + ast.allocatedMem + ", 0"; // 0 is an offset so that the code used in the kernel that needs it can be reused.
+                    s = s + ast.allocatedMem;
                 }
                 s = s + ")";
             }
