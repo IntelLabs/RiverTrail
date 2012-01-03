@@ -1029,7 +1029,7 @@ RiverTrail.Typeinference = function () {
                 }
                 left.reduce(function(a,b) { a.equals(b) || reportError("inhomogeneous element types in array initialiser", ast); return a;});
                 tEnv.accu = new TObject("Array");
-                tEnv.accu.properties.elements = left[0];
+                tEnv.accu.properties.elements = left[0].clone();
                 tEnv.accu.properties.shape = [ast.children.length];
                 tEnv.accu.properties.addressSpace = "__private";
                 tEnv.accu.updateOpenCLType();

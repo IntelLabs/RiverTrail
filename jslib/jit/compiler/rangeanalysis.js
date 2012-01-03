@@ -255,6 +255,15 @@ RiverTrail.RangeAnalysis = function () {
     RAp.isInt = function isInt() {
         return this._store.every( function (val) { return (val instanceof RangeArray) ? val.isInt() : val.isInt;});
     };
+    RAp.setInt = function setInt(other) {
+        this._store.forEach( function (mine, idx) { 
+                                 if (mine instanceof RangeArray) {
+                                     mine.setInt(other._store[idx]);
+                                 } else {
+                                     mine.isInt = other._store[idx].isInt;
+                                 }
+                             });
+    };
     RAp.toString = function toString() {
         var result = "[[";
         for (var cnt = 0; cnt < this._store.length; cnt++) {
@@ -262,7 +271,9 @@ RiverTrail.RangeAnalysis = function () {
                 result += ", ";
             result += this._store[cnt].toString();
         }
-        result += "]]";
+        result += "]<";
+        result += this.isInt() ? "int" : "fp";
+        result += ">]";
         return result;
     };
     
@@ -398,7 +409,11 @@ RiverTrail.RangeAnalysis = function () {
         if (mode) {
             ast.rangeInfo = range;
         } else if (range) {
-            ast.rangeInfo.isInt = range.isInt;
+            if (ast.rangeInfo instanceof RangeArray) {
+                ast.rangeInfo.setInt(range);
+            } else {
+                ast.rangeInfo.isInt = range.isInt;
+            }
         }
     }
 
@@ -1240,7 +1255,7 @@ RiverTrail.RangeAnalysis = function () {
                         if (expectInt === false) {
                             ast = makeCast(ast, tEnv.openCLFloatType);
                         }
-                    } else {
+                    } else if (expectInt === false) {
                         // SAH: special case for array literals: we propagate the double requirement to
                         //      the elements, so those will already be doubles or CAST nodes.
                         updateToNew(ast.typeInfo.properties.elements, "double");
