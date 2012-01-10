@@ -231,11 +231,16 @@ RiverTrail.RangeAnalysis = function () {
     };
     var RAp = RangeArray.prototype;
     RAp.get = function (i) { return this._store[i];};
+    RAp.set = function (i,v) { this._store[i] = v; };
     RAp.map = function (f) {
-        return function (val) {
+        return function selfF (val) {
             var result = new RangeArray();
             for (var cnt = 0; cnt < this._store.length; cnt++) {
-                result._store[cnt] = f.call(this._store[cnt], val._store[cnt]);
+                if (this._store[cnt] instanceof RangeArray) {
+                    result._store[cnt] = selfF.call(this._store[cnt], val._store[cnt]);
+                } else {
+                    result._store[cnt] = f.call(this._store[cnt], val._store[cnt]);
+                }
             }
             return result;
         };
@@ -248,15 +253,22 @@ RiverTrail.RangeAnalysis = function () {
         result._store = this._store.map(function (val) { return val.clone();});
         return result;
     };
+    RAp.covers = function (other) {
+        if (other instanceof RangeArray) {
+            return this._store.every(function (a, idx) { return a.covers(other._store[idx]);});
+        } else {
+            return false;
+        }
+    };
     RAp.isInt = function isInt() {
         return this._store.every( function (val) { return (val instanceof RangeArray) ? val.isInt() : val.isInt;});
     };
-    RAp.setInt = function setInt(other) {
+    RAp.setInt = function setInt(other, union) {
         this._store.forEach( function (mine, idx) { 
                                  if (mine instanceof RangeArray) {
-                                     mine.setInt(other._store[idx]);
+                                     mine.setInt(other._store[idx], union);
                                  } else {
-                                     mine.isInt = other._store[idx].isInt;
+                                     mine.isInt = other._store[idx].isInt && (!union || mine.isInt);
                                  }
                              });
     };
@@ -291,10 +303,12 @@ RiverTrail.RangeAnalysis = function () {
         if (current) {
             if (current instanceof RangeArray) {
                 (range instanceof RangeArray) || reportBug("update of array range with scalar range?");
-                this.bindings[name] = new RangeArray(current, function (val, idx) { return range.get(idx).clone(); });
+                this.bindings[name] = range.clone();
+                this.bindings[name].setInt(current, true);
             } else {
                 !(range instanceof RangeArray) || reportBug("update of scalar range with array range?");
                 this.bindings[name] = range.clone();
+                this.bindings[name].isInt = range.isInt && current.isInt;
             }
         } else {
             this.bindings[name] = range;
@@ -405,10 +419,12 @@ RiverTrail.RangeAnalysis = function () {
         if (mode) {
             ast.rangeInfo = range;
         } else if (range) {
-            if (ast.rangeInfo instanceof RangeArray) {
-                ast.rangeInfo.setInt(range);
-            } else {
-                ast.rangeInfo.isInt = range.isInt;
+            if (ast.rangeInfo !== undefined) {
+                if (ast.rangeInfo instanceof RangeArray) {
+                 ast.rangeInfo.setInt(range);
+                } else {
+                    ast.rangeInfo.isInt = range.isInt;
+                }
             }
         }
     }
@@ -596,9 +612,10 @@ RiverTrail.RangeAnalysis = function () {
                 drive(ast.children[0], varEnv, doAnnotate, predC);
                 var thenVE = new VarEnv(varEnv);
                 thenVE.applyConstraints(predC);
-                drive(ast.children[1], thenVE, doAnnotate); // we do not forward constraints here, nor collect new ones, as we do 
-                drive(ast.children[2], varEnv, doAnnotate); // not know which branch will be taken
+                left = drive(ast.children[1], thenVE, doAnnotate); // we do not forward constraints here, nor collect new ones, as we do 
+                right = drive(ast.children[2], varEnv, doAnnotate); // not know which branch will be taken
                 varEnv.merge(thenVE);
+                result = left.union(right);
                 break;
                 
             // binary operations on all literals
@@ -927,6 +944,7 @@ RiverTrail.RangeAnalysis = function () {
         }
 
         function makeCast(ast, type) {
+            debug && console.log("casting " + RiverTrail.Helper.wrappedPP(ast) + " to " + type);
             var result = new Narcissus.parser.Node(ast.tokenizer);
             result.type = CAST;
             result.typeInfo = ast.typeInfo.clone();
@@ -1258,12 +1276,13 @@ RiverTrail.RangeAnalysis = function () {
                         ast.typeInfo.updateOpenCLType();
                     }
                 } else {
-                    if (expectInt) {
+                    if (expectInt && !validIntRepresentation(ast.typeInfo.OpenCLType)) {
                         if (ast.type !== ARRAY_INIT) {
                             var newAst = new Narcissus.parser.Node(ast.tokenizer);
                             newAst.type = TOINT32;
                             newAst.typeInfo = ast.typeInfo.clone();
                             updateToNew(newAst.typeInfo, "int");
+                            newAst.rangeInfo = new Range(undefined, undefined, true); // better be conservative here
                             newAst.children[0] = ast;
                             ast = newAst;
                         } else {
