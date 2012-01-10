@@ -53,6 +53,8 @@ RiverTrail.InferBlockFlow = function () {
     var reportError = RiverTrail.Helper.reportError;
     var reportBug = RiverTrail.Helper.reportBug;
 
+    var findSelectionRoot = RiverTrail.Helper.findSelectionRoot;
+
     // set for remembering identifiers
     var IdSet = function () {
         this._store = {};
@@ -243,11 +245,11 @@ RiverTrail.InferBlockFlow = function () {
                         infer(ast.children[0], ins, outs, locals);
                         infer(ast.children[1], ins, outs, locals);
                         // a[expr_i] = expr
-                        // today, a needs to be an identifier. We walked through it once, which tags
+                        // today, a needs to be a nested selection. We walked through it once, which tags
                         // it as an IN. Additionally, it now becomes an out. It, however, does not
                         // become a local, as it is not _fully_ locally defined!
-                        locals.union(ast.children[0].value);
-                        outs.union(ast.children[0].value);
+                        outs.union(findSelectionRoot(ast.children[0]).value);
+                        break;
                     case DOT:
                         // not allowed for now as object cannot be mutated :-)
                         // we should never get here.

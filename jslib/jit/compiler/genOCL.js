@@ -62,6 +62,8 @@ RiverTrail.compiler.codeGen = (function() {
     var reportError = RiverTrail.Helper.reportError;
     var reportBug = RiverTrail.Helper.reportBug;
 
+    var findSelectionRoot = RiverTrail.Helper.findSelectionRoot;
+
     // If you are working inside the top level of actual kernel function then scope is empty.
     // If you generating code for a called function then this will be true.
     var calledScope = function () {
@@ -1154,9 +1156,11 @@ RiverTrail.compiler.codeGen = (function() {
                         break;
                     case INDEX:
                         // array update <expr>[iv] = expr
-                        // 1) check that iv is a number type
-                        // 2) figure out what <expr> is. Could be another selection
-                        reportBug("Array selection on LHS is a todo");
+                        // make sure that <expr> is in the __private address space. We catch it this late just for
+                        // prototyping convenience. Could go anywhere after TI.
+                        (findSelectionRoot(ast.children[0]).typeInfo.properties.addressSpace !== "__global") || reportError("global arrays are immutable", ast);
+                        
+                        s = s + "((" + oclExpression(ast.children[0]) + ")" + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")";
                         break;
                     case DOT:
                         // object property update.

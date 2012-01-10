@@ -25,13 +25,13 @@
  *
  */
 
-"use strict";
-
 if (RiverTrail === undefined) {
     var RiverTrail = {};
 }
 
 RiverTrail.Helper = function () {
+    eval(Narcissus.definitions.consts);
+
     var nodeNames = ["children", "body", "setup", "condition", "update", "thenPart", "elsePart", "expression", "initializer"];
 
     function traverseAst (ast, f, env) {
@@ -215,6 +215,20 @@ RiverTrail.Helper = function () {
         throw "Bug: " + msg; // could be more elaborate
     }
 
+    // helper to follow a selection chain to the root identifier
+    function findSelectionRoot(ast) {
+        switch (ast.type) {
+            case INDEX:
+                return findSelectionRoot(ast.children[0]);
+                break; // superfluous, I know
+            case IDENTIFIER:
+                return ast;
+                break; // superfluous, I know
+            default:
+                throw "malformed lhs sel expression in assignment";
+        }
+    };
+
     return { "traverseAst" : traverseAst,
              "wrappedPP" : wrappedPP,
              "inferPAType" : inferPAType,
@@ -229,6 +243,7 @@ RiverTrail.Helper = function () {
              "parseFunction" : parseFunction,
              "reportError" : reportError,
              "reportBug" : reportBug,
+             "findSelectionRoot" : findSelectionRoot
     };
 
 }();
