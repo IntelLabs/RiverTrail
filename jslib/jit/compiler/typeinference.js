@@ -45,12 +45,8 @@ RiverTrail.Typeinference = function () {
     //
     // error reporting
     //
-    function reportError(msg, t) {
-        throw "Error: " + msg + " <" + (t ? Narcissus.decompiler.pp(t) : "no context") + ">"; // could be more elaborate
-    }
-    function reportBug(msg, t) {
-        throw "Bug: " + msg; // could be more elaborate
-    }
+    var reportError = RiverTrail.Helper.reportError;
+    var reportBug = RiverTrail.Helper.reportBug;
 
     //
     // Base prototype shared by all type structures

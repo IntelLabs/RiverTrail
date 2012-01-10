@@ -58,6 +58,10 @@ RiverTrail.compiler.codeGen = (function() {
     eval(definitions.consts);
     eval(RiverTrail.definitions.consts);
     
+    // import error reporting
+    var reportError = RiverTrail.Helper.reportError;
+    var reportBug = RiverTrail.Helper.reportBug;
+
     // If you are working inside the top level of actual kernel function then scope is empty.
     // If you generating code for a called function then this will be true.
     var calledScope = function () {

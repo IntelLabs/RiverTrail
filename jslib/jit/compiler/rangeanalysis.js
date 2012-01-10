@@ -40,12 +40,8 @@ RiverTrail.RangeAnalysis = function () {
     //
     // error reporting
     //
-    function reportError(msg, t) {
-        throw "Error: " + msg + " <" + (t ? RiverTrail.Helper.wrappedPP(t) : "no context") + ">"; // could be more elaborate
-    }
-    function reportBug(msg, t) {
-        throw "Bug: " + msg; // could be more elaborate
-    }
+    var reportError = RiverTrail.Helper.reportError;
+    var reportBug = RiverTrail.Helper.reportBug;
 
     // 
     // Environment to encode constraints on identifiers. A constraint can either be a single 2-element

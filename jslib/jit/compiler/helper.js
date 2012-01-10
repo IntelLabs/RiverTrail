@@ -208,6 +208,13 @@ RiverTrail.Helper = function () {
         return parseFunction(funAsString);
     }
 
+    function reportError(msg, t) {
+        throw "Error: " + msg + " <" + (t ? wrappedPP(t) : "no context") + ">"; // could be more elaborate
+    }
+    function reportBug(msg, t) {
+        throw "Bug: " + msg; // could be more elaborate
+    }
+
     return { "traverseAst" : traverseAst,
              "wrappedPP" : wrappedPP,
              "inferPAType" : inferPAType,
@@ -219,6 +226,9 @@ RiverTrail.Helper = function () {
              "inferTypedArrayType" : inferTypedArrayType,
              "cloneAST" : cloneAST,
              "nameGen" : nameGen,
-             "parseFunction" : parseFunction };
+             "parseFunction" : parseFunction,
+             "reportError" : reportError,
+             "reportBug" : reportBug,
+    };
 
 }();

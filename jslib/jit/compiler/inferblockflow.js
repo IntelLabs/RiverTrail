@@ -50,12 +50,8 @@ RiverTrail.InferBlockFlow = function () {
     //
     // error reporting
     //
-    function reportError(msg, t) {
-        throw "Error: " + msg + " <" + (t ? RiverTrail.Helper.wrappedPP(t) : "no context") + ">"; // could be more elaborate
-    }
-    function reportBug(msg, t) {
-        throw "Bug: " + msg; // could be more elaborate
-    }
+    var reportError = RiverTrail.Helper.reportError;
+    var reportBug = RiverTrail.Helper.reportBug;
 
     // set for remembering identifiers
     var IdSet = function () {
