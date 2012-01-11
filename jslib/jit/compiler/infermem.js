@@ -64,7 +64,7 @@ RiverTrail.InferMem = function () {
             if (other._store[mem] !== null) {
                 // this entry has a set of aliases attached to it, so copy
                 this._store[mem] = new MemSet();
-                this._store[mem].union(other.store[mem]);
+                this._store[mem].union(other._store[mem]);
             } else {
                 this.add(mem);
             }
