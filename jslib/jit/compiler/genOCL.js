@@ -314,7 +314,6 @@ RiverTrail.compiler.codeGen = (function() {
             "localResultName": " tempResult",
             // The body goes here and return uses this to figure out what to return;
             "resultAssignLhs": " retVal[_writeoffset] = ",
-            "returnType": "double",// This may be altered based on the type of the "this" pa.
             "resultAssignRhs": " tempResult",
         },
         "combine": {
@@ -328,7 +327,6 @@ RiverTrail.compiler.codeGen = (function() {
             "localResultName": " tempResult",
             // The body goes here and return uses this to figure out what to return;
             "resultAssignLhs": " retVal[_writeoffset] = ",
-            "returnType": "double", // This may be altered based on the type of the "this" pa.
             "resultAssignRhs": " tempResult",
         },
         "comprehension": {
@@ -342,7 +340,6 @@ RiverTrail.compiler.codeGen = (function() {
             "localResultName": " tempResult",
             // The body goes here and return uses this to figure out what to return;
             "resultAssignLhs": " retVal[_writeoffset] = ",
-            "returnType": "double", // This may be altered based on the type of the "this" pa.
             "resultAssignRhs": " tempResult",
         },
         "comprehensionScalar": {
@@ -356,7 +353,6 @@ RiverTrail.compiler.codeGen = (function() {
             "localResultName": " tempResult",
             // The body goes here and return uses this to figure out what to return;
             "resultAssignLhs": " retVal[_writeoffset] = ",
-            "returnType": "double", // This may be altered based on the type of the "this" pa.
             "resultAssignRhs": " tempResult",
         }
     };
@@ -451,13 +447,8 @@ RiverTrail.compiler.codeGen = (function() {
         }
         // Dump the standard output parameters.
         // Note that result.openCLType is the type of the result of a single iteration!
-         if ((construct === "combine") || (construct === "map")) {
-             // combine and map inherit the type of this!
-             boilerplate.returnType = RiverTrail.Helper.stripToBaseType(thisSymbolType.OpenCLType);
-             s = s + "__global " + boilerplate.returnType + "* retVal";
-         } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {      
-             boilerplate.returnType = RiverTrail.Helper.stripToBaseType(funDecl.typeInfo.result.OpenCLType);
-             s = s + "__global " + boilerplate.returnType + "* retVal"; 
+         if ((construct === "combine") || (construct === "map") || (construct === "comprehension") || (construct === "comprehensionScalar")) {      
+             s = s + "__global " + funDecl.typeInfo.result.OpenCLType + (funDecl.typeInfo.result.isScalarType() ? "*" : "") + " retVal"; 
         } else {
              throw "unimplemented construct " + construct;
         }
@@ -611,13 +602,12 @@ RiverTrail.compiler.codeGen = (function() {
         if (rhs.typeInfo.isScalarType()) {
             // scalar result
             s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-            s = s + boilerplate.resultAssignLhs + "("+boilerplate.returnType+")"+boilerplate.resultAssignRhs+";"; // Need to add cast here.....
+            s = s + boilerplate.resultAssignLhs + boilerplate.resultAssignRhs+";"; 
         } else {
             // vector result. We have two cases: either it is an identifier, then we do an elementwise assign.
             // or it is an array expression, in which case we generate code for each element and then assign that.
             elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
-            // elements = rhs.inferredType.dimSize.reduce(function (a,b) { return a*b;});
-            convPre = "((" + boilerplate.returnType + ") ";
+            convPre = "(";
             convPost = ")";
             while (rhs.type === CAST) {
                 // detect casts to facilitate direct assign
