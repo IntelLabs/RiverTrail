@@ -271,24 +271,26 @@ RiverTrail.compiler.codeGen = (function() {
         // Need code here to deal with array values being returned.
         s = s + " " +ast.typeInfo.result.OpenCLType + " " + ast.name;
         s = s + "("; // start param list.
-        formals = formals + genFormalParams(ast, "ignore");
+        // add extra parameter for failure propagation
+        s = s + "bool * _FAILRET";
+        formals = genFormalParams(ast, "ignore");
         if (formals !== "") {
-            s = s + formals;
+            s = s + ", " + formals;
         } // else there are no formals to output.
 
         var returnType = ast.typeInfo.result.OpenCLType;
 
-        if (!(ast.typeInfo.isScalarType())) { // This assumes it is an array.
+        if (!(ast.typeInfo.result.isScalarType())) { // This assumes it is an array.
             // If the return type of the result is an Array then a pointer to it is passed in.
-            if (formals !== "") {
-                s = s + ", ";
-            }
-            s = s + returnType + " retVal";
+            s = s + ", " + returnType + " retVal";
         }
 
         s = s + " ) ";
         s = s + " { ";// function body
         s = s + " const int _writeoffset = 0; "; // add a write offset to fool the rest of code generation
+        s = s + " bool _FAIL = 0;"; // declare local _FAIL variable for selection failures
+        s = s + " int _sel_idx_tmp;"; // tmp var required for selections
+        s = s + returnType + " " + boilerplate.localResultName + ";"; // tmp var for parking result
         s = s + oclStatements(ast.body); // Generate the statements;
         s = s + " } ";
         
@@ -312,9 +314,6 @@ RiverTrail.compiler.codeGen = (function() {
             "thisShapeLength": "const int thisShapeLength = ",
             "thisShapeDeclPre": "const int thisShapeDecl ",
             "localResultName": " tempResult",
-            // The body goes here and return uses this to figure out what to return;
-            "resultAssignLhs": " retVal[_writeoffset] = ",
-            "resultAssignRhs": " tempResult",
         },
         "combine": {
             "hasThis": true,
@@ -325,9 +324,6 @@ RiverTrail.compiler.codeGen = (function() {
             "thisShapeDeclPre": "const int thisShapeDecl ",
             // the type of the result of the elemental function goes here
             "localResultName": " tempResult",
-            // The body goes here and return uses this to figure out what to return;
-            "resultAssignLhs": " retVal[_writeoffset] = ",
-            "resultAssignRhs": " tempResult",
         },
         "comprehension": {
             "hasThis": false,
@@ -338,9 +334,6 @@ RiverTrail.compiler.codeGen = (function() {
             "thisShapeDeclPre": "const int thisShapeDecl ",
             // the type of the result of the elemental function goes here
             "localResultName": " tempResult",
-            // The body goes here and return uses this to figure out what to return;
-            "resultAssignLhs": " retVal[_writeoffset] = ",
-            "resultAssignRhs": " tempResult",
         },
         "comprehensionScalar": {
             "hasThis": false,
@@ -351,9 +344,6 @@ RiverTrail.compiler.codeGen = (function() {
             "thisShapeDeclPre": "const int thisShapeDecl ",
             // the type of the result of the elemental function goes here
             "localResultName": " tempResult",
-            // The body goes here and return uses this to figure out what to return;
-            "resultAssignLhs": " retVal[_writeoffset] = ",
-            "resultAssignRhs": " tempResult",
         }
     };
 
@@ -401,6 +391,9 @@ RiverTrail.compiler.codeGen = (function() {
         if (funDecl.value != "function") {
             throw new Error("function expected"); // we can't deal with this so execute it sequentially
         }
+
+        boilerplate = boilerplateTemplates[construct];
+
         // Dump the helper function first, c99 requires this.
         // The kernel function has now been dumped.
         // We now turn our attention to function the kernel function might have called.
@@ -408,8 +401,6 @@ RiverTrail.compiler.codeGen = (function() {
         for (i=0; i<ast.body.funDecls.length; i++) {
             s = s + genCalledFunction(ast.body.funDecls[i]);            
         }
-
-        boilerplate = boilerplateTemplates[construct];
 
         s = s + "__kernel void " + funDecl.name + "(";
 
@@ -552,7 +543,10 @@ RiverTrail.compiler.codeGen = (function() {
         rhs = ast.value; // right hand side
         if (rhs.typeInfo.isScalarType()) {
             // scalar result
-            s = " return " + oclExpression(rhs) + ";";
+            // propagate failure code
+            s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+            s = s + "if (_FAIL) {*_FAILRET = 1;}";
+            s = s + " return " + boilerplate.localResultName + ";";
         } else {            
             // vector result. We have two cases: either it is an identifier, then we do an elementwise assign.
             // or it is an array expression, in which case we generate code for each element and then assign that.
@@ -572,14 +566,16 @@ RiverTrail.compiler.codeGen = (function() {
                 for (i = 0; i < elements; i++) {
                     s = s + "retVal[_writeoffset + " + i + "] = " + convPre + oclExpression(rhs.children[i]) + convPost + ";";
                 }
-                s = s + "return retVal; }";
+                s = s + "}";
             } else {
                 // arbitrary expression
                 s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                 s = s + "{ int _writeback_idx = 0; for (;_writeback_idx < " + elements + "; _writeback_idx++) { ";
                 s = s + " retVal[_writeoffset + _writeback_idx] = " + convPre + "tempResult[_writeback_idx]" + convPost + ";",
-                s = s + "} return retVal;}";
+                s = s + "}";
             }
+            s = s + "if (_FAIL) {*_FAILRET = 1;}";
+            s = s + "return retVal;";
         } // end else code that returns a non-scalar
         return s;
     }
@@ -602,7 +598,7 @@ RiverTrail.compiler.codeGen = (function() {
         if (rhs.typeInfo.isScalarType()) {
             // scalar result
             s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-            s = s + boilerplate.resultAssignLhs + boilerplate.resultAssignRhs+";"; 
+            s = s + "retVal[_writeoffset] = " + boilerplate.localResultName + ";"; 
         } else {
             // vector result. We have two cases: either it is an identifier, then we do an elementwise assign.
             // or it is an array expression, in which case we generate code for each element and then assign that.
@@ -908,12 +904,9 @@ RiverTrail.compiler.codeGen = (function() {
             } else { // It is not a method call.
                 var actuals = "";
                 actuals = oclExpression(ast.children[1]);
-                s = s + ast.children[0].value + "(" + actuals;
+                s = s + ast.children[0].value + "( &_FAIL" + (actuals !== "" ? ", " : "") + actuals;
                 if (!(ast.typeInfo.isScalarType())) { 
-                    if (actuals !== "") {
-                        s = s + ", ";
-                    }
-                    s = s + ast.allocatedMem;
+                    s = s + "," + ast.allocatedMem;
                 }
                 s = s + ")";
             }
