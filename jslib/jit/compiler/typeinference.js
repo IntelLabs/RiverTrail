@@ -1273,11 +1273,12 @@ RiverTrail.Typeinference = function () {
             debug && console.log("FLOW: processing " + current.toString() + " with _flow " + current._flow);
             var flowInfo = current._flow;
             delete current._flow;
+            current._flowVisited = true;
             if (current.flowTo !== undefined) {
                 current.flowTo.forEach(function (val) {
                     var flowIn = (val._flow) ? flowJoin(flowInfo, val._flow) : flowInfo;
                     var flowOut = flowPass(val, flowIn);
-                    if (flowOut) {
+                    if (flowOut || !val._flowVisited) {
                         if (!val._flow) {
                             workset.push(val);
                             debug && console.log("FLOW: enqueued " + val.toString() + " with flowOut " + flowOut);
@@ -1286,6 +1287,12 @@ RiverTrail.Typeinference = function () {
                     }});
             }
         }
+        roots.forEach(function erase(x) {
+            if (x._flowVisited) {
+                delete x._flowVisited;
+                x.flowTo !== undefined && x.flowTo.forEach(erase);
+            }
+        });
     }
 
     function analyze(ast, pa, construct, rank, extraArgs, lowPrecision) {
@@ -1391,7 +1398,7 @@ RiverTrail.Typeinference = function () {
                         return "__private";
                     } else {
                         debug && console.log("address space remains " + val.properties.addressSpace);
-                        return val.properties.addressSpace;
+                        return false;
                     }
                 }
                 return false;
