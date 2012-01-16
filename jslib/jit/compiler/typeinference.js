@@ -477,6 +477,11 @@ RiverTrail.Typeinference = function () {
                     type = new TLiteral(TLiteral.NUMBER);
                     break;
 
+				case "random":
+					argtypes.length === 0 || reportError("too many arguments for Math." + name, ast);
+                    type = new TLiteral(TLiteral.NUMBER);
+				    break;
+
                 default:
                     reportError("Method `" + name + "` of global Math object not supported", ast);
             }
@@ -1141,9 +1146,19 @@ RiverTrail.Typeinference = function () {
                 reportError("try/throw/catch/finally not yet implemented", ast);
                 break;
             case BREAK:
+				//console.log("BREAK HERE");
+				//tEnv.accu = "break;";
+				//break;
+                reportError("break not yet implemented", ast);
+				break;
             case CONTINUE:
+				// JS: This is probably incorrect
+				//console.log("CONTINUE HERE");
+				//tEnv.accu = "continue;";
+                reportError("continue not yet implemented", ast);
+				break;
             case LABEL:
-                reportError("break/continure/labels not yet implemented", ast);
+                reportError("break/continure2/labels not yet implemented", ast);
                 break;
             case YIELD:
             case GENERATOR:

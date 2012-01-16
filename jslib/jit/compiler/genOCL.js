@@ -607,32 +607,56 @@ RiverTrail.compiler.codeGen = (function() {
             s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
             s = s + boilerplate.resultAssignLhs + "("+boilerplate.returnType+")"+boilerplate.resultAssignRhs+";"; // Need to add cast here.....
         } else {
-            // vector result. We have two cases: either it is an identifier, then we do an elementwise assign.
-            // or it is an array expression, in which case we generate code for each element and then assign that.
-            elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
-            // elements = rhs.inferredType.dimSize.reduce(function (a,b) { return a*b;});
-            convPre = "((" + boilerplate.returnType + ") ";
-            convPost = ")";
-            while (rhs.type === CAST) {
-                // detect casts to facilitate direct assign
-                convPre = convPre + "((" + rhs.typeInfo.OpenCLType + ")";
-                convPost = ")" + convPost;
-                rhs = rhs.children[0];
-            }
-            if (rhs.type === ARRAY_INIT) {
-                // inline array expression, do direct write
-                s = s + "{"; 
-                for (i = 0; i < elements; i++) {
-                    s = s + "retVal[_writeoffset + " + i + "] = " + convPre + oclExpression(rhs.children[i]) + convPost + ";";
-                }
-                s = s + "}";
-            } else {
-                // arbitrary expression
-                s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-                s = s + "{ int _writeback_idx = 0; for (;_writeback_idx < " + elements + "; _writeback_idx++) { ";
-                s = s + " retVal[_writeoffset + _writeback_idx] = " + convPre + "tempResult[_writeback_idx]" + convPost + ";",
-                s = s + "}}";
-            }
+			// JS: TODO Check the right casts are produced.
+			if(1) {
+				var source = rhs;
+				var sourceType = source.typeInfo;
+				var sourceShape = sourceType.getOpenCLShape();
+				var sourceRank = sourceShape.length;
+				var elemRank = ast.typeInfo.getOpenCLShape().length;
+				s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+				var maxDepth = sourceShape.length;
+				var i; var idx; var indexString = ""; var post_parens = "";
+				s += " int _writeback_idx = 0 ;";
+				for(i =0 ;i<maxDepth;i++) {
+					idx = "_idx" + i;
+					s += " { int " + idx + ";";
+					s += "for (" + idx + "=0; " + idx + " < " + sourceShape[i] + "; " + idx + "++) {"; 
+					indexString += "[" + idx + "]";
+					post_parens += "}}";
+				}
+				s += " retVal[_writeoffset + (_writeback_idx++)]  = " + boilerplate.localResultName + indexString + ";" + post_parens;
+			}
+
+			// This else block should go away after the above if block is verified
+			else {
+				// vector result. We have two cases: either it is an identifier, then we do an elementwise assign.
+				// or it is an array expression, in which case we generate code for each element and then assign that.
+				elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
+            	//elements = rhs.inferredType.dimSize.reduce(function (a,b) { return a*b;});
+            	convPre = "((" + boilerplate.returnType + ") ";
+            	convPost = ")";
+            	while (rhs.type === CAST) {
+					// detect casts to facilitate direct assign
+					convPre = convPre + "((" + rhs.typeInfo.OpenCLType + ")";
+                	convPost = ")" + convPost;
+                	rhs = rhs.children[0];
+            	}
+            	if (rhs.type === ARRAY_INIT) {
+					// inline array expression, do direct write
+                	s = s + "{"; 
+                	for (i = 0; i < elements; i++) {
+						s = s + "retVal[_writeoffset + " + i + "] = " + convPre + oclExpression(rhs.children[i]) + convPost + ";";
+                	}
+                	s = s + "}";
+            	} else {
+                	// arbitrary expression
+                	s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+                	s = s + "{ int _writeback_idx = 0; for (;_writeback_idx < " + elements + "; _writeback_idx++) { ";
+                	s = s + " retVal[_writeoffset + _writeback_idx] = " + convPre + "tempResult[_writeback_idx]" + convPost + ";",
+                	s = s + "}}";
+            	}
+			}
         }
         s = s + "if (_FAIL) {*_FAILRET = 1;}";
         s = s + " return; ";
@@ -765,19 +789,36 @@ RiverTrail.compiler.codeGen = (function() {
         var sourceShape = sourceType.getOpenCLShape();
         var sourceRank = sourceShape.length;
         var elemRank = ast.typeInfo.getOpenCLShape().length;
+		var isParallelArray = (sourceType.isObjectType("ParallelArray"));
+		var isGlobal = (sourceType.properties.addressSpace === "__global");
         if (elemRank !== 0) {
-            // The result is a pointer to a sub dimension.
-            s = s + "( &";
+				if(isParallelArray || isGlobal) {
+		            // The result is a pointer to a sub dimension.
+        		    s = s + "( &";
+				}
+				else {
+					s = s + "(";
+				}
         }
         elemSize = ast.typeInfo.getOpenCLShape().reduce( function (p,n) { return p*n;}, 1);
-        s = s + " ( " + oclExpression(source) + "[0 ";
+		if(isParallelArray || isGlobal) {
+			s = s + " ( " + oclExpression(source) + "[0 ";
+		}
+		else {
+			s = s + oclExpression(source) ;
+		}
 
         stride = elemSize;
         
         if (arrayOfIndices.type !== LIST) {
             // we have a single scalar index from an INDEX op
             rangeInfo = arrayOfIndices.rangeInfo;
-            s = s + " + " + stride + " * ("+wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ")";
+			if(isParallelArray || isGlobal) {
+				s = s + " + " + stride + " * ("+wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ")";
+			}
+			else {
+				s = s + "[" + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + "]";
+			}
         } else {
             // this is a get
             if (arrayOfIndices.children[0] && (arrayOfIndices.children[0].type === ARRAY_INIT)) { 
@@ -798,8 +839,9 @@ RiverTrail.compiler.codeGen = (function() {
                 stride = stride * sourceType.getOpenCLShape()[i];
             }
         }
-        
-        s = s + "])";
+		if(isParallelArray || isGlobal) {
+	        s = s + "])";
+		}
 
         if (elemRank !== 0) {
             // The result is a pointer to a sub dimension.
@@ -1207,9 +1249,11 @@ RiverTrail.compiler.codeGen = (function() {
             case MINUS:
             case MUL:
             case DIV:
+				s = s + "("+oclExpression(ast.children[0]) + ast.value + oclExpression(ast.children[1]) + ")";
+				break;
             case MOD: 
-                s = s + "("+oclExpression(ast.children[0]) + ast.value + oclExpression(ast.children[1]) + ")";
-                break;
+				s = s + "(" + "fmod(" + "(" + oclExpression(ast.children[0]) + ")" + ", " + "(" + oclExpression(ast.children[1]) + ")" + ")" + ")";
+				break;
 
             // binary operators on bool
             case OR:
@@ -1279,10 +1323,10 @@ RiverTrail.compiler.codeGen = (function() {
                 break;
 
             case ARRAY_INIT:
-                if (ast.typeInfo.properties.elements.getOpenCLShape().length > 0) {
+                //if (ast.typeInfo.properties.elements.getOpenCLShape().length > 0) {
                     // nested array
-                    throw new Error("compilation of nested local arrays not implemented");
-                } else {
+                    //throw new Error("compilation of nested local arrays not implemented");
+                //} else {
                     s = s + "(";
                     for (var i=0;i<ast.children.length;i++) {
                         if (i>0) {
@@ -1294,7 +1338,7 @@ RiverTrail.compiler.codeGen = (function() {
                         s += ", ";
                     }
                     s = s + ast.allocatedMem + ")";
-                }
+                //}
                 break;
 
             // function application
@@ -1326,7 +1370,11 @@ RiverTrail.compiler.codeGen = (function() {
                 reportError("try/throw/catch/finally not yet implemented", ast);
                 break;
             case BREAK:
+				s += " break; ";
+				break;
             case CONTINUE:
+				s += " continue; ";
+				break;
             case LABEL:
                 reportError("break/continure/labels not yet implemented", ast);
                 break;

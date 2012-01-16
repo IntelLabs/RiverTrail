@@ -806,8 +806,10 @@ RiverTrail.RangeAnalysis = function () {
                 break;
             case BREAK:
             case CONTINUE:
+				// JS: This is probably broken
+				//break;
             case LABEL:
-                reportError("break/continure/labels not yet implemented", ast);
+                reportError("break/continure1)/labels not yet implemented", ast);
                 break;
             case YIELD:
             case GENERATOR:
