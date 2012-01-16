@@ -72,13 +72,12 @@ RiverTrail.compiler.runOCL = function () {
             sourceType = undefined;
             iterSpace = rankOrShape;
             rank = iterSpace.length;
-            resultElemType = RiverTrail.Helper.stripToBaseType(ast.typeInfo.result.OpenCLType);
         } else {
             sourceType = RiverTrail.Helper.inferPAType(paSource);
-            resultElemType = sourceType.inferredType;
             rank = rankOrShape;
             iterSpace = sourceType.dimSize.slice(0, rank);
         }
+        resultElemType = RiverTrail.Helper.stripToBaseType(ast.typeInfo.result.OpenCLType);
 
         if (ast.typeInfo.result.properties) {
             resShape = iterSpace.concat(ast.typeInfo.result.properties.shape);
@@ -159,17 +158,8 @@ RiverTrail.compiler.runOCL = function () {
             }
             resultMemObj = paSource.updateInPlacePA.data;
             resultOffset = paSource.updateInPlaceOffset;
-        } else if (paSource.data !== undefined) {
-            if (paSource.data instanceof Components.interfaces.dpoIData) {
-                // SAH: this is a cludge until I figure out how to extract a XPCWrappedNative from a jsval
-                //      in the extension.
-                resultMemObj = RiverTrail.compiler.openCLContext.allocateData2(paSource.data, resSize);
-            } else {
-                resultMemObj = RiverTrail.compiler.openCLContext.allocateData(paSource.data, resSize);
-            }
-            resultOffset = 0;
         } else {
-            // must be a comprehension, so we allocate whatever the result type says. To ensure portability of 
+            // We allocate whatever the result type says. To ensure portability of 
             // the extension, we need a template typed array. So lets just create one!
             var template = RiverTrail.Helper.elementalTypeToConstructor(resultElemType);
             if (template == undefined) throw new CompilerBug("cannot map inferred type to constructor");

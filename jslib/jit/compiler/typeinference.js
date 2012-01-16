@@ -45,12 +45,8 @@ RiverTrail.Typeinference = function () {
     //
     // error reporting
     //
-    function reportError(msg, t) {
-        throw "Error: " + msg + " <" + (t ? Narcissus.decompiler.pp(t) : "no context") + ">"; // could be more elaborate
-    }
-    function reportBug(msg, t) {
-        throw "Bug: " + msg; // could be more elaborate
-    }
+    var reportError = RiverTrail.Helper.reportError;
+    var reportBug = RiverTrail.Helper.reportBug;
 
     //
     // Base prototype shared by all type structures
@@ -862,16 +858,25 @@ RiverTrail.Typeinference = function () {
                 // children[0] is the left hand side, children[1] is the right hand side.
                 // both can be expressions. 
                 ast.children[1] = drive(ast.children[1], tEnv, fEnv);
+                left = ast.children[0];
                 switch (ast.children[0].type) {
                     case IDENTIFIER:
                         // simple case of a = expr
-                        tEnv.update(ast.children[0].value, tEnv.accu);
+                        tEnv.update(left.value, tEnv.accu);
                         break;
                     case INDEX:
                         // array update <expr>[iv] = expr
-                        // 1) check that iv is a number type
-                        // 2) figure out what <expr> is. Could be another selection
-                        reportBug("Array selection on LHS is a todo");
+                        // 1) infer types for lhs
+                        left = drive(left, tEnv, fEnv);
+                        // 2) figure out what <expr> is. Has to yield an Array object of some sort.
+                        left.children[0].typeInfo.isObjectType("Array") || reportError("illegal object in lhs selection; type seen was " 
+                                                                                       + left.children[0].typeInfo, ast);
+                        // 3) ensure the update is monomorphic
+                        left.typeInfo.equals(ast.children[1].typeInfo) || reportError("mutation of array invalidates types: " 
+                                                                                      + left.typeInfo + " updated with " 
+                                                                                      + ast.children[1].typeInfo, ast);
+                        // 4) the result of the assignment is the rhs...
+                        tEnv.accu = ast.children[0].typeInfo.clone();
                         break;
                     case DOT:
                         // object property update.
@@ -1182,16 +1187,18 @@ RiverTrail.Typeinference = function () {
                     // this turns into the identity modulo type
                     ast = ast.children[1].children[0];
                     ast = drive(ast, tEnv, fEnv);
-                    if (tEnv.accu.isObjectType("Array")) {
+                    right = tEnv.accu.clone();
+                    if (right.isObjectType("Array")) {
                         // Change the type. We have to construct the resulting type
                         // by hand here, as usually parallel arrays objects do not
                         // fall from the sky but are passed in or derived from
                         // selections.
-                        tEnv.accu.name = "ParallelArray";
+                        right.name = "ParallelArray";
                     }
-                    if (!tEnv.accu.isObjectType("ParallelArray")) {
+                    if (!right.isObjectType("ParallelArray")) {
                         reportError("Only the simple form of ParallelArray's constructor is implemented", ast);
                     }
+                    tEnv.accu = right;
                     break;
                 }
             case OBJECT_INIT:
@@ -1281,11 +1288,12 @@ RiverTrail.Typeinference = function () {
             debug && console.log("FLOW: processing " + current.toString() + " with _flow " + current._flow);
             var flowInfo = current._flow;
             delete current._flow;
+            current._flowVisited = true;
             if (current.flowTo !== undefined) {
                 current.flowTo.forEach(function (val) {
                     var flowIn = (val._flow) ? flowJoin(flowInfo, val._flow) : flowInfo;
                     var flowOut = flowPass(val, flowIn);
-                    if (flowOut) {
+                    if (flowOut || !val._flowVisited) {
                         if (!val._flow) {
                             workset.push(val);
                             debug && console.log("FLOW: enqueued " + val.toString() + " with flowOut " + flowOut);
@@ -1294,6 +1302,12 @@ RiverTrail.Typeinference = function () {
                     }});
             }
         }
+        roots.forEach(function erase(x) {
+            if (x._flowVisited) {
+                delete x._flowVisited;
+                x.flowTo !== undefined && x.flowTo.forEach(erase);
+            }
+        });
     }
 
     function analyze(ast, pa, construct, rank, extraArgs, lowPrecision) {
@@ -1345,6 +1359,7 @@ RiverTrail.Typeinference = function () {
         } else if (construct === "comprehensionScalar") {
             // create type info for scalar index argument
             var ivType = new TLiteral(TLiteral.NUMBER);
+            ivType.OpenCLType = "int";
             tEnv.bind(params[0]);
             tEnv.update(params[0], ivType);
             params = params.slice(1);
@@ -1398,7 +1413,7 @@ RiverTrail.Typeinference = function () {
                         return "__private";
                     } else {
                         debug && console.log("address space remains " + val.properties.addressSpace);
-                        return val.properties.addressSpace;
+                        return false;
                     }
                 }
                 return false;
