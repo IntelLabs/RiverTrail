@@ -1151,15 +1151,9 @@ RiverTrail.Typeinference = function () {
                 reportError("try/throw/catch/finally not yet implemented", ast);
                 break;
             case BREAK:
-				//console.log("BREAK HERE");
-				//tEnv.accu = "break;";
-				//break;
                 reportError("break not yet implemented", ast);
 				break;
             case CONTINUE:
-				// JS: This is probably incorrect
-				//console.log("CONTINUE HERE");
-				//tEnv.accu = "continue;";
                 reportError("continue not yet implemented", ast);
 				break;
             case LABEL:

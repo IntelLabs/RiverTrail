@@ -1364,11 +1364,11 @@ RiverTrail.compiler.codeGen = (function() {
                 reportError("try/throw/catch/finally not yet implemented", ast);
                 break;
             case BREAK:
-				s += " break; ";
-				break;
+				//s += " break; ";
+				//break;
             case CONTINUE:
-				s += " continue; ";
-				break;
+				//s += " continue; ";
+				//break;
             case LABEL:
                 reportError("break/continure/labels not yet implemented", ast);
                 break;
