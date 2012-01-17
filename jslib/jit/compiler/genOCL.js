@@ -1177,7 +1177,6 @@ RiverTrail.compiler.codeGen = (function() {
                         if (ast.allocatedMem) {
 							console.log(ast.children[0].type, ast.children[0].value);
                             throw new Error("a memcopy would be required to compile this code.");
-							//s = s + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")"; // no ; because ASSIGN is an expression!
                         } else {
                             s = s + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")"; // no ; because ASSIGN is an expression!
                         }
@@ -1317,10 +1316,6 @@ RiverTrail.compiler.codeGen = (function() {
                 break;
 
             case ARRAY_INIT:
-                //if (ast.typeInfo.properties.elements.getOpenCLShape().length > 0) {
-                    // nested array
-                    //throw new Error("compilation of nested local arrays not implemented");
-                //} else {
                     s = s + "(";
                     for (var i=0;i<ast.children.length;i++) {
                         if (i>0) {
