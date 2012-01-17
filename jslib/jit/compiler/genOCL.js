@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = false;
+    const verboseDebug = true;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -1175,7 +1175,9 @@ RiverTrail.compiler.codeGen = (function() {
                     case IDENTIFIER:
                         // simple case of a = expr
                         if (ast.allocatedMem) {
-                                throw new Error("a memcopy would be required to compile this code.");
+							console.log(ast.children[0].type, ast.children[0].value);
+                            throw new Error("a memcopy would be required to compile this code.");
+							//s = s + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")"; // no ; because ASSIGN is an expression!
                         } else {
                             s = s + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")"; // no ; because ASSIGN is an expression!
                         }

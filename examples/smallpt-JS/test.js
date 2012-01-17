@@ -679,6 +679,7 @@ function combine_test6(index, test_array) {
  //return e;
 }
 
+//#define jrandom() ( (rand_val < 1)? ( (rand_val > 0) ? rand_val:rand_val-rand_inc;rand_
 
 //function combine3(index, samps, cx, cy, cam, canvasdim) 
 function combine3(index, samps, cx, cy, cam, canvasdim, spheres_cnt, spheres_rad, spheres_clr, spheres_ems, spheres_rfl)
@@ -689,6 +690,8 @@ function combine3(index, samps, cx, cy, cam, canvasdim, spheres_cnt, spheres_rad
  // Math.random() is not supported, prepare an array of random numbers
  // on the host program and pass it in.
  var random_nums = [0.5, 0.5]; // We'll just use Math.random() in the sequential version
+ var rand_val = 0.001;
+ var rand_inc = 0.001;
  var sum = [0,0,0];
 
 
@@ -698,14 +701,15 @@ function combine3(index, samps, cx, cy, cam, canvasdim, spheres_cnt, spheres_rad
 
  var ii=0;
  for(var sy = 0; sy<2; sy++) {
-  for(var sx = 0; sx < 2; sx++) {
+  for(var sx = 0; sx < 2; sx=sx+1) {
    var r_o = [0,0,0];
    //r_o[0] = 0; r_o[1] = 0; r_o[2] = 0;
-   for(var s = 1; s < samps; s++) {
-    //var r11 = 2*random_nums[0];
-    var r11 = 2*Math.random();
+   for(var s = 1; s < samps; s = s+1) {
+    //var r11 = 2*Math.random();
+    var r11 = 2*rand_val; rand_val+=rand_inc;
     var dx = r11 < 1 ? Math.sqrt(r11) - 1 : 1-Math.sqrt(2-r11);
-    var r21 = 2*Math.random();
+    //var r21 = 2*Math.random();
+    var r21 = 2*rand_val; rand_val+=rand_inc;
     var dy = r21 < 1 ? Math.sqrt(r21) - 1 : 1-Math.sqrt(2-r21);
     var scale1 = (((sx+0.5+dx)/2 + xp)/w - 0.5);
     var scale2 = (((sy+0.5+dy)/2 + yp)/h - 0.5);
@@ -868,10 +872,17 @@ function combine3(index, samps, cx, cy, cam, canvasdim, spheres_cnt, spheres_rad
 
 
       var f = clr_sphere;
-      var p = Math.max(clr_sphere[0], clr_sphere[1], clr_sphere[2]);
-      cl = [(cl)[0] + ([cf[0]*ems_sphere[0], cf[1]*ems_sphere[1], cf[2]*ems_sphere[2]])[0], (cl)[1] + ([cf[0]*ems_sphere[0], cf[1]*ems_sphere[1], cf[2]*ems_sphere[2]])[1], (cl)[2] + ([cf[0]*ems_sphere[0], cf[1]*ems_sphere[1], cf[2]*ems_sphere[2]])[2]];
+      //var p = Math.max(clr_sphere[0], clr_sphere[1], clr_sphere[2]);
+      var p = (clr_sphere[0] > clr_sphere[1])?( (clr_sphere[0]>clr_sphere[2])?clr_sphere[0]:clr_sphere[2]):((clr_sphere[1]>clr_sphere[2])?clr_sphere[1]:clr_sphere[2]);
+      //cl = array_plus(cl, array_mult(cf, ems_sphere));
+      //var t_cl = array_mult(cf, ems_sphere);
+      //cl = [cf[0]*ems_sphere[0]+cl[0], cf[1]*ems_sphere[1]+cl[1], cf[2]*ems_sphere[2]+cl[2]];
+      cl[0] = cf[0]*ems_sphere[0]+cl[0];
+      cl[1] = cf[1]*ems_sphere[1]+cl[1];
+      cl[2] = cf[2]*ems_sphere[2]+cl[2];
       if(++depth > 5) {
-       if(Math.random() < p) {
+       //if(Math.random() < p) {
+       if(rand_val < p) {
         f = [f[0]*1/p, f[1]*1/p, f[2]*1/p];
        }
        else {
@@ -879,15 +890,21 @@ function combine3(index, samps, cx, cy, cam, canvasdim, spheres_cnt, spheres_rad
         break_flag2 = true;
         //break;
        }
+       rand_val += rand_inc;
       }
       if(!break_flag2) {
-       cf = [cf[0]*f[0], cf[1]*f[1], cf[2]*f[2]];
+       //cf = array_mult(cf, f);
+       cf[0] = cf[0]*f[0];
+       cf[1] = cf[1]*f[1];
+       cf[2] = cf[2]*f[2];
 
        if(rfl_sphere == 1) {
         // TODO: Add Math.PI codegen
         //var r1 = 2*Math.PI*Math.random();
-        var r1 = 2*3.14159265*Math.random();
-        var r2 = Math.random();
+        //var r1 = 2*3.14159265*Math.random();
+        var r1 = 2*3.14159265*rand_val; rand_val+=rand_inc;
+        //var r2 = Math.random();
+        var r2 = rand_val; rand_val+=rand_inc;
         var r2s = Math.sqrt(r2);
         //var wt = nl;
         var wt = [nl_0, nl_1, nl_2];
@@ -914,20 +931,32 @@ function combine3(index, samps, cx, cy, cam, canvasdim, spheres_cnt, spheres_rad
 
         //r = [x, d, [0, 0, 0]];
         //r_origin = x;
-        r_origin = x;
-        r_direction = d;
+        //r_origin = x;
+        r_origin[0] = x[0];
+        r_origin[1] = x[1];
+        r_origin[2] = x[2];
+        //r_direction = d;
+        r_direction[0] = d[0];
+        r_direction[1] = d[1];
+        r_direction[2] = d[2];
         //continue;
         continue_flag3 = true;
        }
        else if(rfl_sphere === 2 && !continue_flag3) {
         //r = new Array(x, array_minus(r[1], array_mult(n, (array_scaled(array_dot(n, r[1]), 2)))), 0);
         //r = [x, array_minus(r[1], array_scaled(n, 2*array_dot(n, r[1]))), [0, 0, 0]];
-        r_origin = x;
+        //r_origin = x;
+        r_origin[0] = x[0];
+        r_origin[1] = x[1];
+        r_origin[2] = x[2];
         //r_direction =array_minus(r_direction, array_scaled([n_0, n_1, n_2], 2*array_dot([n_0, n_1, n_2], r_direction))); 
         var r_tmp0 = [n_0, n_1, n_2]; // CPP doesnt like passing anonymous arrays.
         var r_tmp1 = 2*(r_tmp0[0]*r_direction[0] + r_tmp0[1]*r_direction[1] + r_tmp0[2]*r_direction[2]);
         var r_tmp2 = [r_tmp0[0]*r_tmp1, r_tmp0[1]*r_tmp1, r_tmp0[2]*r_tmp1];
-        r_direction = [r_direction[0] - r_tmp2[0], r_direction[1]-r_tmp2[1], r_direction[2]-r_tmp2[2]];
+        //r_direction = array_minus(r_direction, r_tmp2);
+        r_direction[0] = r_direction[0] - r_tmp2[0];
+        r_direction[1] = r_direction[1] - r_tmp2[1];
+        r_direction[2] = r_direction[2] - r_tmp2[2];
         continue_flag3 = true;
         //continue;
        }
@@ -947,8 +976,14 @@ function combine3(index, samps, cx, cy, cam, canvasdim, spheres_cnt, spheres_rad
          //r =reflRay;
          //r_origin = reflRay[0];
          //r_direction = reflRay[1];
-         r_origin = reflRay_0;
-         r_direction = reflRay_1;
+         //r_origin = reflRay_0;
+         r_origin[0] = reflRay_0[0];
+         r_origin[1] = reflRay_0[1];
+         r_origin[2] = reflRay_0[2];
+         //r_direction = reflRay_1;
+         r_direction[0] = reflRay_1[0];
+         r_direction[1] = reflRay_1[1];
+         r_direction[2] = reflRay_1[2];
          continue_flag4 = true;
          //continue;
         }
@@ -962,20 +997,40 @@ function combine3(index, samps, cx, cy, cam, canvasdim, spheres_cnt, spheres_rad
 
          var a = nt-nc; var b = nt+nc; var R0 = a*a/(b*b); var c = 1-(into?-ddn:(tdir[0]*n_tmp0[0] + tdir[1]*n_tmp0[1] + tdir[2]*n_tmp0[2]));
          var Re = R0+(1-R0)*c*c*c*c*c; var Tr = 1-Re; var P = 0.25+0.5*Re; var RP = Re/P; var TP = Tr/(1-P);
-         if(Math.random() < P) {
-          cf = [cf[0]*RP, cf[1]*RP, cf[2]*RP];
+         //if(Math.random() < P) {
+         if(rand_val < P) {
+          //cf = array_scaled(cf, RP);
+          cf[0] = cf[0]*RP;
+          cf[1] = cf[1]*RP;
+          cf[2] = cf[2]*RP;
           //r = reflRay;
           //r_origin = reflRay[0];
           //r_direction = reflRay[1];
-          r_origin = reflRay_0;
-          r_direction = reflRay_1;
+          //r_origin = reflRay_0;
+          r_origin[0] = reflRay_0[0];
+          r_origin[1] = reflRay_0[1];
+          r_origin[2] = reflRay_0[2];
+          //r_direction = reflRay_1;
+          r_direction[0] = reflRay_1[0];
+          r_direction[1] = reflRay_1[1];
+          r_direction[2] = reflRay_1[2];
          }
          else {
-          cf = [cf[0]*TP, cf[1]*TP, cf[2]*TP];
+          //cf = array_scaled(cf, TP);
+          cf[0] = cf[0]*TP;
+          cf[1] = cf[1]*TP;
+          cf[2] = cf[2]*TP;
           //r = [x, tdir, [0, 0, 0]];
-          r_origin = x;
-          r_direction = tdir;
+          //r_origin = x;
+          r_origin[0] = x[0];
+          r_origin[1] = x[1];
+          r_origin[2] = x[2];
+          //r_direction = tdir;
+          r_direction[0] = tdir[0];
+          r_direction[1] = tdir[1];
+          r_direction[2] = tdir[2];
          }
+         rand_val+=rand_inc;
         } //!continue_flag4
        } // !continue_flag3
        //continue;
@@ -987,12 +1042,18 @@ function combine3(index, samps, cx, cy, cam, canvasdim, spheres_cnt, spheres_rad
 
 
     rad_result = [rad_result[0]*1/s, rad_result[1]*1/s, rad_result[2]*1/s];
-    r_o = [(r_o)[0] + (rad_result)[0], (r_o)[1] + (rad_result)[1], (r_o)[2] + (rad_result)[2]];
+    //r_o = array_plus(r_o, rad_result);
+    r_o[0] = r_o[0] + rad_result[0];
+    r_o[1] = r_o[1] + rad_result[1];
+    r_o[2] = r_o[2] + rad_result[2];
     //console.log(r);
    }
    //sum = array_plus(sum, array_scaled(array_clamped(r_o), 0.25));
    r_o = [(r_o)[0]<0?0:((r_o)[0]>1?1:(r_o)[0]), (r_o)[1]<0?0:((r_o)[1]>1?1:(r_o)[1]), (r_o)[2]<0?0:((r_o)[2]>1?1:(r_o)[2])];
-   sum = [(sum)[0] + ([r_o[0]*0.25, r_o[1]*0.25, r_o[2]*0.25])[0], (sum)[1] + ([r_o[0]*0.25, r_o[1]*0.25, r_o[2]*0.25])[1], (sum)[2] + ([r_o[0]*0.25, r_o[1]*0.25, r_o[2]*0.25])[2]];
+   //sum = array_plus(sum, array_scaled(r_o, 0.25));
+   sum[0] = sum[0] + r_o[0]*0.25;
+   sum[1] = sum[1] + r_o[1]*0.25;
+   sum[2] = sum[2] + r_o[2]*0.25;
   }
  }
  //console.log("Returning " + sum);
