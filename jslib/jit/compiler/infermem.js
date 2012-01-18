@@ -310,9 +310,9 @@ RiverTrail.InferMem = function () {
             case BITWISE_NOT:
             case DOT:
             case INDEX:
-            
             case LIST:      
             case CAST:
+            case FLATTEN:
             case TOINT32:
                 if (ast.children) {
                     ast.children.forEach( function (child) { infer(child, memVars, ins, outs); });

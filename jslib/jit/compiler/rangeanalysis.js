@@ -844,6 +844,11 @@ RiverTrail.RangeAnalysis = function () {
                 result = new Range(undefined, undefined, false);
                 break;
 
+            case FLATTEN:
+                drive(ast.children[0], varEnv, doAnnotate);
+                result = ast.children[0].rangeInfo.clone();
+                break;
+
             // 
             // unsupported stuff here
             //
@@ -1233,6 +1238,10 @@ RiverTrail.RangeAnalysis = function () {
 
                 case CAST:
                     ast.children[0] = push(ast.children[0], tEnv, isIntValue(ast));
+                    break;
+
+                case FLATTEN:
+                    ast.children[0] = push(ast.children[0], tEnv, expectInt);
                     break;
 
                 // 
