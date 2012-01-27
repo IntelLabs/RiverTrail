@@ -64,7 +64,7 @@ RiverTrail.InferMem = function () {
             if (other._store[mem] !== null) {
                 // this entry has a set of aliases attached to it, so copy
                 this._store[mem] = new MemSet();
-                this._store[mem].union(other.store[mem]);
+                this._store[mem].union(other._store[mem]);
             } else {
                 this.add(mem);
             }
@@ -155,6 +155,7 @@ RiverTrail.InferMem = function () {
 
         switch (ast.type) {
             case SCRIPT:
+                ast.funDecls.forEach(function (f) {infer(f.body);});
                 memVars = new MemList();
                 ast.children.forEach(function (child) { infer(child, memVars, ast.ins, ast.outs); });
                 ast.memVars = memVars;
@@ -309,15 +310,25 @@ RiverTrail.InferMem = function () {
             case BITWISE_NOT:
             case DOT:
             case INDEX:
-            case CALL:
             case LIST:      
             case CAST:
+            case FLATTEN:
             case TOINT32:
                 if (ast.children) {
                     ast.children.forEach( function (child) { infer(child, memVars, ins, outs); });
                 }
                 break;
-
+            case CALL: 
+                if (ast.children) {
+                    ast.children.forEach( function (child) { infer(child, memVars, ins, outs); });
+                }
+                // If I am returning an Array space needs to be allocated for it in the caller and 
+                // the name of the space should be left in the CALL nodes allocatedMem field so that when
+                // I generate the call it is available.
+                if (!ast.typeInfo.isScalarType()) { // it is an array
+                    ast.allocatedMem = memVars.allocate(ast.typeInfo.getOpenCLSize(), "CALL");
+                }
+                break;
 
             // 
             // unsupported stuff here

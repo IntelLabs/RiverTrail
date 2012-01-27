@@ -114,6 +114,9 @@ var ParallelArray = function () {
 //    is nothing more that a reduce using the binary max function.
 
     
+    // use Proxies to emulate square bracket index selection on ParallelArray objects
+    var enableProxies = false;
+
     // check whether the new extension is installed.
     var useFF4Interface = false;
     try {
@@ -397,6 +400,67 @@ var ParallelArray = function () {
         return result;
     };
 
+    // Proxy handler for mapping [<number>] and [<Array>] to call of |get|.
+    // The forwarding part of this proxy is taken from
+    // https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Proxy
+    // which in turn was copied from the ECMAScript wiki at
+    // http://wiki.ecmascript.org/doku.php?id=harmony:proxies&s=proxy
+    var makeIndexOpHandler = function makeIndexOpProxy (obj) {
+        return {  
+            // Fundamental traps  
+            getOwnPropertyDescriptor: function(name) {  
+                var desc = Object.getOwnPropertyDescriptor(obj, name);  
+                // a trapping proxy's properties must always be configurable  
+                if (desc !== undefined) { desc.configurable = true; }  
+                return desc;  
+            },  
+            getPropertyDescriptor:  function(name) {  
+                var desc = Object.getPropertyDescriptor(obj, name); // not in ES5  
+                // a trapping proxy's properties must always be configurable  
+                if (desc !== undefined) { desc.configurable = true; }  
+                return desc;  
+            },  
+            getOwnPropertyNames: function() {  
+                return Object.getOwnPropertyNames(obj);  
+            },  
+            getPropertyNames: function() {  
+                return Object.getPropertyNames(obj);                // not in ES5  
+            },  
+            defineProperty: function(name, desc) {  
+                Object.defineProperty(obj, name, desc);  
+            },  
+            delete: function(name) { return delete obj[name]; },     
+            fix: function() {  
+                if (Object.isFrozen(obj)) {  
+                    return Object.getOwnPropertyNames(obj).map(function(name) {  
+                               return Object.getOwnPropertyDescriptor(obj, name);  
+                           });  
+                }  
+                // As long as obj is not frozen, the proxy won't allow itself to be fixed  
+                return undefined; // will cause a TypeError to be thrown  
+            },  
+
+            // derived traps  
+            has:          function(name) { return name in obj; },  
+            hasOwn:       function(name) { return Object.prototype.hasOwnProperty.call(obj, name); },  
+            get:          function(receiver, name) { 
+                var idx = parseInt(name);
+                if (idx == name) {
+                    return obj.get(idx);
+                } else {
+                    return obj[name];
+                } 
+            },  
+            set:          function(receiver, name, val) { obj[name] = val; return true; }, // bad behavior when set fails in non-strict mode  
+            enumerate:    function() {  
+                var result = [];  
+                for (name in obj) { result.push(name); };  
+                return result;  
+            },  
+            keys: function() { return Object.keys(obj) }  
+        };  
+    }  
+        
 
     // Helper for constructor that generates an empty array.
     var createEmptyParallelArray = function createEmptyParallelArray () {
@@ -749,10 +813,13 @@ var ParallelArray = function () {
         var result;
         var extraArgs; 
         var extraArgOffset = 2;
-        if (typeof(depth) === 'function') {
+        if ((typeof(depth) === 'function') || (depth instanceof low_precision.wrapper)) {
             f = depth;
             depth = 1;
             extraArgOffset = 1;
+        }
+        if (f instanceof low_precision.wrapper) {
+            f = f.unwrap();
         }
         if (!this.isRegular()) {
             throw new TypeError("ParallelArray.combineSeq this is not a regular ParallelArray.");
@@ -842,8 +909,9 @@ var ParallelArray = function () {
     /***
     mapSeq
 
-    Elemental Function 
-        this - an element from the ParallelArray
+    Elemental Function
+        this - the entire ParallelArray 
+        val - an element from the ParallelArray
         Optional arguments - Same as the optional arguments passed to map 
     
     Result
@@ -855,9 +923,9 @@ var ParallelArray = function () {
             elements in the original ParallelArray plus any optional arguments.
 
     Example: an identity function
-        pa.map(function(){return this;})
+        pa.map(function(val){return val;})
     ***/
-        
+
     var mapSeq = function mapSeq (f) { // extra args passed unchanged and unindexed.
         var len = this.shape[0];
         var i, j;
@@ -873,14 +941,15 @@ var ParallelArray = function () {
 
         if (arguments.length == 1) { // Just a 1 arg function.
             for (i=0;i<len;i++) {
-                result[i] = f.call(this.get(i));
+                result[i] = f.apply(this, [this.get(i)]);
             }
         } else {
             for (i=0;i<len;i++) {
                 for (j=1;j<arguments.length;j++) {
-                    args[j-1] = (arguments[j] instanceof ParallelArray)?arguments[j].get(i):arguments[j];                    
+                    args[j] = arguments[j];
                 }              
-                result[i] = f.apply(this.get(i), args);
+                args[0] = this.get(i);
+                result[i] = f.apply(this, args);
             }
         }
         // SAH: temporary fix until we use cast
@@ -902,13 +971,12 @@ var ParallelArray = function () {
 
     var map = function map (f) { // extra args passed unchanged and unindexed.
         var len = this.shape[0];
-            var i;
-            var args = new Array(arguments.length-1);
-            var paResult;
-        if (arguments.length == 1) { // Just a 1 arg function.
+        var args = new Array(arguments.length-1);
+        var paResult;
+        if (arguments.length === 1) { // no extra arguments present
             paResult = RiverTrail.compiler.compileAndGo(this, f, "map", 1, args, enable64BitFloatingPoint);
         } else {            
-            for (j=1;j<arguments.length;j++) {
+            for (var j=1;j<arguments.length;j++) {
                 args[j-1] = arguments[j];                    
             }
             paResult = RiverTrail.compiler.compileAndGo(this, f, "map", 1, args, enable64BitFloatingPoint); 
@@ -919,20 +987,19 @@ var ParallelArray = function () {
     /***
     reduce
     Arguments
-        Elemental function described below
-        Optional- initial value of the accumulator
-            If not provided the value of first element in the array is used.
+        Elemental function described below.
         Optional arguments passed unchanged to elemental function
 
     Elemental Function 
-        this - An element from the ParallelArray
-        Accumulator - Value derived from previous invocation of the elemental function . 
-        Optional arguments - Same as the optional arguments passed to reduce
+        this - the entire ParallelArray 
+        a, b - arguments to be reduced and returned
+        Optional arguments - Same as the optional arguments passed to map 
         Result
-            The accumulator used in further applications of the elemental function.
+            The result of the reducing a and b, typically used in further 
+            applications of the elemental function.
 
     Returns
-        The final value of the accumulator.
+        The final value, if the ParallelArray has only 1 element then that element is returned.
 
     Discussion
         Reduce is free to group calls to the elemental function in arbitrary ways and 
@@ -942,14 +1009,16 @@ var ParallelArray = function () {
         always be the same regardless of the order that reduces calls addition. Average 
         is an example of non-associative function. Average(Average(2, 3), 9) is 5 2/3 
         while Average(2, Average(3, 9)) is 4. Reduce is permitted to chose whichever 
-        ordering it finds convenient.
+        call ordering it finds convenient.
 
-        Reduce is only require to return a result consistent with some ordering and 
-        is not required to chose the same ordering on subsequent calls. Furthermore, 
+        Reduce is only required to return a result consistent with some call ordering and 
+        is not required to chose the same call ordering on subsequent calls. Furthermore, 
         reduce does not magically resolve problems related to the well document fact 
         that some floating point numbers are not represented exactly in JavaScript 
         and the underlying hardware.
 
+        Reduce does not require the elemental function be communitive since it does
+        induce reordering of the arguments passed to the elemental function's.
     ***/
 
     var reduce = function reduce(f, optionalInit) {
@@ -962,49 +1031,53 @@ var ParallelArray = function () {
         var len = this.shape[0];
         var result;
         var i;
-        if (arguments.length == 2) {
-            result = f.call(this.get(0), optionalInit);
-        } else {
-            result = this.get(0);
-        }
-            
+
+        result = this.get(0);
         for (i=1;i<len;i++) {
-            result = f.call(this.get(i), result);
+            result = f.call(this, result, this.get(i));
         }
+
         return result;
     };
-        /***
+    /***
         scan
+    
         Arguments
             Elemental function described below
             Optional arguments passed unchanged to elemental function
 
         Elemental Function 
-            this - An element from the ParallelArray
-            Accumulator - Value derived from previous invocation of the 
-                         elemental function. 
+            this - the entire ParallelArray 
+            a, b - arguments to be reduced and returned
             Optional arguments - Same as the optional arguments passed to scan
-            Result
-                An element to be placed in the result at the same offset we found “this”
+            Result - The result of the reducing a and b, typically used in further 
+            applications of the elemental function.
  
         Returns
-            A freshly minted ParallelArray whose elements are the results of 
-            applying the elemental function to the elements in the original 
-            ParallelArray and the accumulator plus any optional arguments.
+            A freshly minted ParallelArray whose ith elements is the results of 
+            using the elemental function to reduce the elements between 0 and i
+            in the original ParallelArray.
 
         Example: an identity function
-            pa.scan(function(value){return this;})
+            pa.scan(function(a, b){return b;})
 
         Discussion:
-        Similar to reduce scan can arbitrarily reorder the order the calls to 
-        the elemental functions. This cannot be detected if the elemental 
-        function is associative so using a elemental function such as addition 
-        to create a partial sum will produce the same result regardless of the 
-        order in which the elemental function is called. However using a 
-        non-associative function can produce different results due to the 
-        ordering that scan calls the elemental function. While scan will 
-        produce a result consistent with a legal ordering the ordering and the 
-        result may differ for each call to scan. 
+            We implement what is known as an inclusive scan which means that
+            the value of the ith result is the [0 .. i].reduce(elementalFunction) 
+            result. Notice that the first element of the result is the same as 
+            the first element in the original ParallelArray. An exclusive scan can
+            be implemented by shifting right end off by one the results 
+            of an inclusive scan and inserting the identity at location 0. 
+            Similar to reduce scan can arbitrarily reorder the order the calls to 
+            the elemental functions. Ignoring floating point anomalies, this 
+            cannot be detected if the elemental function is associative so 
+            using a elemental function such as addition to create a partial 
+            sum will produce the same result regardless of the 
+            order in which the elemental function is called. However using a 
+            non-associative function can produce different results due to the 
+            ordering that scan calls the elemental function. While scan will 
+            produce a result consistent with a legal ordering the ordering and the 
+            result may differ for each call to scan. 
 
         Typically the programmer will only call scan with associative functions 
         but there is nothing preventing them doing otherwise.
@@ -1020,13 +1093,15 @@ var ParallelArray = function () {
             // 
             // handle case where we only have one row => the result is the first element
             //
-            return this.get(0);
+            return this;
         }
         var i;
+
         var len = this.length;
         var rawResult = new Array(len);
         var privateThis;
         var callArguments = Array.prototype.slice.call(arguments, 0); // array copy
+        var ignoreLength = callArguments.unshift(0); // callArguments now has 2 free location for a and b.
         if (this.getShape().length < 2) {
             // 
             // Special case where selection yields a scalar element. Offloading the inner
@@ -1036,9 +1111,9 @@ var ParallelArray = function () {
             //
             rawResult[0] = this.get(0);
             for (i=1;i<len;i++) {
-                privateThis = this.get(i);
                 callArguments[0] = rawResult[i-1];
-                rawResult[i] = f.apply(privateThis, callArguments);
+                callArguments[1] = this.get(i);;
+                rawResult[i] = f.apply(this, callArguments);
             }
             return (new ParallelArray(rawResult));
         }
@@ -1162,7 +1237,7 @@ var ParallelArray = function () {
     var filter = function filter(f) {
         var len = this.length;
         // Generate a ParallelArray where t means the corresponding value is in the resulting array.
-        var boolResults = this.map.apply(this, arguments);
+        var boolResults = combineSeq.apply(this, arguments);
         var rawResult;
         var i, j;
         var resultSize = 0;
@@ -1209,25 +1284,22 @@ var ParallelArray = function () {
         Handling conflicts
             Conflicts result when multiple elements are scattered to the same location.
             Conflicts results in a call to conflictFunction, which is an 
-                optional second argument to scatter
+                optional third argument to scatter
 
             Arguments
-                this is the input array, the same this that scatter sees.
-                index in this being considered
-                this.get(index) is the current value causing the conflict
+                this is value from the source array that is currently being scattered
                 Previous value – value in result placed there by some previous iteration
 
             It is the programmer’s responsibility to provide a conflictFunction that is 
-            associative since there is no guarantee in what order the conflicts will be 
-            resolved. If the function is not associative then the result could be any result 
-            return from the conflict function.
+            associative and commutative since there is no guarantee in what order the 
+            conflicts will be resolved. 
 
             Returns
                 Value to place in result[indices[index]]
 
             Example: Resolve conflict with larger number
-                chooseMax(index, prev){
-                    return (this.get(index)>prev)?this.get(index):prev;
+                chooseMax(prev){
+                    return (this>prev)?this:prev;
                 } 
                 
         ***/
@@ -1254,7 +1326,7 @@ var ParallelArray = function () {
             if (conflictResult[ind]) { // we have already placed a value at this location
                 if (hasConflictFunction) {
                     rawResult[ind] = 
-                        conflictFunction.call(rawResult[ind], this.get(i)); 
+                        conflictFunction.call(this.get(i), rawResult[ind]); 
                 } else {
                     throw new RangeError("Duplicate indices in scatter");
                 }
@@ -1284,7 +1356,7 @@ var ParallelArray = function () {
     var getArray = function getArray () {
         var i, result;
         if ((this.flat) && (this.shape.length === 1)) {
-            result = Array.prototype.slice.apply(this.data);
+            result = Array.prototype.slice.call(this.data, this.offset, this.offset + this.length);
         } else {
             result = new Array(this.length);
             for (i=0; i<this.length; i++) {
@@ -1342,6 +1414,12 @@ var ParallelArray = function () {
                     /* need to fix up shape somehow. */
                     result.shape = this.shape.slice(index.length);
                     result.strides = this.strides.slice(index.length); 
+                    /* changing the shape might invalidate the _fastClasses specialisation, 
+                     * so better ensure things are still fine
+                     */
+                    if (result.__proto__ !== ParallelArray.prototype) {
+                        result.__proto__ = _fastClasses[result.shape.length].prototype;
+                    }
                     return result;
                }
             } 
@@ -1562,10 +1640,13 @@ var ParallelArray = function () {
     
     // toString()   Converts an array to a string, and returns the result
     var toString = function toString (arg1) {
-        if (useFF4Interface && isTypedArray(this.data)) {
-            return Array.prototype.reduce.call(this.data, function (res, element) { return res + " " + element; }, "[") + " ]";
+        var max = this.shape.reduce(function (v, p) { return v*p; }) + this.offset;
+        var res = "[";
+        for (var pos = this.offset; pos < max; pos++) {
+            res += ((pos === this.offset) ? "" : ", ") + this.data[pos];
         }
-        return this.data.toString();
+        res += "]";
+        return res;
     };
     
     // unshift()    Adds new elements to the beginning of an array, and returns the new length
@@ -1869,6 +1950,12 @@ var ParallelArray = function () {
             result = new _fastClasses[result.shape.length](result);
         }
     
+        if (enableProxies) {
+            try { // for Chrome/Safari compatability
+                result = Proxy.create(makeIndexOpHandler(result), ParallelArray.prototype);
+            } catch (ignore) {}
+        }
+
         return result;
     };
 

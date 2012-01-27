@@ -57,7 +57,31 @@ RiverTrail.compiler.codeGen = (function() {
     // Set constants in the local scope.
     eval(definitions.consts);
     eval(RiverTrail.definitions.consts);
-        
+    
+    // import error reporting
+    var reportError = RiverTrail.Helper.reportError;
+    var reportBug = RiverTrail.Helper.reportBug;
+
+    var findSelectionRoot = RiverTrail.Helper.findSelectionRoot;
+
+    // If you are working inside the top level of actual kernel function then scope is empty.
+    // If you generating code for a called function then this will be true.
+    var calledScope = function () {
+        "use strict";
+        // state is private.
+        var state = false;
+        var enter = function enter() {
+            state = true;
+        };
+        var exit = function exit(previous) {
+            state = previous;
+        }
+        var inCalledScope = function () {
+            return state;
+        };
+        return {"enter": enter, "exit": exit, "inCalledScope": inCalledScope};
+    } ();
+
     //
     // The Ast is set up so that formalsAst.params holds the names of the params specified in the signature
     // of the function.
@@ -69,6 +93,37 @@ RiverTrail.compiler.codeGen = (function() {
 
     var genFormalParams = function (formalsAst, construct) {
         "use strict";
+        if (calledScope.inCalledScope()) {
+            return genNonKernelFormalParams(formalsAst);
+        } else {
+            return genKernelFormalParams(formalsAst, construct);
+        }
+    };
+    // This is for called functions, not the top level kernel function.
+    var genNonKernelFormalParams = function (formalsAst) {
+        "use strict";
+        var i;
+        var s = "";
+        var formalsNames = formalsAst.params;
+        var formalsTypes = formalsAst.typeInfo.parameters;
+
+        for (i = 0; i < formalsTypes.length; i++) {
+            if (s !== "" ) { 
+                s = s + ", "; // leave out the , before the first parameter
+            }
+
+            if (formalsTypes[i].isObjectType("ParallelArray") || formalsTypes[i].isObjectType("Array")) {
+                // array argument, so needs address space qualifier
+                s = s + formalsTypes[i].properties.addressSpace + " ";
+            }
+
+            s = s + formalsTypes[i].OpenCLType + " " + formalsNames[i];
+        }
+        return s;
+    };
+
+    var genKernelFormalParams = function (formalsAst, construct) {
+        "use strict";
         var i;
         var s = "";
         var formalsNames = formalsAst.params;
@@ -76,15 +131,20 @@ RiverTrail.compiler.codeGen = (function() {
         if (construct === "combine") { 
             // Skip the extra type for this and ignore the first argument.
             // the extras do not include |this| and the first formal since that is the index generated in the body.
-            formalsTypes = formalsTypes.slice(2);
-            formalsNames = formalsNames.slice(1);
+            
+            formalsNames = formalsNames.slice(1); // This skips the index argument
+            formalsTypes = formalsTypes.slice(2); // This skips this and the index argument
         } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {
             // ignore the first argument, the index
             formalsTypes = formalsTypes.slice(1);
             formalsNames = formalsNames.slice(1);
         } else if (construct === "map") {
             // Skip the extra type for this
-            formalsTypes = formalsTypes.slice(1);
+            // Skip the extra type for this and ignore the first argument, which is the value and is set
+            // explicitly based on this and the id.
+            // the extras do not include |this| and the first formal since that is the value generated in the body.
+            formalsTypes = formalsTypes.slice(2); // Skip this and the val argument.
+            formalsNames = formalsNames.slice(1); // Skip the val argument
         }
         
         for (i = 0; i < formalsTypes.length; i++) {
@@ -105,6 +165,7 @@ RiverTrail.compiler.codeGen = (function() {
         }
         return s;
     };
+
     var adjustFormalsWithOffsets = function (formalsAst, construct) {
         "use strict";
         var i;
@@ -112,8 +173,8 @@ RiverTrail.compiler.codeGen = (function() {
         var start = 0;
         var formalsNames = formalsAst.params;
         var formalsTypes = formalsAst.typeInfo.parameters;
-        if ((construct === "combine") || (construct === "comprehension") || (construct === "comprehensionScalar")) {
-            // Skip the first argument since it is the index.
+        if ((construct === "map") || (construct === "combine") || (construct === "comprehension") || (construct === "comprehensionScalar")) {
+            // Skip the first argument since it is the index for combine and comprehension and value for map.
             start = 2; // the extras do not include |this| and the first formal since that is the index generated in the body.
         }
         
@@ -127,13 +188,16 @@ RiverTrail.compiler.codeGen = (function() {
         return s;
     };
     // formalsTypeProperty holds "__"+addresSpace+OpenCLType+formalsName+shape
-    var genFormalIndexArg = function (funDecl, construct) { //formalsName, formalsType, formalsTypeProperties, construct) {
+    // Some kernel function formals are calculated in the body, for example index argument to combine and the value
+    // argument to map.
+    var genFormalRelativeArg = function (funDecl, construct) { //formalsName, formalsType, formalsTypeProperties, construct) {
         "use strict";
         var i;
         var dimSizes;
         var s = " ";
         var indexName, indexType;
         if ((construct === "combine") || (construct === "comprehension") || (construct === "comprehensionScalar")) {
+            // The relative argumment is an index.
             if (construct === "combine") {
                 indexType = funDecl.typeInfo.parameters[1];
             } else {
@@ -164,6 +228,13 @@ RiverTrail.compiler.codeGen = (function() {
                 // this path is taken by scalar comprehensions
                 s = s + " const "+indexType.OpenCLType+" "+ indexName+" = _id_0;"; 
             }
+        } else if (construct === "map") {
+            // 
+            // The relative argumment is a value found in the ParallelArray.
+            indexName = funDecl.params[0];
+            indexType = funDecl.typeInfo.parameters[1];
+            s = s + " const "+indexType.OpenCLType+" "+ indexName+" = tempThis[_readoffset];"
+
         }
         return s;
     };
@@ -182,7 +253,51 @@ RiverTrail.compiler.codeGen = (function() {
         }
         return s;
     };
+    
 
+    //
+    // This generates code for a function that is presmable called from the kernel function.
+    // 
+    function genCalledFunction(ast) {
+        "use strict";
+        var s = "";
+        var formals = "";
+        
+        var previousCalledScope = calledScope.inCalledScope();
+        calledScope.enter();
+        if (ast.value != "function") {
+            throw "expecting function found " + ast.value;
+        }
+        // Need code here to deal with array values being returned.
+        s = s + " " +ast.typeInfo.result.OpenCLType + " " + ast.name;
+        s = s + "("; // start param list.
+        // add extra parameter for failure propagation
+        s = s + "bool * _FAILRET";
+        formals = genFormalParams(ast, "ignore");
+        if (formals !== "") {
+            s = s + ", " + formals;
+        } // else there are no formals to output.
+
+        var returnType = ast.typeInfo.result.OpenCLType;
+
+        if (!(ast.typeInfo.result.isScalarType())) { // This assumes it is an array.
+            // If the return type of the result is an Array then a pointer to it is passed in.
+            s = s + ", " + returnType + " retVal";
+        }
+
+        s = s + " ) ";
+        s = s + " { ";// function body
+        s = s + " const int _writeoffset = 0; "; // add a write offset to fool the rest of code generation
+        s = s + " bool _FAIL = 0;"; // declare local _FAIL variable for selection failures
+        s = s + " int _sel_idx_tmp;"; // tmp var required for selections
+        s = s + returnType + " " + boilerplate.localResultName + ";"; // tmp var for parking result
+        s = s + oclStatements(ast.body); // Generate the statements;
+        s = s + " } ";
+        
+        calledScope.exit(previousCalledScope);
+        return s;
+    }
+    
     //
     // Generate a string representing the kernel function
     // input: The ast (or fragment of the ast)
@@ -195,14 +310,10 @@ RiverTrail.compiler.codeGen = (function() {
         "map": {
             "hasThis": true,
             "localThisName": " tempThis",
-            "localThisDefinition": " opThisVect[_readoffset]",
+            "localThisDefinition": " opThisVect[opThisVect__offset]",
             "thisShapeLength": "const int thisShapeLength = ",
             "thisShapeDeclPre": "const int thisShapeDecl ",
             "localResultName": " tempResult",
-            // The body goes here and return uses this to figure out what to return;
-            "resultAssignLhs": " retVal[_writeoffset] = ",
-            "returnType": "double",// This may be altered based on the type of the "this" pa.
-            "resultAssignRhs": " tempResult",
         },
         "combine": {
             "hasThis": true,
@@ -213,10 +324,6 @@ RiverTrail.compiler.codeGen = (function() {
             "thisShapeDeclPre": "const int thisShapeDecl ",
             // the type of the result of the elemental function goes here
             "localResultName": " tempResult",
-            // The body goes here and return uses this to figure out what to return;
-            "resultAssignLhs": " retVal[_writeoffset] = ",
-            "returnType": "double", // This may be altered based on the type of the "this" pa.
-            "resultAssignRhs": " tempResult",
         },
         "comprehension": {
             "hasThis": false,
@@ -227,10 +334,6 @@ RiverTrail.compiler.codeGen = (function() {
             "thisShapeDeclPre": "const int thisShapeDecl ",
             // the type of the result of the elemental function goes here
             "localResultName": " tempResult",
-            // The body goes here and return uses this to figure out what to return;
-            "resultAssignLhs": " retVal[_writeoffset] = ",
-            "returnType": "double", // This may be altered based on the type of the "this" pa.
-            "resultAssignRhs": " tempResult",
         },
         "comprehensionScalar": {
             "hasThis": false,
@@ -241,10 +344,6 @@ RiverTrail.compiler.codeGen = (function() {
             "thisShapeDeclPre": "const int thisShapeDecl ",
             // the type of the result of the elemental function goes here
             "localResultName": " tempResult",
-            // The body goes here and return uses this to figure out what to return;
-            "resultAssignLhs": " retVal[_writeoffset] = ",
-            "returnType": "double", // This may be altered based on the type of the "this" pa.
-            "resultAssignRhs": " tempResult",
         }
     };
 
@@ -292,10 +391,18 @@ RiverTrail.compiler.codeGen = (function() {
         if (funDecl.value != "function") {
             throw new Error("function expected"); // we can't deal with this so execute it sequentially
         }
-        
+
         boilerplate = boilerplateTemplates[construct];
 
-        s = "__kernel void " + funDecl.name + "(";
+        // Dump the helper function first, c99 requires this.
+        // The kernel function has now been dumped.
+        // We now turn our attention to function the kernel function might have called.
+        // Do we need to dump signatures in case there is a forward reference?
+        for (i=0; i<ast.body.funDecls.length; i++) {
+            s = s + genCalledFunction(ast.body.funDecls[i]);            
+        }
+
+        s = s + "__kernel void " + funDecl.name + "(";
 
         // add the special return parameter used to detect failure
         s = s + "__global int *_FAILRET, ";
@@ -331,13 +438,8 @@ RiverTrail.compiler.codeGen = (function() {
         }
         // Dump the standard output parameters.
         // Note that result.openCLType is the type of the result of a single iteration!
-         if ((construct === "combine") || (construct === "map")) {
-             // combine and map inherit the type of this!
-             boilerplate.returnType = RiverTrail.Helper.stripToBaseType(thisSymbolType.OpenCLType);
-             s = s + "__global " + boilerplate.returnType + "* retVal";
-         } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {      
-             boilerplate.returnType = RiverTrail.Helper.stripToBaseType(funDecl.typeInfo.result.OpenCLType);
-             s = s + "__global " + boilerplate.returnType + "* retVal"; 
+         if ((construct === "combine") || (construct === "map") || (construct === "comprehension") || (construct === "comprehensionScalar")) {      
+             s = s + "__global " + funDecl.typeInfo.result.OpenCLType + (funDecl.typeInfo.result.isScalarType() ? "*" : "") + " retVal"; 
         } else {
              throw "unimplemented construct " + construct;
         }
@@ -406,7 +508,7 @@ RiverTrail.compiler.codeGen = (function() {
         // declare tempResult
         s = s + funDecl.typeInfo.result.OpenCLType + " " + boilerplate.localResultName + ";";
         // define index
-        s = s + genFormalIndexArg(funDecl, construct); // The first param's name.
+        s = s + genFormalRelativeArg(funDecl, construct); // The first param's name.
 
         // Adjust the ParallelArray formals that come with offsets to formal = &formal[formalName_offset]
         s = s + adjustFormalsWithOffsets(funDecl, construct);
@@ -415,38 +517,46 @@ RiverTrail.compiler.codeGen = (function() {
         // close the kernel body. Note that what ever is placed here is never executed, as the compilation
         // of RETURN emit an explicit return...
         s = s + "}";
+
         return s;
     };
 
     // -------------------------------------------------------------------------------------------------
     // --------- Start of genStatement helpers. All are prefixed with gen, for exampe genReturn. -------
-    //
-    // Typically they take the ast as an argument and return the appropriate string.
-    //
-    // You need to add a cast here so that the double you see is casted to a float before you store it in retval.
+
+    
     function genReturn (ast) {
         "use strict";
-        var s = " ";
-        var elements;
-        var rhs;    // right-hand-side
-        var i;
-        var convPre = ""; // what to convert the temps into to store them in retval.
-        var convPost = "";
-        rhs = ast.value;
-        if (rhs.typeInfo.type === "NUMBER") {
-            // scalar result
-            s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-            s = s + boilerplate.resultAssignLhs + "("+boilerplate.returnType+")"+boilerplate.resultAssignRhs+";"; // Need to add cast here.....
+        if (calledScope.inCalledScope()) {
+            return genSimpleReturn(ast);
         } else {
+            return genKernelReturn(ast);
+        }
+    }
+    
+    // Generate a return from a function the kernel calls.
+    function genSimpleReturn (ast) {
+        "use strict";
+        var s = " ";
+        var rhs;
+        var i;
+        rhs = ast.value; // right hand side
+        if (rhs.typeInfo.isScalarType()) {
+            // scalar result
+            // propagate failure code
+            s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+            s = s + "if (_FAIL) {*_FAILRET = 1;}";
+            s = s + " return " + boilerplate.localResultName + ";";
+        } else {            
             // vector result. We have two cases: either it is an identifier, then we do an elementwise assign.
             // or it is an array expression, in which case we generate code for each element and then assign that.
-            elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
-            // elements = rhs.inferredType.dimSize.reduce(function (a,b) { return a*b;});
-            convPre = "((" + boilerplate.returnType + ") ";
-            convPost = ")";
+            var elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
+            var baseType = RiverTrail.Helper.stripToBaseType(rhs.typeInfo.OpenCLType);
+            var convPre = "((" + baseType + ") ";
+            var convPost = ")";
             while (rhs.type === CAST) {
                 // detect casts to facilitate direct assign
-                convPre = convPre + "((" + rhs.typeInfo.OpenCLType + ")";
+                convPre = convPre + "((" + RiverTrail.Helper.stripToBaseType(rhs.typeInfo.OpenCLType) + ")"; 
                 convPost = ")" + convPost;
                 rhs = rhs.children[0];
             }
@@ -462,8 +572,84 @@ RiverTrail.compiler.codeGen = (function() {
                 s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                 s = s + "{ int _writeback_idx = 0; for (;_writeback_idx < " + elements + "; _writeback_idx++) { ";
                 s = s + " retVal[_writeoffset + _writeback_idx] = " + convPre + "tempResult[_writeback_idx]" + convPost + ";",
-                s = s + "}}";
+                s = s + "}";
             }
+            s = s + "if (_FAIL) {*_FAILRET = 1;}";
+            s = s + "return retVal;";
+        } // end else code that returns a non-scalar
+        return s;
+    }
+
+    //
+    // Typically they take the ast as an argument and return the appropriate string.
+    //
+    // You need to add a cast here so that the double you see is casted to a float before you store 
+    // it in retval.
+    function genKernelReturn (ast) {
+        "use strict";
+        var s = " ";
+        var elements;
+        var rhs;    // right-hand-side
+        var i;
+        var convPre = ""; // what to convert the temps into to store them in retval.
+        var convPost = "";
+        
+        rhs = ast.value;
+        if (rhs.typeInfo.isScalarType()) {
+            // scalar result
+            s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+            s = s + "retVal[_writeoffset] = " + boilerplate.localResultName + ";"; 
+        } else {
+			// JS: TODO Check the right casts are produced.
+			if(1) {
+				var source = rhs;
+				var sourceType = source.typeInfo;
+				var sourceShape = sourceType.getOpenCLShape();
+				var sourceRank = sourceShape.length;
+				var elemRank = ast.typeInfo.getOpenCLShape().length;
+				s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+				var maxDepth = sourceShape.length;
+				var i; var idx; var indexString = ""; var post_parens = "";
+				s += " int _writeback_idx = 0 ;";
+				for(i =0 ;i<maxDepth;i++) {
+					idx = "_idx" + i;
+					s += " { int " + idx + ";";
+					s += "for (" + idx + "=0; " + idx + " < " + sourceShape[i] + "; " + idx + "++) {"; 
+					indexString += "[" + idx + "]";
+					post_parens += "}}";
+				}
+				s += " retVal[_writeoffset + (_writeback_idx++)]  = " + boilerplate.localResultName + indexString + ";" + post_parens;
+			}
+
+			// This else block should go away after the above if block is verified
+			else {
+				// vector result. We have two cases: either it is an identifier, then we do an elementwise assign.
+				// or it is an array expression, in which case we generate code for each element and then assign that.
+				elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
+            	//elements = rhs.inferredType.dimSize.reduce(function (a,b) { return a*b;});
+            	convPre = "((" + boilerplate.returnType + ") ";
+            	convPost = ")";
+            	while (rhs.type === CAST) {
+					// detect casts to facilitate direct assign
+					convPre = convPre + "((" + rhs.typeInfo.OpenCLType + ")";
+                	convPost = ")" + convPost;
+                	rhs = rhs.children[0];
+            	}
+            	if (rhs.type === ARRAY_INIT) {
+					// inline array expression, do direct write
+                	s = s + "{"; 
+                	for (i = 0; i < elements; i++) {
+						s = s + "retVal[_writeoffset + " + i + "] = " + convPre + oclExpression(rhs.children[i]) + convPost + ";";
+                	}
+                	s = s + "}";
+            	} else {
+                	// arbitrary expression
+                	s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+                	s = s + "{ int _writeback_idx = 0; for (;_writeback_idx < " + elements + "; _writeback_idx++) { ";
+                	s = s + " retVal[_writeoffset + _writeback_idx] = " + convPre + "tempResult[_writeback_idx]" + convPost + ";",
+                	s = s + "}}";
+            	}
+			}
         }
         s = s + "if (_FAIL) {*_FAILRET = 1;}";
         s = s + " return; ";
@@ -596,19 +782,36 @@ RiverTrail.compiler.codeGen = (function() {
         var sourceShape = sourceType.getOpenCLShape();
         var sourceRank = sourceShape.length;
         var elemRank = ast.typeInfo.getOpenCLShape().length;
+		var isParallelArray = (sourceType.isObjectType("ParallelArray"));
+		var isGlobal = (sourceType.properties.addressSpace === "__global");
         if (elemRank !== 0) {
-            // The result is a pointer to a sub dimension.
-            s = s + "( &";
+				if(isParallelArray || isGlobal) {
+		            // The result is a pointer to a sub dimension.
+        		    s = s + "( &";
+				}
+				else {
+					s = s + "(";
+				}
         }
         elemSize = ast.typeInfo.getOpenCLShape().reduce( function (p,n) { return p*n;}, 1);
-        s = s + " ( " + oclExpression(source) + "[0 ";
+		if(isParallelArray || isGlobal) {
+			s = s + " ( " + oclExpression(source) + "[0 ";
+		}
+		else {
+			s = s + oclExpression(source) ;
+		}
 
         stride = elemSize;
         
         if (arrayOfIndices.type !== LIST) {
             // we have a single scalar index from an INDEX op
             rangeInfo = arrayOfIndices.rangeInfo;
-            s = s + " + " + stride + " * ("+wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ")";
+			if(isParallelArray || isGlobal) {
+				s = s + " + " + stride + " * ("+wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ")";
+			}
+			else {
+				s = s + "[" + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + "]";
+			}
         } else {
             // this is a get
             if (arrayOfIndices.children[0] && (arrayOfIndices.children[0].type === ARRAY_INIT)) { 
@@ -622,15 +825,16 @@ RiverTrail.compiler.codeGen = (function() {
             for (i = sourceRank - elemRank - 1; i >= 0; i--) { // Ususally only 2 or 3 dimensions so ignore complexity
                 s = s + " + " + stride + " * ("
                 if (dynamicSel) {
-                    s = s + wrapIntoCheck(rangeInfo[0][i], sourceShape[i], oclExpression(arrayOfIndices.children[0]) + "[" + i + "]") + ")";
+                    s = s + wrapIntoCheck(rangeInfo.get(0).get(i), sourceShape[i], oclExpression(arrayOfIndices.children[0]) + "[" + i + "]") + ")";
                 } else {
-                    s = s + wrapIntoCheck(rangeInfo[i], sourceShape[i], oclExpression(arrayOfIndices.children[i])) + ")";
+                    s = s + wrapIntoCheck(rangeInfo.get(i), sourceShape[i], oclExpression(arrayOfIndices.children[i])) + ")";
                 }
                 stride = stride * sourceType.getOpenCLShape()[i];
             }
         }
-        
-        s = s + "])";
+		if(isParallelArray || isGlobal) {
+	        s = s + "])";
+		}
 
         if (elemRank !== 0) {
             // The result is a pointer to a sub dimension.
@@ -697,6 +901,11 @@ RiverTrail.compiler.codeGen = (function() {
                 s = "((" + ast.typeInfo.OpenCLType + ")" 
                         + oclExpression(ast.children[0]) + ")";
             //}
+        } else if (ast.type === FLATTEN) {
+            if (ast.typeInfo.getOpenCLShape().length > 1) {
+                reportError("flattening of nested arrays not yet implemented.", ast.children[0]);
+            }
+            s = s + oclExpression(ast.children[0]);
         } else if (ast.type === NUMBER) {
             //if (ast.typeInfo.OpenCLType) {
             //    s = s + "("+ast.typeInfo.OpenCLType+")"+ast.value;
@@ -741,7 +950,13 @@ RiverTrail.compiler.codeGen = (function() {
                         s = s + " 628 oclExpression not complete probable some sort of method call ";
                 }
             } else { // It is not a method call.
-                s = "TBD 1651 deal with CALL ";
+                var actuals = "";
+                actuals = oclExpression(ast.children[1]);
+                s = s + ast.children[0].value + "( &_FAIL" + (actuals !== "" ? ", " : "") + actuals;
+                if (!(ast.typeInfo.isScalarType())) { 
+                    s = s + "," + ast.allocatedMem;
+                }
+                s = s + ")";
             }
         } else {
             // Everything else can be dealt with according to the more straight forward translation.
@@ -965,16 +1180,19 @@ RiverTrail.compiler.codeGen = (function() {
                     case IDENTIFIER:
                         // simple case of a = expr
                         if (ast.allocatedMem) {
-                                throw new Error("a memcopy would be required to compile this code.");
+							console.log(ast.children[0].type, ast.children[0].value);
+                            throw new Error("a memcopy would be required to compile this code.");
                         } else {
                             s = s + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")"; // no ; because ASSIGN is an expression!
                         }
                         break;
                     case INDEX:
                         // array update <expr>[iv] = expr
-                        // 1) check that iv is a number type
-                        // 2) figure out what <expr> is. Could be another selection
-                        reportBug("Array selection on LHS is a todo");
+                        // make sure that <expr> is in the __private address space. We catch it this late just for
+                        // prototyping convenience. Could go anywhere after TI.
+                        (findSelectionRoot(ast.children[0]).typeInfo.properties.addressSpace !== "__global") || reportError("global arrays are immutable", ast);
+                        
+                        s = s + "((" + oclExpression(ast.children[0]) + ")" + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")";
                         break;
                     case DOT:
                         // object property update.
@@ -1029,9 +1247,11 @@ RiverTrail.compiler.codeGen = (function() {
             case MINUS:
             case MUL:
             case DIV:
+				s = s + "("+oclExpression(ast.children[0]) + ast.value + oclExpression(ast.children[1]) + ")";
+				break;
             case MOD: 
-                s = s + "("+oclExpression(ast.children[0]) + ast.value + oclExpression(ast.children[1]) + ")";
-                break;
+				s = s + "(" + "fmod(" + "(" + oclExpression(ast.children[0]) + ")" + ", " + "(" + oclExpression(ast.children[1]) + ")" + ")" + ")";
+				break;
 
             // binary operators on bool
             case OR:
@@ -1085,6 +1305,7 @@ RiverTrail.compiler.codeGen = (function() {
                 break;
 
             case CAST:
+            case FLATTEN:
             case NUMBER:
                 s += oclExpression(ast);
                 break;
@@ -1101,10 +1322,6 @@ RiverTrail.compiler.codeGen = (function() {
                 break;
 
             case ARRAY_INIT:
-                if (ast.typeInfo.properties.elements.getOpenCLShape().length > 0) {
-                    // nested array
-                    throw new Error("compilation of nested local arrays not implemented");
-                } else {
                     s = s + "(";
                     for (var i=0;i<ast.children.length;i++) {
                         if (i>0) {
@@ -1116,7 +1333,7 @@ RiverTrail.compiler.codeGen = (function() {
                         s += ", ";
                     }
                     s = s + ast.allocatedMem + ")";
-                }
+                //}
                 break;
 
             // function application
@@ -1148,7 +1365,11 @@ RiverTrail.compiler.codeGen = (function() {
                 reportError("try/throw/catch/finally not yet implemented", ast);
                 break;
             case BREAK:
+				//s += " break; ";
+				//break;
             case CONTINUE:
+				//s += " continue; ";
+				//break;
             case LABEL:
                 reportError("break/continure/labels not yet implemented", ast);
                 break;

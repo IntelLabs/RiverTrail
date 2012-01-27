@@ -38,10 +38,13 @@
     <script type="text/javascript" src="../jslib/jit/compiler/dotviz.js"></script>
     <script type="text/javascript" src="../jslib/jit/compiler/typeinference.js"></script>
     <script type="text/javascript" src="../jslib/jit/compiler/rangeanalysis.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/inferblockflow.js"></script>
+    <script type="text/javascript" src="../jslib/jit/compiler/infermem.js"></script>
     <script type="text/javascript" src="../jslib/jit/compiler/genOCL.js"></script>
     <script type="text/javascript" src="../jslib/jit/compiler/runOCL.js"></script>
     <style type="text/css">
         span.exception {color: #ff0000;}
+        span.info {color: #22aa22;}
         span.undefined {color: #333333; font-style: italic;}
         span.result {font-weight: bold;}
     </style>
@@ -124,8 +127,11 @@ document.getElementById('command').onkeydown = function (e) {
                 span.appendChild(text);
                 out.appendChild(document.createElement('br'));
                 out.scrollTop = out.scrollHeight;
-            } else if (e.keyCode == 38) { // UP
-                if (e.target.historyPos == undefined) {
+            } else if (e.keyCode === 38) { // UP
+                if (e.target.historyPos === undefined) {
+                    if (e.target.history === undefined) {
+                        e.target.history = [];
+                    }
                     e.target.history.push(e.target.value);
                     e.target.historyPos = e.target.history.length - 1;
                 }
@@ -134,7 +140,7 @@ document.getElementById('command').onkeydown = function (e) {
                     e.target.historyPos--;
                     e.target.value = e.target.history[e.target.historyPos];
                }
-            } else if (e.keyCode == 40) { // DOWN
+            } else if (e.keyCode === 40) { // DOWN
                 if ((e.target.historyPos !== undefined) && 
                    (e.target.historyPos < e.target.history.length - 1)) {
                     e.target.history[e.target.historyPos] = e.target.value;
@@ -146,18 +152,30 @@ document.getElementById('command').onkeydown = function (e) {
     }
 // disable compilation
 try {
-    var PAT = ParallelArray.prototype;
-    PAT.combine = PAT.combineSeq;
-    PAT.map = PAT.mapSeq;
-    delete PAT.combineSeq;
-    delete PAT.mapSeq;
-    delete PAT;
+    if (RiverTrail.compiler === undefined) {
+        var PAT = ParallelArray.prototype;
+        PAT.combine = PAT.combineSeq;
+        PAT.map = PAT.mapSeq;
+        delete PAT.combineSeq;
+        delete PAT.mapSeq;
+        delete PAT;
+    } else {
+        var out = document.getElementById('output');
+        var span = document.createElement('span');
+        span.innerHTML = 'It appears that you have River Trail installed. Enabling compiled mode...';
+        span.setAttribute("class", "info");
+        out.appendChild(span);
+        out.appendChild(document.createElement('br'));
+    }
+
+
 } catch (e) {
     var out = document.getElementById('output');
     var span = document.createElement('span');
     span.innerHTML = 'It appears that the library implementation of River Trail does not support your browser. Please <a href="http://github.com/RiverTrail/RiverTrail/issues">open an issue</a>.';
     span.setAttribute("class", "exception");
     out.appendChild(span);
+    out.appendChild(document.createElement('br'));
 }
 </script>
 </html>

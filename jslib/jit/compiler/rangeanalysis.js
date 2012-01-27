@@ -40,12 +40,9 @@ RiverTrail.RangeAnalysis = function () {
     //
     // error reporting
     //
-    function reportError(msg, t) {
-        throw "Error: " + msg + " <" + (t ? RiverTrail.Helper.wrappedPP(t) : "no context") + ">"; // could be more elaborate
-    }
-    function reportBug(msg, t) {
-        throw "Bug: " + msg; // could be more elaborate
-    }
+    var reportError = RiverTrail.Helper.reportError;
+    var reportBug = RiverTrail.Helper.reportBug;
+    var findSelectionRoot = RiverTrail.Helper.findSelectionRoot;
 
     // 
     // Environment to encode constraints on identifiers. A constraint can either be a single 2-element
@@ -190,10 +187,10 @@ RiverTrail.RangeAnalysis = function () {
                          ((this.ub === undefined) || (val.ub === undefined)) ? undefined : Math.max(this.ub, val.ub),
                          this.isInt && val.isInt);
     };
-    Rp.intersect = function (val) {
+    Rp.constrain = function (val) {
         return new Range((this.lb === undefined) ? val.lb : ((val.lb === undefined) ? this.lb : Math.max(this.lb, val.lb)),
                          (this.ub === undefined) ? val.ub : ((val.ub === undefined) ? this.ub : Math.min(this.ub, val.ub)),
-                         this.isInt && val.isInt);
+                         this.isInt);
     };
     Rp.force = function (val) {
         return new Range((val.lb === undefined) ? this.lb : val.lb, (val.ub === undefined) ? this.ub : val.ub, this.isInt);
@@ -218,6 +215,77 @@ RiverTrail.RangeAnalysis = function () {
         return "[" + ((this.lb !== undefined) ? this.lb.toString() : "--") + "," + ((this.ub !== undefined) ? this.ub.toString() : "--") + "]<" + (this.isInt ? "int" : "fp") + ">";
     };
 
+    var RangeArray = function (src, f) {
+        this._store = [];
+        if (src) {
+            if (src instanceof RangeArray) {
+                for (var cnt = 0; cnt < src._store.length; cnt++) {
+                    this._store[cnt] = f(src._store[cnt], cnt);
+                }
+            } else {
+                for (var cnt = 0; cnt < src.length; cnt++) {
+                    this._store[cnt] = f(src[cnt], cnt);
+                }
+            }
+        }
+        return this;
+    };
+    var RAp = RangeArray.prototype;
+    RAp.get = function (i) { return this._store[i];};
+    RAp.set = function (i,v) { this._store[i] = v; };
+    RAp.map = function (f) {
+        return function selfF (val) {
+            var result = new RangeArray();
+            for (var cnt = 0; cnt < this._store.length; cnt++) {
+                if (this._store[cnt] instanceof RangeArray) {
+                    result._store[cnt] = selfF.call(this._store[cnt], val._store[cnt]);
+                } else {
+                    result._store[cnt] = f.call(this._store[cnt], val._store[cnt]);
+                }
+            }
+            return result;
+        };
+    };
+    RAp.union = RAp.map(Rp.union);
+    RAp.constrain = RAp.map(Rp.constrain);
+    RAp.force = RAp.map(Rp.force);
+    RAp.clone = function () {
+        var result = new RangeArray();
+        result._store = this._store.map(function (val) { return val.clone();});
+        return result;
+    };
+    RAp.covers = function (other) {
+        if (other instanceof RangeArray) {
+            return this._store.every(function (a, idx) { return a.covers(other._store[idx]);});
+        } else {
+            return false;
+        }
+    };
+    RAp.isInt = function isInt() {
+        return this._store.every( function (val) { return (val instanceof RangeArray) ? val.isInt() : val.isInt;});
+    };
+    RAp.setInt = function setInt(other, union) {
+        this._store.forEach( function (mine, idx) { 
+                                 if (mine instanceof RangeArray) {
+                                     mine.setInt(other._store[idx], union);
+                                 } else {
+                                     mine.isInt = other._store[idx].isInt && (!union || mine.isInt);
+                                 }
+                             });
+    };
+    RAp.toString = function toString() {
+        var result = "[[";
+        for (var cnt = 0; cnt < this._store.length; cnt++) {
+            if (cnt > 0) 
+                result += ", ";
+            result += this._store[cnt].toString();
+        }
+        result += "]<";
+        result += this.isInt() ? "int" : "fp";
+        result += ">]";
+        return result;
+    };
+    
     var VarEnv = function (env) {
         this.parent = env;
         this.bindings = {};
@@ -234,32 +302,31 @@ RiverTrail.RangeAnalysis = function () {
     VEp.update = function (name, range) {
         var current = this.lookup(name);
         if (current) {
-            if (current instanceof Array) {
-                (range instanceof Array) || reportBug("update of array range with scalar range?");
-                this.bindings[name] = current.map(function (val, idx) { return range[idx].clone(); });
-            } else {
-                !(range instanceof Array) || reportBug("update of scalar range with array range?");
+            if (current instanceof RangeArray) {
+                (range instanceof RangeArray) || reportBug("update of array range with scalar range?");
                 this.bindings[name] = range.clone();
+                this.bindings[name].setInt(current, true);
+            } else {
+                !(range instanceof RangeArray) || reportBug("update of scalar range with array range?");
+                this.bindings[name] = range.clone();
+                this.bindings[name].isInt = range.isInt && current.isInt;
             }
         } else {
             this.bindings[name] = range;
         }
         debug && console.log(name + " updated to " + this.bindings[name].toString());
-        if (name === "offX"){
-            var k ="debug here";
-        }
     };
     VEp.apply = function (name, constraint) {
         var current = this.lookup(name);
         if (constraint instanceof Array) {
             if (current) {
-                this.bindings[name] = current.map(function (val,idx) { return val.intersect(constraint[idx]); });
+                this.bindings[name] = new RangeArray(current, function (val,idx) { return val.constrain(constraint[idx]); });
             } else {
                 this.bindings[name] = constraint.map(function (val) { return new Range(val.lb, val.ub); });
             }
         } else {
             if (current) {
-                this.bindings[name] = current.intersect(constraint);
+                this.bindings[name] = current.constrain(constraint);
             } else {
                 this.bindings[name] = new Range(constraint.lb, constraint.ub);
             }
@@ -270,7 +337,7 @@ RiverTrail.RangeAnalysis = function () {
         var current = this.lookup(name);
         if (constraint instanceof Array) {
             if (current) {
-                this.bindings[name] = current.map(function (val,idx) { return val.force(constraint[idx]); });
+                this.bindings[name] = new RangeArray(this.bindings[name], function (val,idx) { return val.force(constraint[idx]); });
             } else {
                 this.bindings[name] = constraint.map(function (val) { return new Range(val.lb, val.ub); });
             }
@@ -330,7 +397,7 @@ RiverTrail.RangeAnalysis = function () {
     VEp.invalidate = function () {
         for (var name in this.bindings) {
             if (this.bindings[name] instanceof Array) {
-                this.bindings[name] = this.bindings[name].map( function (v) { return new Range(undefined, undefined, false); });
+                this.bindings[name] = new RangeArray(this.bindings[name], function (v) { return new Range(undefined, undefined, false); });
             } else {
                 this.bindings[name] = new Range(undefined, undefined, false);
             }
@@ -353,8 +420,44 @@ RiverTrail.RangeAnalysis = function () {
         if (mode) {
             ast.rangeInfo = range;
         } else if (range) {
-            ast.rangeInfo.isInt = range.isInt;
+            if (ast.rangeInfo !== undefined) {
+                if (ast.rangeInfo instanceof RangeArray) {
+                 ast.rangeInfo.setInt(range);
+                } else {
+                    ast.rangeInfo.isInt = range.isInt;
+                }
+            }
         }
+    }
+
+    function computeRootRangeInfo(ast, range) {
+        var index, result, newRange;
+
+        switch (ast.type) {
+            case INDEX:
+                expr = ast.children[0]; index = ast.children[1];
+                if (index.rangeInfo.fixedValue()) {
+                    // compute the range of the entire array
+                    var newRange = expr.rangeInfo.clone();
+                    if (newRange instanceof RangeArray) { // check as undefined ranges are always scalar
+                        newRange.set(index.rangeInfo.lb, range.clone());
+                    } else {
+                        newRange = new Range(undefined, undefined, false); // just to be sure
+                    }
+                } else {
+                    // modify to undefined
+                    newRange = new Range(undefined, undefined, false);
+                }
+                result = computeRootRangeInfo(expr, newRange);
+                break;
+            case IDENTIFIER:
+                result = range;
+                break;
+            default:
+                throw "unexpected node in computeRootRangeInfo. TI must have let something pass that it should not!";
+        }
+
+        return result;
     }
 
     //
@@ -377,6 +480,9 @@ RiverTrail.RangeAnalysis = function () {
             case SCRIPT:
                 varEnv = new VarEnv(varEnv);
                 ast.rangeSymbols = varEnv;
+                ast.funDecls.forEach(function (f) {
+                        drive(f.body, new VarEnv(), true);
+                    });
                 // fallthrough
             case BLOCK:
                 ast.children.forEach(function (ast) { drive(ast, varEnv, doAnnotate); });
@@ -483,9 +589,6 @@ RiverTrail.RangeAnalysis = function () {
                 var elseVE = new VarEnv(varEnv);
                 elseVE.applyConstraints(predCE);
                 if (ast.elsePart) {
-                    // we can just use the main env for this alternative path as 
-                    // the join in the end will keep whatever we have found if it
-                    // is not present in the other part.
                     drive(ast.elsePart, elseVE, doAnnotate);
                 }
                 thenVE.merge(elseVE);
@@ -516,7 +619,14 @@ RiverTrail.RangeAnalysis = function () {
                         result = right; // assignment yields the rhs as value
                         break;
                     case INDEX:
-                        throw "handle me"; 
+                        // the lhs can only be a nested selection, so it suffices to push the update through 
+                        // until we find the identifier to update the variable environment. A nifty little helper does
+                        // this task. Note that the expression itself was already annotated, as it is evaluated _before_
+                        // the rhs.
+                        var rootRange = computeRootRangeInfo(ast.children[0], right);
+                        var root = findSelectionRoot(ast.children[0]);
+                        varEnv.update(root.value, rootRange);
+                        result = right;
                     case DOT:
                         // we do not infer range information for objects 
                         break;
@@ -540,9 +650,10 @@ RiverTrail.RangeAnalysis = function () {
                 drive(ast.children[0], varEnv, doAnnotate, predC);
                 var thenVE = new VarEnv(varEnv);
                 thenVE.applyConstraints(predC);
-                drive(ast.children[1], thenVE, doAnnotate); // we do not forward constraints here, nor collect new ones, as we do 
-                drive(ast.children[2], varEnv, doAnnotate); // not know which branch will be taken
+                left = drive(ast.children[1], thenVE, doAnnotate); // we do not forward constraints here, nor collect new ones, as we do 
+                right = drive(ast.children[2], varEnv, doAnnotate); // not know which branch will be taken
                 varEnv.merge(thenVE);
+                result = left.union(right);
                 break;
                 
             // binary operations on all literals
@@ -655,7 +766,7 @@ RiverTrail.RangeAnalysis = function () {
                 result = varEnv.lookup(ast.value) || new Range(undefined, undefined, false);
                 break;
             case DOT:
-                // we support array.length and PA.getShape() as it is somewhat a common loop bound. Could be more elaborate
+                // we support array.length and PA.length as it is somewhat a common loop bound. Could be more elaborate
                 drive(ast.children[0], varEnv, doAnnotate);
                 //drive(ast.children[1], varEnv, doAnnotate); // this needs to be an identifier, so no need to range infer it
                 if ((ast.children[1].value === "length") &&
@@ -686,8 +797,8 @@ RiverTrail.RangeAnalysis = function () {
                     if (constraintAccu && constraints && (ast.children[0].type === IDENTIFIER)) { // we have new constraint information to assign
                         constraints.addAccu(ast.children[0].value, constraintAccu, index.lb, ast.children[0].typeInfo.properties.shape[0]);
                     }
-                    if (array && (array instanceof Array)) { // undefined results are always scalar, so we have to check here
-                        result = array[index.lb];
+                    if (array && (array instanceof RangeArray)) { // undefined results are always scalar, so we have to check here
+                        result = array.get(index.lb);
                     } 
                 } 
                 if (!result) {
@@ -696,7 +807,7 @@ RiverTrail.RangeAnalysis = function () {
                 break;
 
             case ARRAY_INIT:
-                result = ast.children.map(function (ast) { return drive(ast, varEnv, doAnnotate);});
+                result = new RangeArray(ast.children, function (ast) { return drive(ast, varEnv, doAnnotate);});
                 break;
 
             // function application
@@ -710,7 +821,7 @@ RiverTrail.RangeAnalysis = function () {
                         var dot = ast.children[0];
                         if (dot.children[0].typeInfo.isObjectType("ParallelArray") &&
                             (dot.children[1].value === "getShape")) {
-                            result = dot.children[0].typeInfo.properties.shape.map( function (val) { return new Range(val, val, true); });
+                            result = new RangeArray(dot.children[0].typeInfo.properties.shape, function (val) { return new Range(val, val, true); });
                         } else {
                             result = new Range(undefined, undefined, false);
                         }
@@ -724,13 +835,18 @@ RiverTrail.RangeAnalysis = function () {
 
             // argument lists
             case LIST:      
-                result = ast.children.map(function (ast) { return drive(ast, varEnv, doAnnotate); });
+                result = new RangeArray(ast.children, function (ast) { return drive(ast, varEnv, doAnnotate); });
                 break;
 
             case CAST:
                 // TODO: be more sensible here
                 drive(ast.children[0], varEnv, doAnnotate);
                 result = new Range(undefined, undefined, false);
+                break;
+
+            case FLATTEN:
+                drive(ast.children[0], varEnv, doAnnotate);
+                result = ast.children[0].rangeInfo.clone();
                 break;
 
             // 
@@ -747,7 +863,7 @@ RiverTrail.RangeAnalysis = function () {
             case BREAK:
             case CONTINUE:
             case LABEL:
-                reportError("break/continure/labels not yet implemented", ast);
+                reportError("break/continure)/labels not yet implemented", ast);
                 break;
             case YIELD:
             case GENERATOR:
@@ -802,16 +918,16 @@ RiverTrail.RangeAnalysis = function () {
                 throw "unhandled node type in analysis: " + ast.type;
         }
 
-            annotateRangeInfo(ast, result, doAnnotate);
-            if (debug && result) {
-                console.log(RiverTrail.Helper.wrappedPP(ast) + " has range " + result.toString());
-            }
-
-            if (debug && (ast.type === SCRIPT)) {
-                console.log("overall range map for SCRIPT node: " + ast.rangeSymbols.toString());
-            }
-            return result;
+        annotateRangeInfo(ast, result, doAnnotate);
+        if (debug && result) {
+            console.log(RiverTrail.Helper.wrappedPP(ast) + " has range " + result.toString());
         }
+
+        if (debug && (ast.type === SCRIPT)) {
+            console.log("overall range map for SCRIPT node: " + ast.rangeSymbols.toString());
+        }
+        return result;
+    }
 
         function analyze(ast, array, construct, rankOrShape, args) {
             var env = new VarEnv();
@@ -819,10 +935,10 @@ RiverTrail.RangeAnalysis = function () {
             // add range info for index vector. 
             if (construct === "combine")  {
                 var shape = array.getShape().slice(0,rankOrShape);
-                var range = shape.map(function (val) { return new Range(0, val - 1, true); });
+                var range = new RangeArray(shape, function (val) { return new Range(0, val - 1, true); });
                 env.update(ast.params[0], range);
             } else if (construct === "comprehension") {
-                var range = rankOrShape.map(function (val) { return new Range(0, val - 1, true); });
+                var range = new RangeArray(rankOrShape, function (val) { return new Range(0, val - 1, true); });
                 env.update(ast.params[0], range);
             } else if (construct === "comprehensionScalar") {
                 var range = new Range(0, rankOrShape[0] - 1, true);
@@ -853,13 +969,14 @@ RiverTrail.RangeAnalysis = function () {
         }
 
         function isIntValue(ast) {
-            return ast.rangeInfo && ((ast.rangeInfo instanceof Array) ? ast.rangeInfo.every( function (r) { return r.isInt; }) : ast.rangeInfo.isInt);
+            return ast.rangeInfo && ((ast.rangeInfo instanceof RangeArray) ? ast.rangeInfo.isInt() : ast.rangeInfo.isInt);
         }
 
         function updateToNew(type, target) {
+            debug && console.log("updating " + type.toString() + " to " + target);
             if (type.isNumberType()) {
                 type.OpenCLType = target;
-            } else if (type.isObjectType("Array")) {
+            } else if (type.isObjectType("Array") || type.isObjectType("ParallelArray")) {
                 updateToNew(type.properties.elements, target);
                 type.updateOpenCLType();
             } else if (type.isBoolType()) {
@@ -870,6 +987,7 @@ RiverTrail.RangeAnalysis = function () {
         }
 
         function makeCast(ast, type) {
+            debug && console.log("casting " + RiverTrail.Helper.wrappedPP(ast) + " to " + type);
             var result = new Narcissus.parser.Node(ast.tokenizer);
             result.type = CAST;
             result.typeInfo = ast.typeInfo.clone();
@@ -889,14 +1007,18 @@ RiverTrail.RangeAnalysis = function () {
 
             switch (ast.type) {
                 case SCRIPT:
+                    // handle nested functions
+                    ast.funDecls.forEach(function (f) {
+                            push(f.body);
+                        });
                     // update types of variable declarations based on range info
                     ast.varDecls.forEach( function (decl) {
                             var rangeInfo = ast.rangeSymbols.lookup(decl.value);
                             var typeInfo = ast.symbols.lookup(decl.value).type;
                             var makeInt = false;
                             if (rangeInfo) { // dead variables may not carry any range information
-                                if (rangeInfo instanceof Array) {
-                                    makeInt = rangeInfo.every( function (info) { return info.isInt; });
+                                if (rangeInfo instanceof RangeArray) {
+                                    makeInt = rangeInfo.isInt();
                                 } else {
                                     makeInt = rangeInfo.isInt;
                                 }
@@ -967,15 +1089,23 @@ RiverTrail.RangeAnalysis = function () {
                     switch (ast.children[0].type) {
                         case IDENTIFIER:
                             // simple case of a = expr
+                            // we first update the type information for the lhs to the new global state. 
                             // It might be that we compute on int but the variable is a double. In such
-                            // a case, we have to cast and update the variable's type information.
+                            // a case, we have to cast the expression to double.
                             ast.children[0].typeInfo = tEnv.lookup(ast.children[0].value).type;
                             if (isIntValue(ast.children[1]) && (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
-                                ast = makeCast(ast, "int");
+                                ast.children[1] = makeCast(ast.children[1], "double");
                             }
                             break;
                         case INDEX:
-                            throw "handle me"; 
+                            // first do the lhs expression. We do not care whether the lhs is int or not, we will adapt. The case
+                            // where the lhs is int and the rhs is double cannot happen (the lhs is at most a nested selection
+                            // operation and we would have propagated the double status to the lhs in the drive phase).
+                            ast.children[0] = push(ast.children[0], tEnv, undefined); 
+                            // as above, we have to make sure that the types match...
+                            if (isIntValue(ast.children[1]) && (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
+                                ast.children[1] = makeCast(ast.children[1], "double");
+                            }
                         case DOT:
                             // we do not infer range information for objects 
                             break;
@@ -1072,9 +1202,10 @@ RiverTrail.RangeAnalysis = function () {
                 case ARRAY_INIT:
                     // SAH: special case here: If we need the result of an ARRAY literal to be int, we propagate this
                     //      information into the elements. This saves us allocating space for the float array, which 
-                    //      would be copied into the int array anyhow. The generic handler at the end of this
-                    //      function takes this into account, as well.
-                    ast.children = ast.children.map(function (child) { return push(child, tEnv, isIntValue(ast) || expectInt);});
+                    //      would be copied into the int array anyhow. Same holds true the other way round, so if we have 
+                    //      an int array, but floats are expected, we propagate this on. 
+                    //      The generic handler at the end of this function takes this into account, as well.
+                    ast.children = ast.children.map(function (child) { return push(child, tEnv, isIntValue(ast) && expectInt);});
                     break;
 
                 // function application
@@ -1083,6 +1214,11 @@ RiverTrail.RangeAnalysis = function () {
                         case DOT:
                             // all method calls except "get" on PA expect floating point values.
                             var dot = ast.children[0];
+                            // traverse the lhs of the dot. Although the result 
+                            // is an object, there might be some other calls in 
+                            // there that have constraints. child 1 is a name, 
+                            // so nothing to traverse there.
+                            dot.children[0] = push(dot.children[0], tEnv, undefined);
                             if (dot.children[0].typeInfo.isObjectType("ParallelArray") &&
                                 (dot.children[1].value === "get")) {
                                 ast.children[1] = push(ast.children[1], tEnv, true); 
@@ -1102,6 +1238,10 @@ RiverTrail.RangeAnalysis = function () {
 
                 case CAST:
                     ast.children[0] = push(ast.children[0], tEnv, isIntValue(ast));
+                    break;
+
+                case FLATTEN:
+                    ast.children[0] = push(ast.children[0], tEnv, expectInt);
                     break;
 
                 // 
@@ -1176,19 +1316,27 @@ RiverTrail.RangeAnalysis = function () {
             // postprocess all but LIST nodes.
             if (ast.type !== LIST) {
                 if (isIntValue(ast)) {
-                    // change type information to be int
-                    ast.typeInfo && updateToNew(ast.typeInfo, "int");
-                    // if the node one level up cannot live with int, cast to a float representation
-                    if (expectInt === false) {
-                        ast = makeCast(ast, tEnv.openCLFloatType);
+                    if (ast.type !== ARRAY_INIT) {
+                        // change type information to be int
+                        ast.typeInfo && updateToNew(ast.typeInfo, "int");
+                        // if the node one level up cannot live with int, cast to a float representation
+                        if (expectInt === false) {
+                            ast = makeCast(ast, tEnv.openCLFloatType);
+                        }
+                    } else if (expectInt === false) {
+                        // SAH: special case for array literals: we propagate the double requirement to
+                        //      the elements, so those will already be doubles or CAST nodes.
+                        updateToNew(ast.typeInfo.properties.elements, "double");
+                        ast.typeInfo.updateOpenCLType();
                     }
                 } else {
-                    if (expectInt) {
+                    if (expectInt && !validIntRepresentation(ast.typeInfo.OpenCLType)) {
                         if (ast.type !== ARRAY_INIT) {
                             var newAst = new Narcissus.parser.Node(ast.tokenizer);
                             newAst.type = TOINT32;
                             newAst.typeInfo = ast.typeInfo.clone();
                             updateToNew(newAst.typeInfo, "int");
+                            newAst.rangeInfo = new Range(undefined, undefined, true); // better be conservative here
                             newAst.children[0] = ast;
                             ast = newAst;
                         } else {

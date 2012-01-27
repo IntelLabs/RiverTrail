@@ -98,15 +98,10 @@ RiverTrail.compiler = (function () {
 
         args = Array.prototype.map.call(args, 
                                      function (object) {
-                                         if (object instanceof ParallelArray) {
-                                             return object;
-                                         } else if (object instanceof Array) {
+                                         if (object instanceof Array) {
                                              var result = new ParallelArray( lowPrecision ? Float32Array : Float64Array, object);
                                              result._wasArray = true;
                                              return result;
-                                         } else if (RiverTrail.Helper.isTypedArray(object)) {
-                                             var result = new ParallelArray( object);
-                                             result._wasArray = true;
                                          } else {
                                              return object;
                                          }});
@@ -170,32 +165,10 @@ RiverTrail.compiler = (function () {
     };
 
     //
-    // Name generator to ensure that function names are unique if we parse
-    // multiple functions with the same name
-    //
-    var nameGen = function () {
-        var counter = 0;
-
-        return function nameGen (postfix) {
-            return "f" + (counter++) + "_" + (postfix || "nameless");
-        };
-    }();
-
-    //
     // Driver method to steer compilation process
     //
     function parse(paSource, construct, rankOrShape, kernel, args, lowPrecision) {
-        var parser = Narcissus.parser;
-        var kernelJS = kernel.toString();
-        // We want to parse a function that was used in expression position
-        // without creating a <script> node around it, nor requiring it to
-        // have a name. So we have to take a side entry into narcissus here.
-        var t = new parser.Tokenizer(kernelJS);
-        t.get(true); // grab the first token
-        var ast = parser.FunctionDefinition(t, undefined, false, parser.EXPRESSED_FORM);        
-        // Ensure that the function has a unique, valid name to simplify
-        // the treatment downstream
-        ast.name = nameGen(ast.name);
+        var ast = RiverTrail.Helper.parseFunction(kernel);
         var rank = rankOrShape.length || rankOrShape;
         try {
             RiverTrail.Typeinference.analyze(ast, paSource, construct, rank, args, lowPrecision);
@@ -267,6 +240,8 @@ RiverTrail.compiler = (function () {
                 // SAH: treating all non-PA arrays as float requires a check for regularity and 
                 //      homogeneity! This is done in the transfer code.
                 argumentTypes.push({ inferredType: defaultNumberType, dimSize: [argument.length] });
+            } else if (RiverTrail.Helper.isTypedArray(argument)) {
+                argumentTypes.push({ inferredType: RiverTrail.Helper.inferTypedArrayType(argument), dimSize: [argument.length] });
             } else if (argument instanceof RiverTrail.Helper.Integer) {
                 // These are special integer values used for offsets and the like. 
                 argumentTypes.push({ inferredType: "int", dimSize: [] });
@@ -277,8 +252,7 @@ RiverTrail.compiler = (function () {
                 // numbers are floats
                 argumentTypes.push({ inferredType: defaultNumberType, dimSize: [] });
             } else {
-                console.log("parseGenRun:482 argument:", argument, " argTypes: ", argTypes);
-                throw new CompilerBug("parseGenRun:482 - type derivation for argument not implemented yet");
+                throw new CompilerBug("Type derivation for argument not implemented yet");
             }
         }
         return argumentTypes;
