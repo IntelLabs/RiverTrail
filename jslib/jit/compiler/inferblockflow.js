@@ -324,6 +324,7 @@ RiverTrail.InferBlockFlow = function () {
             case LIST:      
             case CAST:
             case TOINT32:
+            case FLATTEN:
             case ARRAY_INIT:
             case INDEX:
                 ast.children.forEach(function (val) { infer(val, ins, outs, locals); });

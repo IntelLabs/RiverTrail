@@ -1179,17 +1179,24 @@ RiverTrail.Typeinference = function () {
                     // special case of new ParallelArray(<expr>)
                     //
                     // this turns into the identity modulo type
-                    ast = ast.children[1].children[0];
-                    ast = drive(ast, tEnv, fEnv);
+                    ast.children[1].children[0] = drive(ast.children[1].children[0], tEnv, fEnv);
                     right = tEnv.accu.clone();
                     if (right.isObjectType("Array")) {
                         // Change the type. We have to construct the resulting type
                         // by hand here, as usually parallel arrays objects do not
                         // fall from the sky but are passed in or derived from
-                        // selections.
+                        // selections. As this is potentially a nested array,
+                        // we have to flatten the type here.
                         right.name = "ParallelArray";
-                    }
-                    if (!right.isObjectType("ParallelArray")) {
+                        right.properties.shape = right.getOpenCLShape();
+                        right.properties.elements = function getLast(type) { return type.isScalarType() ? type : getLast(type.properties.elements);}(right);
+                        ast.type = FLATTEN;
+                        ast.children[0] = ast.children[1].children[0];
+                        delete ast.children[1];
+                    } else if (right.isObjectType("ParallelArray")) {
+                        // simply get rid of the new
+                        ast = ast.children[1].children[0];
+                    } else {
                         reportError("Only the simple form of ParallelArray's constructor is implemented", ast);
                     }
                     tEnv.accu = right;

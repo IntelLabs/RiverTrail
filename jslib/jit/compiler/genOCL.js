@@ -901,6 +901,11 @@ RiverTrail.compiler.codeGen = (function() {
                 s = "((" + ast.typeInfo.OpenCLType + ")" 
                         + oclExpression(ast.children[0]) + ")";
             //}
+        } else if (ast.type === FLATTEN) {
+            if (ast.typeInfo.getOpenCLShape().length > 1) {
+                reportError("flattening of nested arrays not yet implemented.", ast.children[0]);
+            }
+            s = s + oclExpression(ast.children[0]);
         } else if (ast.type === NUMBER) {
             //if (ast.typeInfo.OpenCLType) {
             //    s = s + "("+ast.typeInfo.OpenCLType+")"+ast.value;
@@ -1300,6 +1305,7 @@ RiverTrail.compiler.codeGen = (function() {
                 break;
 
             case CAST:
+            case FLATTEN:
             case NUMBER:
                 s += oclExpression(ast);
                 break;
