@@ -871,7 +871,7 @@ var ParallelArray = function () {
         var paResult;
         var extraArgs; 
         var extraArgOffset = 2;
-        if (typeof(depth) === 'function') {
+        if ((typeof(depth) === 'function') || (depth instanceof low_precision.wrapper)) {
             f = depth;
             depth = 1;
             extraArgOffset = 1;
