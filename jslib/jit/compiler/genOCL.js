@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
  *
@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = false;
+    const verboseDebug = true;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
