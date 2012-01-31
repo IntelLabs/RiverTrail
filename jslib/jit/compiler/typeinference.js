@@ -649,6 +649,10 @@ RiverTrail.Typeinference = function () {
                     }
                     // add flow information for dataflow graph
                     type.registerFlow(thisType);
+                    // tell the allocator that this result will share the memory of the source
+                    if (!type.isScalarType()) {
+                        type.properties.isShared = true;
+                    }
                     break;
 
                 case "getShape":
@@ -659,7 +663,6 @@ RiverTrail.Typeinference = function () {
                     type.properties.addressSpace = "__private"
                     type.updateOpenCLType();
                     tEnv.addRoot(type);
-                    tEnv.accu = type;
                     break;
 
                 case "concat":
