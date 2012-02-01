@@ -596,7 +596,6 @@ RiverTrail.compiler.codeGen = (function() {
 				elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
 	    		// inline array expression, do direct write
                	s = s + "{"; 
-                console.log("Elements is ", elements);
                	for (i = 0; i < elements; i++) {
 					s = s + "retVal[_writeoffset + " + i + "] = " + oclExpression(rhs.children[i]) + ";";
               	}
