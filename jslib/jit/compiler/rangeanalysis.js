@@ -396,7 +396,7 @@ RiverTrail.RangeAnalysis = function () {
     };
     VEp.invalidate = function () {
         for (var name in this.bindings) {
-            if (this.bindings[name] instanceof Array) {
+            if (this.bindings[name] instanceof RangeArray) {
                 this.bindings[name] = new RangeArray(this.bindings[name], function (v) { return new Range(undefined, undefined, false); });
             } else {
                 this.bindings[name] = new Range(undefined, undefined, false);

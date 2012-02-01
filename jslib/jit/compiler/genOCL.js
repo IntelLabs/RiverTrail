@@ -1391,7 +1391,7 @@ RiverTrail.compiler.codeGen = (function() {
                     if (i>0) {
                         s += ", ";
                     }
-                    s = s + ast.allocatedMem + ")";
+                    s = s + "((" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem + "))";
                 //}
                 break;
 
