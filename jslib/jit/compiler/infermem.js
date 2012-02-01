@@ -324,8 +324,10 @@ RiverTrail.InferMem = function () {
                 }
                 // If I am returning an Array space needs to be allocated for it in the caller and 
                 // the name of the space should be left in the CALL nodes allocatedMem field so that when
-                // I generate the call it is available.
-                if (!ast.typeInfo.isScalarType()) { // it is an array
+                // I generate the call it is available. However, if this method does return a pointer
+                // to some existing data, like |get| on ParallelArray, the type inference will have
+                // left an isShared annotation and no memory needs to be allocated.
+                if (!ast.typeInfo.isScalarType() && !ast.typeInfo.properties.isShared) { 
                     ast.allocatedMem = memVars.allocate(ast.typeInfo.getOpenCLSize(), "CALL");
                 }
                 break;
