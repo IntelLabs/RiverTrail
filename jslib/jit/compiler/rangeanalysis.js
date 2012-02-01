@@ -1323,10 +1323,10 @@ RiverTrail.RangeAnalysis = function () {
                         if (expectInt === false) {
                             ast = makeCast(ast, tEnv.openCLFloatType);
                         }
-                    } else if (expectInt === false) {
+                    } else {
                         // SAH: special case for array literals: we propagate the double requirement to
                         //      the elements, so those will already be doubles or CAST nodes.
-                        updateToNew(ast.typeInfo.properties.elements, "double");
+                        updateToNew(ast.typeInfo.properties.elements, (expectInt ? "int" : "double"));
                         ast.typeInfo.updateOpenCLType();
                     }
                 } else {
