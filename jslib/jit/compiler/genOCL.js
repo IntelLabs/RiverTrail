@@ -630,96 +630,7 @@ RiverTrail.compiler.codeGen = (function() {
             s = s + " return; ";
             return s;
         }
-        /*
-        //
-        // Typically they take the ast as an argument and return the appropriate string.
-        //
-        // You need to add a cast here so that the double you see is casted to a float before you store 
-        // it in retval.
-        function genKernelReturn_old (ast) {
-        "use strict";
-        var s = " ";
-        var elements;
-        var rhs;    // right-hand-side
-        var i;
-        var convPre = ""; // what to convert the temps into to store them in retval.
-        var convPost = "";
-
-        rhs = ast.value;
-
-        //if (rhs.typeInfo.type === "NUMBER") {
-        //    // scalar result
-        //    s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-        //    s = s + boilerplate.resultAssignLhs + "("+boilerplate.returnType+")"+boilerplate.resultAssignRhs+";"
-        //} else {
-
-        if (rhs.typeInfo.isScalarType()) {
-        // scalar result
-        s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-        s = s + "retVal[_writeoffset] = " + boilerplate.localResultName + ";"; 
-        } else {
-        // JS: TODO Check the right casts are produced.
-
-        if(1) {
-        var source = rhs;
-        var sourceType = source.typeInfo;
-        var sourceShape = sourceType.getOpenCLShape();
-        var sourceRank = sourceShape.length;
-        var elemRank = ast.typeInfo.getOpenCLShape().length;
-        s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-        var maxDepth = sourceShape.length;
-        var i; var idx; var indexString = ""; var post_parens = "";
-        s += " int _writeback_idx = 0 ;";
-        for(i =0 ;i<maxDepth;i++) {
-        idx = "_idx" + i;
-        s += " { int " + idx + ";";
-        s += "for (" + idx + "=0; " + idx + " < " + sourceShape[i] + "; " + idx + "++) {"; 
-        indexString += "[" + idx + "]";
-        post_parens += "}}";
-        }
-        s += " retVal[_writeoffset + (_writeback_idx++)]  = " + boilerplate.localResultName + indexString + ";" + post_parens;
-        }
-
-        // This else block should go away after the above if block is verified
-        else {
-        // vector result. We have two cases: either it is an identifier, then we do an elementwise assign.
-        // or it is an array expression, in which case we generate code for each element and then assign that.
-        elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
-        //elements = rhs.inferredType.dimSize.reduce(function (a,b) { return a*b;});
-        //console.log("Return type is ", boilerplate.returnType);
-        //convPre = "((" + boilerplate.returnType + ") ";
-        convPre = "((" + ast.typeInfo.OpenCLType + ") ";
-        //ast.typeInfo.OpenCLType + ") ";
-
-        convPost = ")";
-        while (rhs.type === CAST) {
-        // detect casts to facilitate direct assign
-        //console.log("Inner cast type is ", rhs.typeInfo.OpenCLType);
-        convPre = convPre + "((" + rhs.typeInfo.OpenCLType + ")";
-        convPost = ")" + convPost;
-        rhs = rhs.children[0];
-        }
-        if (rhs.type === ARRAY_INIT) {
-        // inline array expression, do direct write
-        s = s + "{"; 
-        for (i = 0; i < elements; i++) {
-            s = s + "retVal[_writeoffset + " + i + "] = " + convPre + oclExpression(rhs.children[i]) + convPost + ";";
-        }
-        s = s + "}";
-    } else {
-        // arbitrary expression
-        s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-        s = s + "{ int _writeback_idx = 0; for (;_writeback_idx < " + elements + "; _writeback_idx++) { ";
-        s = s + " retVal[_writeoffset + _writeback_idx] = " + convPre + "tempResult[_writeback_idx]" + convPost + ";",
-          s = s + "}}";
-    }
-    }
-    }
-    s = s + "if (_FAIL) {*_FAILRET = 1;}";
-    s = s + " return; ";
-    return s;
-    }
-    */
+        
         // -------- End of genStatement helper functions. --------------
         //-------------------------------------------------------------------------------------------------
 
@@ -1122,11 +1033,11 @@ RiverTrail.compiler.codeGen = (function() {
     **********/
 
 
-        function pp(n, d, inLetHead) {
-            "use strict";
-            console.log("Get rid of this call line 1750.");
-            return oclStatement(n);
-        }
+    function pp(n, d, inLetHead) {
+        "use strict";
+        console.log("Get rid of this call line 1750.");
+        return oclStatement(n);
+    }
 
 
     //
@@ -1391,16 +1302,12 @@ RiverTrail.compiler.codeGen = (function() {
                     if (i>0) {
                         s += ", ";
                     }
-<<<<<<< HEAD
                     s += "((" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem + ")[" + i + "] = " + oclExpression(ast.children[i]);
                 }
                 if (i>0) {
                     s += ", ";
                 }
-                s = s + ast.allocatedMem + ")";
-=======
-                    s = s + "((" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem + "))";
->>>>>>> 9347328dc80a152142df1aac927a69bfdf23a0ec
+                s = s + "((" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem + "))";
                 //}
                 break;
 
