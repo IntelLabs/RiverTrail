@@ -79,6 +79,11 @@ RiverTrail.InferMem = function () {
                     this._store[keys[keyPos]] = new MemSet();
                 }
                 this._store[keys[keyPos]].add(mem);
+                if (other._store[mem] !== null) {
+                    for (var alias in other._store[mem]._store) {
+                        this._store[keys[keyPos]].add(alias);
+                    }
+                }
             } else {
                 this.add(mem);
             }
@@ -97,7 +102,7 @@ RiverTrail.InferMem = function () {
     MSP.declareAlias = function declareAlias (alias) {
         result = "";
         for (var name in this._store) {
-            result += "int *" + name + " = " + alias + ";";
+            result += "char *" + name + " = " + alias + ";";
         }
         return result;
     }
@@ -172,7 +177,13 @@ RiverTrail.InferMem = function () {
                 // this is not an applied occurence but the declaration, so we do not do anything here
                 break;
             case RETURN:
-                infer(ast.value, memVars, ins, outs);
+                // special case: if the value is an ARRAY_INIT, we only look at its elements but ignore
+                // the init itself as the corresponding array is never materialized
+                if (false && (ast.value.type === ARRAY_INIT)) {
+                    ast.value.children.forEach(function (v) { infer(v, memVars, ins, outs); });
+                } else {
+                    infer(ast.value, memVars, ins, outs);
+                }
                 break;
             //
             // loops

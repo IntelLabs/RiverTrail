@@ -1391,12 +1391,16 @@ RiverTrail.compiler.codeGen = (function() {
                     if (i>0) {
                         s += ", ";
                     }
+<<<<<<< HEAD
                     s += "((" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem + ")[" + i + "] = " + oclExpression(ast.children[i]);
                 }
                 if (i>0) {
                     s += ", ";
                 }
                 s = s + ast.allocatedMem + ")";
+=======
+                    s = s + "((" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem + "))";
+>>>>>>> 9347328dc80a152142df1aac927a69bfdf23a0ec
                 //}
                 break;
 
