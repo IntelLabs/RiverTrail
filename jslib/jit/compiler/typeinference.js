@@ -36,7 +36,7 @@ RiverTrail.Typeinference = function () {
 
     var inferPAType = RiverTrail.Helper.inferPAType;
     
-    const debug = false;
+    const debug = true;
     //const allowGlobalFuns = false; // Set to true so kernel functions can call global functions.
     const allowGlobalFuns = true; // Set to true so kernel functions can call global functions.
 
@@ -585,6 +585,10 @@ RiverTrail.Typeinference = function () {
             var elemType = this.properties.elements;
             if (elemType instanceof TLiteral) {
                 this.OpenCLType = this.properties.elements.OpenCLType + "*";
+            } else if( (elemType.properties.addressSpace === "__private") && (elemType.isObjectType("Array") || elemType.isObjectType("ParallelArray"))) {
+                console.log(elemType.properties.addressSpace, elemType.name);
+				// JS : Generate right type for nested local arrays (JS and ParallelArray)
+                this.OpenCLType = elemType.OpenCLType + "*";
             } else if (elemType.isObjectType("Array") || elemType.isObjectType("ParallelArray")) {
                 this.OpenCLType = elemType.OpenCLType;
             } else {
