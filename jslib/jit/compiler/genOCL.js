@@ -1246,7 +1246,7 @@ RiverTrail.compiler.codeGen = (function() {
                 // unary functions on numbers (incl bool)
             case INCREMENT:
             case DECREMENT:
-                var incArg = stripCasts(ast.children[0]).value;
+                var incArg = stripCasts(ast.children[0]);
                 var incType = ast.children[0].typeInfo.OpenCLType;
                 switch (incType) {
                     case "float":
