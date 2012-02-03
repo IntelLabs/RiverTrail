@@ -367,7 +367,7 @@ RiverTrail.compiler.codeGen = (function() {
         function getReturnFormalType(result) {
             if(result.isScalarType())
                 return result.OpenCLType + "*";
-            return result.OpenCLType.replace(/(\*)+/, "*");
+            return (RiverTrail.Helper.stripToBaseType(result.OpenCLType) + "*");
         }
         // It is used below and in the stmt("return") logic above.
 
