@@ -586,8 +586,7 @@ RiverTrail.Typeinference = function () {
             if (elemType instanceof TLiteral) {
                 this.OpenCLType = this.properties.elements.OpenCLType + "*";
             } else if( (elemType.properties.addressSpace === "__private") && (elemType.isObjectType("Array") || elemType.isObjectType("ParallelArray"))) {
-                console.log(elemType.properties.addressSpace, elemType.name);
-				// JS : Generate right type for nested local arrays (JS and ParallelArray)
+				// JS : Generate right type for nested local arrays (JS Arrays and ParallelArrays)
                 this.OpenCLType = elemType.OpenCLType + "*";
             } else if (elemType.isObjectType("Array") || elemType.isObjectType("ParallelArray")) {
                 this.OpenCLType = elemType.OpenCLType;
