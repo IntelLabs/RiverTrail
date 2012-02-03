@@ -364,6 +364,11 @@ RiverTrail.compiler.codeGen = (function() {
             return kernelCode;
         }
 
+        function getReturnFormalType(result) {
+            if(result.isScalarType())
+                return result.OpenCLType + "*";
+            return result.OpenCLType.replace(/(\*)+/, "*");
+        }
         // It is used below and in the stmt("return") logic above.
 
         // Input
@@ -441,7 +446,9 @@ RiverTrail.compiler.codeGen = (function() {
             if ((construct === "combine") || (construct === "map") || (construct === "comprehension") || (construct === "comprehensionScalar")) {      
                 console.log(funDecl.typeInfo.result.OpenCLType);
                 console.log(funDecl.typeInfo.result.isScalarType());
-                s = s + "__global " + funDecl.typeInfo.result.OpenCLType + (funDecl.typeInfo.result.isScalarType() ? "*" : "") + " retVal"; 
+
+                s = s + "__global " + getReturnFormalType(funDecl.typeInfo.result) + " retVal";
+                //s = s + "__global " + funDecl.typeInfo.result.OpenCLType + (funDecl.typeInfo.result.isScalarType() ? "*" : "") + " retVal"; 
             } else {
                 throw "unimplemented construct " + construct;
             }
@@ -602,6 +609,7 @@ RiverTrail.compiler.codeGen = (function() {
                 // direct write but only for flat arrays i.e.,
                 // rhs.typeInfo.properties.shape.length===1
                 console.log(rhs.typeInfo.getOpenCLShape());
+                console.log(rhs.typeInfo.getOpenCLShape().length);
                 if (rhs.type === ARRAY_INIT && (rhs.typeInfo.getOpenCLShape().length === 1)) {
                     elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
                     // inline array expression, do direct write
