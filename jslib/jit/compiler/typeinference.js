@@ -1386,6 +1386,9 @@ RiverTrail.Typeinference = function () {
             argT.push(elemT);
         }
 
+        // ensure we have enough arguments
+        params.length === extraArgs.length || reportError("number of arguments does not match number of parameters: " + extraArgs.length + " vs. " + params.length);
+
         // create type info for all arguments
         params.forEach(function (name) { tEnv.bind(name); });
         params.forEach(function (name, idx) { var type = typeOracle(extraArgs[idx]); 
