@@ -369,6 +369,20 @@ RiverTrail.compiler.codeGen = (function() {
                 return result.OpenCLType + "*";
             return (RiverTrail.Helper.stripToBaseType(result.OpenCLType) + "*");
         }
+        function generateLocalFunctions(decls) {
+            var s = "";
+
+            if (!decls)
+                return s;
+
+            for (var cnt = 0; cnt < decls.length; cnt ++) {
+                s = s + generateLocalFunctions(decls[cnt].body.funDecls);
+                s = s + genCalledFunction(decls[cnt]);
+            }
+
+            return s;
+        }
+
         // It is used below and in the stmt("return") logic above.
 
         // Input
@@ -403,10 +417,7 @@ RiverTrail.compiler.codeGen = (function() {
             // The kernel function has now been dumped.
             // We now turn our attention to function the kernel function might have called.
             // Do we need to dump signatures in case there is a forward reference?
-            for (i=0; i<ast.body.funDecls.length; i++) {
-                s = s + genCalledFunction(ast.body.funDecls[i]);            
-            }
-
+            s = s + generateLocalFunctions(ast.body.funDecls);
             s = s + "__kernel void " + funDecl.name + "(";
 
             // add the special return parameter used to detect failure
@@ -937,7 +948,7 @@ RiverTrail.compiler.codeGen = (function() {
                 actuals = oclExpression(ast.children[1]);
                 s = s + ast.children[0].value + "( &_FAIL" + (actuals !== "" ? ", " : "") + actuals;
                 if (!(ast.typeInfo.isScalarType())) { 
-                    s = s + "," + ast.allocatedMem;
+                    s = s + ", (" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem;
                 }
                 s = s + ")";
             }
