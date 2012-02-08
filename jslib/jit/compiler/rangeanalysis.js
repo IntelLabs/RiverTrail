@@ -322,7 +322,7 @@ RiverTrail.RangeAnalysis = function () {
             if (current) {
                 this.bindings[name] = new RangeArray(current, function (val,idx) { return val.constrain(constraint[idx]); });
             } else {
-                this.bindings[name] = constraint.map(function (val) { return new Range(val.lb, val.ub); });
+                this.bindings[name] = new RangeArray(constraint, function (val) { return new Range(val.lb, val.ub); });
             }
         } else {
             if (current) {
@@ -339,7 +339,7 @@ RiverTrail.RangeAnalysis = function () {
             if (current) {
                 this.bindings[name] = new RangeArray(this.bindings[name], function (val,idx) { return val.force(constraint[idx]); });
             } else {
-                this.bindings[name] = constraint.map(function (val) { return new Range(val.lb, val.ub); });
+                this.bindings[name] = new RangeArray(constraint, function (val) { return new Range(val.lb, val.ub); });
             }
         } else {
             if (current) {
