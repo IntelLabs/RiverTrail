@@ -762,7 +762,7 @@ RiverTrail.Typeinference = function () {
 
         var left, right;
 
-        if (ast === null) {
+        if ((ast === null) || (ast === undefined)) {
             throw "Oppsie";
         }
 
@@ -814,6 +814,7 @@ RiverTrail.Typeinference = function () {
                 // this is not an applied occurence but the declaration, so we do not do anything here
                 break;
             case RETURN:
+                ast.value || reportError("functions need to return a value", ast);
                 ast.value = drive(ast.value, tEnv, fEnv);
                 tEnv.functionResult = tEnv.accu;
                 break;
@@ -1026,7 +1027,7 @@ RiverTrail.Typeinference = function () {
                     } else {
                         // result is a ParallelArray again
                         left = new TObject(TObject.PARALLELARRAY);
-                        left.properties.shape = tEnv.accu.properties.shape.slice(idxLen);
+                        left.properties.shape = tEnv.accu.properties.shape.slice(1);
                         left.properties.addressSpace = tEnv.accu.properties.addressSpace;
                         left.properties.elements = tEnv.accu.properties.elements.clone();
                         left.updateOpenCLType();
@@ -1096,7 +1097,7 @@ RiverTrail.Typeinference = function () {
                             var found;
                             for (var cnt = 0; cnt < fun.specStore.length; cnt++) {
                                 if (argT.every(function(t, idx) { return t.equals(fun.specStore[cnt].typeInfo.parameters[idx]);})) {
-                                    found = fun.specStore[idx].fun;
+                                    found = fun.specStore[cnt];
                                     break;
                                 }
                             }
