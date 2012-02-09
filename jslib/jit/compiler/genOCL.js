@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = false;
+    const verboseDebug = true;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -512,6 +512,7 @@ RiverTrail.compiler.codeGen = (function() {
             }
 
             // declare tempResult
+            //console.log("type is: ", funDecl.typeInfo.result.OpenCLType);
             s = s + funDecl.typeInfo.result.OpenCLType + " " + boilerplate.localResultName + ";";
             // define index
             s = s + genFormalRelativeArg(funDecl, construct); // The first param's name.
@@ -541,7 +542,7 @@ RiverTrail.compiler.codeGen = (function() {
         }
 
         // Generate a return from a function the kernel calls.
-        function genSimpleReturn (ast) {
+        function genSimpleReturn_old (ast) {
             "use strict";
             var s = " ";
             var rhs;
@@ -585,6 +586,69 @@ RiverTrail.compiler.codeGen = (function() {
             } // end else code that returns a non-scalar
             return s;
         }
+
+
+        function genSimpleReturn(ast) {
+            "use strict";
+            var s = " ";
+            var elements;
+            var rhs;    // right-hand-side
+            var i;
+            rhs = ast.value;
+            if (rhs.typeInfo.isScalarType()) {
+                // scalar result
+                s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+                s = s + "if (_FAIL) {*_FAILRET = 1;}";
+                s = s + " return " + boilerplate.localResultName + ";";
+                //s = s + "retVal[_writeoffset] = " + boilerplate.localResultName + ";"; 
+            } else {
+                // direct write but only for flat arrays i.e.,
+                // rhs.typeInfo.properties.shape.length===1
+                if (rhs.type === ARRAY_INIT && (rhs.typeInfo.getOpenCLShape().length === 1)) {
+                    elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
+                    // inline array expression, do direct write
+                    s = s + "{"; 
+                    for (i = 0; i < elements; i++) {
+                        s = s + "retVal[_writeoffset + " + i + "] = " + oclExpression(rhs.children[i]) + ";";
+                    }
+                    s = s + "}";
+                } else {
+                    
+                    // arbitrary expression, possibly a nested array identifier
+                    var source = rhs;
+                    var sourceType = source.typeInfo;
+                    var sourceShape = sourceType.getOpenCLShape();
+                    var sourceRank = sourceShape.length;
+                    var elemRank = ast.typeInfo.getOpenCLShape().length;
+                    //s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+                    var maxDepth = sourceShape.length;
+                    var i; var idx; var indexString = ""; var post_parens = "";
+                    s += " int _writeback_idx = 0 ;";
+                    console.log("maxDepth = ", maxDepth);
+                    console.log("shape = ", sourceShape);
+                    for(i =0 ;i<maxDepth;i++) {
+                        idx = "_idx" + i;
+                        s += " { int " + idx + ";";
+                        s += "for (" + idx + "= 0; " + idx + " < " + sourceShape[i] + "; " + idx + "++) {"; 
+                        indexString += "[" + idx + "]";
+                        post_parens += "}}";
+                    }
+                    s += " retVal" + indexString + " = " + boilerplate.localResultName + indexString + ";" + post_parens;
+                    //s += " retVal" + indexString + " = " + boilerplate.localResultName + indexString + ";" + post_parens;
+                    //s += post_parens;
+                    
+                    //s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+                    //s = s + " retVal = " + boilerplate.localResultName + ";";
+                }
+                s = s + "if (_FAIL) {*_FAILRET = 1;}";
+                s = s + " return retVal; ";
+            }
+            //console.log("Kernel: ", s);
+            return s;
+        }
+
+
+
 
         // Typically they take the ast as an argument and return the appropriate string.
         //
@@ -1265,6 +1329,7 @@ RiverTrail.compiler.codeGen = (function() {
                         } else {
                             // we would need a temp here. For now, just fail. This seems sufficiently uncommon...
                             throw new Error("prefix increment/decrement on floats is not implemented, yet.");
+                            //s = "(" + incArg.value + " " + ast.value.substring(0, 1) + "= ((" + incType + ") 1))";
                         }
                         break;
                     default:
