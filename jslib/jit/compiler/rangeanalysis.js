@@ -322,7 +322,7 @@ RiverTrail.RangeAnalysis = function () {
             if (current) {
                 this.bindings[name] = new RangeArray(current, function (val,idx) { return val.constrain(constraint[idx]); });
             } else {
-                this.bindings[name] = constraint.map(function (val) { return new Range(val.lb, val.ub); });
+                this.bindings[name] = new RangeArray(constraint, function (val) { return new Range(val.lb, val.ub); });
             }
         } else {
             if (current) {
@@ -339,7 +339,7 @@ RiverTrail.RangeAnalysis = function () {
             if (current) {
                 this.bindings[name] = new RangeArray(this.bindings[name], function (val,idx) { return val.force(constraint[idx]); });
             } else {
-                this.bindings[name] = constraint.map(function (val) { return new Range(val.lb, val.ub); });
+                this.bindings[name] = new RangeArray(constraint, function (val) { return new Range(val.lb, val.ub); });
             }
         } else {
             if (current) {
@@ -495,7 +495,10 @@ RiverTrail.RangeAnalysis = function () {
                 // this is not an applied occurence but the declaration, so we do not do anything here
                 break;
             case RETURN:
-                result = drive(ast.value, varEnv, doAnnotate);
+                drive(ast.value, varEnv, doAnnotate);
+                // return does not really produce a value as it exists the current scope. However,
+                // it is a non int ast, as we always return floats. This is modelled this way...
+                result = new Range(undefined, undefined, false);
                 break;
             //
             // loops (SAH)
@@ -1093,7 +1096,8 @@ RiverTrail.RangeAnalysis = function () {
                             // It might be that we compute on int but the variable is a double. In such
                             // a case, we have to cast the expression to double.
                             ast.children[0].typeInfo = tEnv.lookup(ast.children[0].value).type;
-                            if (isIntValue(ast.children[1]) && (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
+                            if (validIntRepresentation(ast.children[1].typeInfo.OpenCLType) && 
+                                (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
                                 ast.children[1] = makeCast(ast.children[1], "double");
                             }
                             break;
@@ -1103,7 +1107,8 @@ RiverTrail.RangeAnalysis = function () {
                             // operation and we would have propagated the double status to the lhs in the drive phase).
                             ast.children[0] = push(ast.children[0], tEnv, undefined); 
                             // as above, we have to make sure that the types match...
-                            if (isIntValue(ast.children[1]) && (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
+                            if (validIntRepresentation(ast.children[1].typeInfo.OpenCLType) && 
+                                (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
                                 ast.children[1] = makeCast(ast.children[1], "double");
                             }
                         case DOT:
