@@ -209,7 +209,7 @@ RiverTrail.Helper = function () {
     }
 
     function reportError(msg, t) {
-        throw "Error: " + msg + " <" + (t ? wrappedPP(t) : "no context") + ">"; // could be more elaborate
+        throw "Error: " + msg + " [source code was `" + (t ? wrappedPP(t) : "no context") + "`]"; // could be more elaborate
     }
     function reportBug(msg, t) {
         throw "Bug: " + msg; // could be more elaborate

@@ -30,6 +30,8 @@
 //
 
 RiverTrail.Typeinference = function () {
+    var stackTrace = [];
+
     var definitions = Narcissus.definitions;
     eval(definitions.consts);
     eval(RiverTrail.definitions.consts);
@@ -45,7 +47,13 @@ RiverTrail.Typeinference = function () {
     //
     // error reporting
     //
-    var reportError = RiverTrail.Helper.reportError;
+    function reportError(msg, ast) {
+        msg = stackTrace.reduce(function (p, c) {
+                        return p + " -> " + c.fun.name + " [call was: " + RiverTrail.Helper.wrappedPP(c.ast) + "]";
+                    }, "In main") + ": " + msg;
+
+        RiverTrail.Helper.reportError(msg, ast);
+    }
     var reportBug = RiverTrail.Helper.reportBug;
 
     //
@@ -1034,7 +1042,7 @@ RiverTrail.Typeinference = function () {
                     }
                     tEnv.accu = left;
                 } else {
-                    reportError("Index operator applied to non array value", ast);
+                    reportError("Index operator applied to non array value. Type found: " + tEnv.accu.toString(), ast);
                 }
                 break;
 
@@ -1113,6 +1121,8 @@ RiverTrail.Typeinference = function () {
                         if (!resType) {
                             // create a new function frame
                             var innerTEnv = new TEnv(tEnv, true);
+                            // put this call on the stack for tracing
+                            stackTrace.push({ast: ast, fun: fun});
                             // add parameter / value type mapping
                             fun.params.length === argT.length || reportError("number of parameters and arguments in call does not match", ast);
                             fun.params.forEach(function(arg, idx) { innerTEnv.bind(arg); innerTEnv.update(arg, argT[idx]); });
@@ -1126,6 +1136,8 @@ RiverTrail.Typeinference = function () {
                             rootFun.specStore.push(fun);
                             debug && console.log(fun.name + " has type " + fun.typeInfo.toString());
                             resType = innerTEnv.functionResult;
+                            // drop call from tracing stack
+                            stackTrace.pop();
                         }
                         tEnv.accu = resType;
                         ast.children[0].value = fun.name;
@@ -1322,6 +1334,10 @@ RiverTrail.Typeinference = function () {
         var tEnv = new TEnv(rootEnvironment, true, true); // create a new top-level function frame
         var params = ast.params;
         var argT = [];
+
+        // check for left over stack traces
+        (stackTrace.length === 0) || reportBug("left over stack trace data found!");
+
         // set default precision for numbers
         openCLUseLowPrecision = (lowPrecision === true);
         tEnv.openCLFloatType = (openCLUseLowPrecision ? "float" : "double");
