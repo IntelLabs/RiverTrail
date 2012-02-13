@@ -155,6 +155,29 @@ RiverTrail.InferMem = function () {
         throw "Bug: " + msg; // could be more elaborate
     }
 
+    // getTypeSize has been obsoleted by RiverTrail.Helper.getOpenCLSize().
+    // This function and this comment will be gone in the next commit.
+    /*
+    function getTypeSize(i, shape, type) {
+        var base_type = RiverTrail.Helper.stripToBaseType(type);
+        if(base_type === type) { // This is a scalar type. Return appropriate size
+            switch(type) {
+                case "int":
+                    return 4;
+                case "double":
+                    return 8;
+                case "char":
+                    return 1;
+                default:
+                    reportError("Cannot allocate memory : Unknown Type", ast);
+                    return 0;
+            }
+        }
+        else {  // Pointer type, possibly a nested array
+           return 8; 
+        }
+    }
+    */
     function infer(ast, memVars, ins, outs) {
         "use strict";
 
@@ -339,7 +362,44 @@ RiverTrail.InferMem = function () {
                 // to some existing data, like |get| on ParallelArray, the type inference will have
                 // left an isShared annotation and no memory needs to be allocated.
                 if (!ast.typeInfo.isScalarType() && !ast.typeInfo.properties.isShared) { 
-                    ast.allocatedMem = memVars.allocate(ast.typeInfo.getOpenCLSize(), "CALL");
+                    debug && console.log("Creating CALL memory shape ", ast.typeInfo.getOpenCLShape());
+                    debug && console.log("CALL shape type is : ", ast.typeInfo.OpenCLType);
+                    var shape = ast.typeInfo.getOpenCLShape();
+                    var shape_len = shape.length;
+                    if(shape_len === 1) {
+                        ast.allocatedMem = memVars.allocate(ast.typeInfo.getOpenCLSize(), "CALL");
+                    }
+                    else {
+                       // This call returns a nested array. The caller needs to allocate enough
+                       // memory for this array and initialize the pointers in
+                       // the allocated buffer to create a structure that the
+                       // callee can simply fill the leaves of.
+                       //
+                       // The code below creates a single buffer for each
+                       // dimension of the returned shape. These buffers are
+                       // attached to the AST node and the backend emits code
+                       // for initializing the pointers in each of these
+                       // buffers.
+                       ast.memBuffers = {size:0, list:[]};
+                       var redu = 1;
+                       for(var i = 0; i < shape_len; i++) {
+                        //var type_size = getTypeSize(i, shape, ast.typeInfo.OpenCLType);
+                        var type_size = RiverTrail.Helper.getOpenCLSize(ast.typeInfo.OpenCLType);
+                        var allocation_size = type_size*shape[i]*redu;
+                        debug && console.log("Allocating " + allocation_size + " bytes in " +  "CALL_"
+                                    + i + "  for i = " + i);
+                        var memBufferName = memVars.allocate(allocation_size, "CALL_" + i);
+                        ast.memBuffers.size +=1;
+                        ast.memBuffers.list.push(memBufferName);
+
+                        redu = redu*shape[i];
+                       }
+                       // Set the primary memory buffer for this node to be the
+                       // top-level buffer
+                       ast.allocatedMem = ast.memBuffers.list[0];
+                       debug && console.log("Total AST allocations: ", ast.memBuffers.size, ast.memBuffers.list.length);
+                    }
+
                 }
                 break;
 

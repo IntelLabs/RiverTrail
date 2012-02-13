@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = true;
+    const verboseDebug = false;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -523,7 +523,6 @@ RiverTrail.compiler.codeGen = (function() {
             }
 
             // declare tempResult
-            //console.log("type is: ", funDecl.typeInfo.result.OpenCLType);
             s = s + funDecl.typeInfo.result.OpenCLType + " " + boilerplate.localResultName + ";";
             // define index
             s = s + genFormalRelativeArg(funDecl, construct); // The first param's name.
@@ -553,6 +552,7 @@ RiverTrail.compiler.codeGen = (function() {
         }
 
         // Generate a return from a function the kernel calls.
+        // This function is obsolete. It is here only for reference - JS
         function genSimpleReturn_old (ast) {
             "use strict";
             var s = " ";
@@ -629,32 +629,24 @@ RiverTrail.compiler.codeGen = (function() {
                     var source = rhs;
                     var sourceType = source.typeInfo;
                     var sourceShape = sourceType.getOpenCLShape();
-                    var sourceRank = sourceShape.length;
-                    var elemRank = ast.typeInfo.getOpenCLShape().length;
-                    //s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+                    s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                     var maxDepth = sourceShape.length;
                     var i; var idx; var indexString = ""; var post_parens = "";
                     s += " int _writeback_idx = 0 ;";
-                    console.log("maxDepth = ", maxDepth);
-                    console.log("shape = ", sourceShape);
+                    verboseDebug && console.log("Generating return code. # dimensions = ", maxDepth);
+                    verboseDebug && console.log("Return shape = ", sourceShape);
                     for(i =0 ;i<maxDepth;i++) {
                         idx = "_idx" + i;
-                        s += " { int " + idx + ";";
+                        s += " { int " + idx + "; ";
                         s += "for (" + idx + "= 0; " + idx + " < " + sourceShape[i] + "; " + idx + "++) {"; 
                         indexString += "[" + idx + "]";
                         post_parens += "}}";
                     }
-                    s += " retVal" + indexString + " = " + boilerplate.localResultName + indexString + ";" + post_parens;
-                    //s += " retVal" + indexString + " = " + boilerplate.localResultName + indexString + ";" + post_parens;
-                    //s += post_parens;
-                    
-                    //s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-                    //s = s + " retVal = " + boilerplate.localResultName + ";";
+                    s += " retVal" + indexString + " = " + "((" + sourceType.OpenCLType + ")" +  boilerplate.localResultName + ")" + indexString + ";" + post_parens;
                 }
                 s = s + "if (_FAIL) {*_FAILRET = 1;}";
                 s = s + " return retVal; ";
             }
-            //console.log("Kernel: ", s);
             return s;
         }
 
@@ -693,8 +685,6 @@ RiverTrail.compiler.codeGen = (function() {
                     var source = rhs;
                     var sourceType = source.typeInfo;
                     var sourceShape = sourceType.getOpenCLShape();
-                    var sourceRank = sourceShape.length;
-                    var elemRank = ast.typeInfo.getOpenCLShape().length;
                     s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                     var maxDepth = sourceShape.length;
                     var i; var idx; var indexString = ""; var post_parens = "";
@@ -706,7 +696,9 @@ RiverTrail.compiler.codeGen = (function() {
                         indexString += "[" + idx + "]";
                         post_parens += "}}";
                     }
-                    s += " retVal[_writeoffset + (_writeback_idx++)]  = " + boilerplate.localResultName + indexString + ";" + post_parens;
+                    s += " retVal[_writeoffset + _writeback_idx++]  = " + "((" +
+                    sourceType.OpenCLType + ")" + boilerplate.localResultName +
+                    ")" + indexString + ";" + post_parens;
                 }
             }
             s = s + "if (_FAIL) {*_FAILRET = 1;}";
@@ -939,6 +931,14 @@ RiverTrail.compiler.codeGen = (function() {
         return jsMethod + "(" + oclExpression(ast.children[1]) + ")";
     };
 
+    function getPointerCast(current_depth, max_depth, type) {
+        var depth = max_depth - current_depth;
+        var base_type = RiverTrail.Helper.stripToBaseType(type) + " ";
+        for(var i = 0; i < depth; i++) {
+           base_type += "*";
+        }
+        return "(" + base_type + ")";
+    }
     //This is the next thing to do..... Deal today with return this.get(iv); The return calls oclExpression 
 
     function oclExpression(ast) {
@@ -1010,11 +1010,36 @@ RiverTrail.compiler.codeGen = (function() {
             } else { // It is not a method call.
                 var actuals = "";
                 actuals = oclExpression(ast.children[1]);
+                var sourceShape = ast.typeInfo.getOpenCLShape();
+                var maxDepth = sourceShape.length;
+                var post_parens = "";
+                if(!(ast.typeInfo.isScalarType()) && maxDepth > 1) {
+                    // Create structure if this call is going to return a nested
+                    // array
+                    s += "(";
+                    var post_parens = ""; var indexString = "";
+                    // emit statements to initialize pointers, then emit the
+                    // call itself.
+                   var redu = 1; var rhs = ""; var lhs = ""; post_parens = ")";
+                   for(var i = 0 ; i < maxDepth-1; i++) {
+                     for(var j = 0; j < sourceShape[i]*redu; j++) {
+                        lhs = "(" + getPointerCast(i, maxDepth, ast.typeInfo.OpenCLType) +
+                            ast.memBuffers.list[i] + ")"
+                            + "[" + j + "]";
+                        rhs = "&((" + getPointerCast(i+1, maxDepth, ast.typeInfo.OpenCLType)
+                            + ast.memBuffers.list[i+1]
+                            + ")" + "[" + j*sourceShape[i+1] + "]" + ")";
+                        s += lhs + " = " + rhs + " ,"; 
+                     }
+                     redu = redu*sourceShape[i];
+                   }
+                }
                 s = s + ast.children[0].value + "( &_FAIL" + (actuals !== "" ? ", " : "") + actuals;
                 if (!(ast.typeInfo.isScalarType())) { 
                     s = s + ", (" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem;
                 }
                 s = s + ")";
+                s = s + post_parens;
             }
         } else {
             // Everything else can be dealt with according to the more straight forward translation.
@@ -1340,7 +1365,6 @@ RiverTrail.compiler.codeGen = (function() {
                         } else {
                             // we would need a temp here. For now, just fail. This seems sufficiently uncommon...
                             throw new Error("prefix increment/decrement on floats is not implemented, yet.");
-                            //s = "(" + incArg.value + " " + ast.value.substring(0, 1) + "= ((" + incType + ") 1))";
                         }
                         break;
                     default:

@@ -80,11 +80,10 @@ RiverTrail.compiler.runOCL = function () {
         resultElemType = RiverTrail.Helper.stripToBaseType(ast.typeInfo.result.OpenCLType);
 
         if (ast.typeInfo.result.properties) {
-            resShape = iterSpace.concat(ast.typeInfo.result.properties.shape);
+            resShape = iterSpace.concat(ast.typeInfo.result.getOpenCLShape());
         } else {
             resShape = iterSpace;
         }
-
         resSize = shapeToLength(resShape);
         // construct kernel arguments
         var jsObjectToKernelArg = function (args, object) {
@@ -236,8 +235,7 @@ RiverTrail.compiler.runOCL = function () {
             try {
                 // console.log("791:new:rank: "+rank+" iterSpace: "+iterSpace);
                 //console.log("driver:389 did not run.");
-                //var kernelFailure = kernel.run(rank, iterSpace, iterSpace.map(function () { return 1; }));
-                var kernelFailure = true;
+                var kernelFailure = kernel.run(rank, iterSpace, iterSpace.map(function () { return 1; }));
             } catch (e) {
                 console.log("kernel.run fails: ", e);
                 throw e;

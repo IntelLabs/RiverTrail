@@ -134,6 +134,40 @@ RiverTrail.Helper = function () {
         const regExp = /([a-zA-Z ]|\/\*|\*\/)*/;
         var match = s.match(regExp);
         return match[0];
+    };
+
+    // This is the helper version of TLiteral.prototype.getOpenCLSize()
+    // These functions should be in sync.
+    // Argument 't' is some scalar or pointer type
+    function getOpenCLSize(type) {
+        var base_type = stripToBaseType(type);
+        if(base_type === type) {
+            switch (base_type) {
+                case "signed char":
+                case "unsigned char":
+                case "unsigned /* clamped */ char":
+                    return 1;
+                    break;
+                case "short":
+                case "unsigned short":
+                    return 2;
+                    break;
+                case "float":
+                case "int":
+                case "unsigned int":
+                    return 4;
+                    break;
+                case "double":
+                    return 8;
+                    break;
+                default:
+                 reportBug("size of type not known: " + type);
+                 break;
+            }
+        }
+        else { // 'type' is a pointer type.
+            return 8;
+        }
     }
     
     var Integer = function Integer(value) {
@@ -234,6 +268,7 @@ RiverTrail.Helper = function () {
              "inferPAType" : inferPAType,
              "elementalTypeToConstructor" : elementalTypeToConstructor,
              "stripToBaseType" : stripToBaseType,
+             "getOpenCLSize" : getOpenCLSize,
              "Integer" : Integer,
              "debugThrow" : debugThrow,
              "isTypedArray" : isTypedArray,
