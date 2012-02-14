@@ -325,7 +325,7 @@ RiverTrail.Typeinference = function () {
             name.forEach( this.bind);
         } else {
             if (!duplicates && this.bindings[name] !== undefined) {
-                reportBug("variable bound twice in single scope");
+                reportError("variable bound twice in single scope: " + name);
             } else {
                 this.bindings[name] = {initialized : false, type : null};
             }
@@ -787,7 +787,7 @@ RiverTrail.Typeinference = function () {
                 tEnv = new TEnv(tEnv);
                 // add all local variable declarations to environment to shadow old
                 // ones from previous scopes
-                ast.varDecls.forEach(function (name) { tEnv.bind(name.value); });
+                ast.varDecls.forEach(function (name) { tEnv.bind(name.value, true); });
                 // add all locally declared functions to the environment
                 // strictly speaking they are not variable bindings yet they can shadow variables and be shadowed
                 // by variables so we disallow these
@@ -854,7 +854,9 @@ RiverTrail.Typeinference = function () {
                 tEnv.merge(thenEnv);
                 break;
             case SEMICOLON:
-                ast.expression = drive(ast.expression, tEnv, fEnv);
+                if (ast.expression) {
+                    ast.expression = drive(ast.expression, tEnv, fEnv);
+                }
                 tEnv.resetAccu();
                 break;
             case VAR:
@@ -1335,8 +1337,8 @@ RiverTrail.Typeinference = function () {
         var params = ast.params;
         var argT = [];
 
-        // check for left over stack traces
-        (stackTrace.length === 0) || reportBug("left over stack trace data found!");
+        // clear away old stack traces
+        (stackTrace.length === 0) || (stackTrace = []);
 
         // set default precision for numbers
         openCLUseLowPrecision = (lowPrecision === true);
