@@ -269,7 +269,8 @@ RiverTrail.compiler.codeGen = (function() {
                 throw "expecting function found " + ast.value;
             }
             // Need code here to deal with array values being returned.
-            s = s + " " +ast.typeInfo.result.OpenCLType + " " + ast.name;
+            // NOTE: use dispatched function name here
+            s = s + " " +ast.typeInfo.result.OpenCLType + " " + ast.dispatch;
             s = s + "("; // start param list.
             // add extra parameter for failure propagation
             s = s + "bool * _FAILRET";
@@ -1034,7 +1035,8 @@ RiverTrail.compiler.codeGen = (function() {
                      redu = redu*sourceShape[i];
                    }
                 }
-                s = s + ast.children[0].value + "( &_FAIL" + (actuals !== "" ? ", " : "") + actuals;
+                // NOTE: use renamed dispatch name here!
+                s = s + ast.children[0].dispatch + "( &_FAIL" + (actuals !== "" ? ", " : "") + actuals;
                 if (!(ast.typeInfo.isScalarType())) { 
                     s = s + ", (" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem;
                 }

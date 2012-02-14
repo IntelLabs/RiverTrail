@@ -1083,21 +1083,22 @@ RiverTrail.Typeinference = function () {
                         var argT = tEnv.accu.map(function (t) { return t.clone();});
                         tEnv.resetAccu();
                         // grab function
-                        var fun = fEnv.lookup(ast.children[0].value);
+                        var fname = ast.children[0].value;
+                        var fun = fEnv.lookup(fname);
                         if (!fun) {
                            if (allowGlobalFuns) {
                                // so this is not a local function. first make sure it is not a local variable
-                               !tEnv.lookup(ast.children[0].value) || reportError("not a function `" + ast.children[0].value + "`", ast);
+                               !tEnv.lookup(fname) || reportError("not a function `" + fname + "`", ast);
                                // CHEAT: we would have to inspect the current functions closure here but we cannot. So we just
                                //        take whatever the name is bound to in the current scope. 
                                //        This should at least be the global scope, really...
-                               var obj = eval(ast.children[0].value) || reportError("unknown function `" + ast.children[0].value + "`", ast);
-                               (typeof(obj) === 'function') || reportError("not a function `" + ast.children[0].value + "`", ast);
+                               var obj = eval(fname) || reportError("unknown function `" + fname + "`", ast);
+                               (typeof(obj) === 'function') || reportError("not a function `" + fname + "`", ast);
                                fun = RiverTrail.Helper.parseFunction(obj.toString());
                                // if we get here, we can just add the function to the function environment for future use
                                fEnv.add(fun, ast.children[0].value);
                            } else {
-                               reportError("unknown function `" + ast.children[0].value + "`", ast);
+                               reportError("unknown function `" + fname + "`", ast);
                            }
                         }
                         var resType = undefined;
@@ -1142,7 +1143,7 @@ RiverTrail.Typeinference = function () {
                             stackTrace.pop();
                         }
                         tEnv.accu = resType;
-                        ast.children[0].value = fun.name;
+                        ast.children[0].dispatch = fun.dispatch;
                         break;
 
                     default:
