@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = false;
+    const verboseDebug = true;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -624,25 +624,36 @@ RiverTrail.compiler.codeGen = (function() {
                     }
                     s = s + "}";
                 } else {
-                    
-                    // arbitrary expression, possibly a nested array identifier
-                    var source = rhs;
-                    var sourceType = source.typeInfo;
-                    var sourceShape = sourceType.getOpenCLShape();
-                    s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-                    var maxDepth = sourceShape.length;
-                    var i; var idx; var indexString = ""; var post_parens = "";
-                    s += " int _writeback_idx = 0 ;";
-                    verboseDebug && console.log("Generating return code. # dimensions = ", maxDepth);
-                    verboseDebug && console.log("Return shape = ", sourceShape);
-                    for(i =0 ;i<maxDepth;i++) {
-                        idx = "_idx" + i;
-                        s += " { int " + idx + "; ";
-                        s += "for (" + idx + "= 0; " + idx + " < " + sourceShape[i] + "; " + idx + "++) {"; 
-                        indexString += "[" + idx + "]";
-                        post_parens += "}}";
+                    // We might be returning a global (possibly nested array).
+                    // Do a flat copy
+                    //
+                    var elements = rhs.typeInfo.getOpenCLShape().reduce(function (a,b) { return a*b;});
+                    if(rhs.typeInfo.properties.addressSpace === "__global") {
+                        s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+                        s += " int _idx1; ";
+                        s += "for ( _idx1 = 0; _idx1 < " + elements + "; _idx1++) {"; 
+                        s += " retVal[_idx1] = " + boilerplate.localResultName + "[_idx1]; }";
                     }
-                    s += " retVal" + indexString + " = " + "((" + sourceType.OpenCLType + ")" +  boilerplate.localResultName + ")" + indexString + ";" + post_parens;
+                    else {
+                        // arbitrary expression, possibly a nested array identifier
+                        var source = rhs;
+                        var sourceType = source.typeInfo;
+                        var sourceShape = sourceType.getOpenCLShape();
+                        s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+                        var maxDepth = sourceShape.length;
+                        var i; var idx; var indexString = ""; var post_parens = "";
+                        s += " int _writeback_idx = 0 ;";
+                        verboseDebug && console.log("Generating return code. # dimensions = ", maxDepth);
+                        verboseDebug && console.log("Return shape = ", sourceShape);
+                        for(i =0 ;i<maxDepth;i++) {
+                            idx = "_idx" + i;
+                            s += " { int " + idx + "; ";
+                            s += "for (" + idx + "= 0; " + idx + " < " + sourceShape[i] + "; " + idx + "++) {"; 
+                            indexString += "[" + idx + "]";
+                            post_parens += "}}";
+                        }
+                        s += " retVal" + indexString + " = " + "((" + sourceType.OpenCLType + ")" +  boilerplate.localResultName + ")" + indexString + ";" + post_parens;
+                    }
                 }
                 s = s + "if (_FAIL) {*_FAILRET = 1;}";
                 s = s + " return retVal; ";
@@ -680,7 +691,10 @@ RiverTrail.compiler.codeGen = (function() {
                         s = s + "retVal[_writeoffset + " + i + "] = " + oclExpression(rhs.children[i]) + ";";
                     }
                     s = s + "}";
-                } else {
+                } else if(rhs.typeInfo.properties.addressSpace === "__global") {
+                    throw "unimplemented !! ";
+                }
+                else {
                     // arbitrary expression, possibly a nested array identifier
                     var source = rhs;
                     var sourceType = source.typeInfo;
@@ -1017,7 +1031,7 @@ RiverTrail.compiler.codeGen = (function() {
                     // Create structure if this call is going to return a nested
                     // array
                     s += "(";
-                    var post_parens = ""; var indexString = "";
+                    var post_parens = ""; 
                     // emit statements to initialize pointers, then emit the
                     // call itself.
                    var redu = 1; var rhs = ""; var lhs = ""; post_parens = ")";
@@ -1263,8 +1277,65 @@ RiverTrail.compiler.codeGen = (function() {
                     case IDENTIFIER:
                         // simple case of a = expr
                         if (ast.allocatedMem) {
-                            console.log(ast.children[0].type, ast.children[0].value);
-                            throw new Error("a memcopy would be required to compile this code.");
+                            //console.log(ast.children[0].type, ast.children[0].value);
+                            //throw new Error("a memcopy would be required to compile this code.");
+                            console.log("Doing assignment copy for ", ast.children[0].value);
+                            var s_tmp = ""; var s_decl = "";
+                            //var sourceShape = ast.typeInfo.getOpenCLShape();
+                            var sourceShape = ast.children[1].typeInfo.getOpenCLShape();
+                            var sourceType = ast.children[1].typeInfo.OpenCLType;
+                            var maxDepth = sourceShape.length;
+                            console.log("Source shape = ", sourceShape);
+                            console.log("Source type = ", sourceType);
+                            //var post_parens = "";
+                            if(!(ast.children[1].typeInfo.isScalarType()) && maxDepth > 1) {
+                                var source_tmp_name = "tmp_" + ast.children[0].value;
+                                s_decl += sourceType + " " + source_tmp_name + " = " + oclExpression(ast.children[1]) + ";" ;
+                                s_tmp += "(";
+                                var post_parens = ""; 
+                                var redu = 1; var rhs = ""; var lhs = ""; post_parens = ")";
+                                for(var i = 0 ; i < maxDepth; i++) {
+                                    for(var j = 0; j < sourceShape[i]*redu; j++) {
+                                        if(i===maxDepth-1) {
+                                            lhs = "(" + getPointerCast(i, maxDepth, ast.typeInfo.OpenCLType) +
+                                                ast.memBuffers.list[i] + ")" + "[" + j + "]";
+                                            var n = j; var idx = "";
+                                            for(var k = maxDepth-1; k >=0; k--) {
+                                                idx = "[" + n % sourceShape[k] +"]" + idx;
+                                                n = Math.floor(n/sourceShape[k]);
+                                            }
+                                            rhs = source_tmp_name + idx; 
+                                        }
+                                        else {
+                                            lhs = "(" + getPointerCast(i, maxDepth, ast.typeInfo.OpenCLType) +
+                                            ast.memBuffers.list[i] + ")" + "[" + j + "]";
+                                            rhs = "&((" + getPointerCast(i+1, maxDepth, ast.typeInfo.OpenCLType)
+                                            + ast.memBuffers.list[i+1]+ ")" + "[" + j*sourceShape[i+1] + "]" + ")";
+                                        }
+                                        s_tmp += lhs + " = " + rhs + " ,"; 
+                                    }
+                                    redu = redu*sourceShape[i];
+                                }
+                                // Now, copy the leaves.
+                                //for(var i = 0; i < elements; i++) {
+                                //    s_tmp += ast.memBuffers.list[last] + " = " + as
+                                //}
+
+                                s_tmp += " " + ast.memBuffers.list[0] + ");";
+                                s += s_decl + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + s_tmp + ")";
+                            }
+                            else if(maxDepth === 1) {
+                                console.log("Flat array copy here!!!");
+                                // Copy a flat array
+                            }
+                            else if(ast.typeInfo.isScalarType()) {
+                                console.log("Scalar assignment here!!!");
+                                // Do scalars ever have memory allocated to
+                                // them ?
+                                // Simply emit an assign statement
+                            }
+
+
                         } else {
                             s = s + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")"; // no ; because ASSIGN is an expression!
                         }
