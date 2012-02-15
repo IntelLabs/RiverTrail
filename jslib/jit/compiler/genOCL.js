@@ -114,7 +114,7 @@ RiverTrail.compiler.codeGen = (function() {
 
             if (formalsTypes[i].isObjectType("ParallelArray") || formalsTypes[i].isObjectType("Array")) {
                 // array argument, so needs address space qualifier
-                s = s + formalsTypes[i].properties.addressSpace + " ";
+                s = s + formalsTypes[i].getOpenCLAddressSpace() + " ";
             }
 
             s = s + formalsTypes[i].OpenCLType + " " + formalsNames[i];
@@ -154,7 +154,7 @@ RiverTrail.compiler.codeGen = (function() {
 
             if (formalsTypes[i].isObjectType("ParallelArray") || formalsTypes[i].isObjectType("Array")) {
                 // array argument, so needs address space qualifier
-                s = s + formalsTypes[i].properties.addressSpace + " ";
+                s = s + formalsTypes[i].getOpenCLAddressSpace() + " ";
             }
 
             s = s + formalsTypes[i].OpenCLType + " " + formalsNames[i];
@@ -209,7 +209,7 @@ RiverTrail.compiler.codeGen = (function() {
             // the first argument is id that this call is responsible for.
             if (indexType.isObjectType("Array")) { //(formalsType === "int*") {
                 dimSizes = indexType.getOpenCLShape();
-                s = s + indexType.properties.addressSpace+" const "+ RiverTrail.Helper.stripToBaseType(indexType.OpenCLType) + " " +
+                s = s + indexType.getOpenCLAddressSpace() +" const "+ RiverTrail.Helper.stripToBaseType(indexType.OpenCLType) + " " +
                     indexName+"["+ dimSizes.toString() +"] = "; 
                 // Deal with array indices.
                 // SAH: id may _NEVER_ be changed in this process as it is required to assign the result!
@@ -269,7 +269,8 @@ RiverTrail.compiler.codeGen = (function() {
                 throw "expecting function found " + ast.value;
             }
             // Need code here to deal with array values being returned.
-            s = s + " " +ast.typeInfo.result.OpenCLType + " " + ast.name;
+            // NOTE: use dispatched function name here
+            s = s + " " +ast.typeInfo.result.OpenCLType + " " + ast.dispatch;
             s = s + "("; // start param list.
             // add extra parameter for failure propagation
             s = s + "bool * _FAILRET";
@@ -847,7 +848,7 @@ RiverTrail.compiler.codeGen = (function() {
         var sourceRank = sourceShape.length;
         var elemRank = ast.typeInfo.getOpenCLShape().length;
         var isParallelArray = (sourceType.isObjectType("ParallelArray"));
-        var isGlobal = (sourceType.properties.addressSpace === "__global");
+        var isGlobal = (sourceType.getOpenCLAddressSpace() === "__global");
         if (elemRank !== 0) {
             if(isParallelArray || isGlobal) {
                 // The result is a pointer to a sub dimension.
@@ -1048,7 +1049,8 @@ RiverTrail.compiler.codeGen = (function() {
                      redu = redu*sourceShape[i];
                    }
                 }
-                s = s + ast.children[0].value + "( &_FAIL" + (actuals !== "" ? ", " : "") + actuals;
+                // NOTE: use renamed dispatch name here!
+                s = s + ast.children[0].dispatch + "( &_FAIL" + (actuals !== "" ? ", " : "") + actuals;
                 if (!(ast.typeInfo.isScalarType())) { 
                     s = s + ", (" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem;
                 }
@@ -1344,7 +1346,7 @@ RiverTrail.compiler.codeGen = (function() {
                         // array update <expr>[iv] = expr
                         // make sure that <expr> is in the __private address space. We catch it this late just for
                         // prototyping convenience. Could go anywhere after TI.
-                        (findSelectionRoot(ast.children[0]).typeInfo.properties.addressSpace !== "__global") || reportError("global arrays are immutable", ast);
+                        (findSelectionRoot(ast.children[0]).typeInfo.getOpenCLAddressSpace() !== "__global") || reportError("global arrays are immutable", ast);
 
                         s = s + "((" + oclExpression(ast.children[0]) + ")" + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")";
                         break;

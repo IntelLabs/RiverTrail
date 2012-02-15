@@ -231,7 +231,7 @@ RiverTrail.Helper = function () {
         var ast = parser.FunctionDefinition(t, undefined, false, parser.EXPRESSED_FORM);        
         // Ensure that the function has a unique, valid name to simplify
         // the treatment downstream
-        ast.name = nameGen(ast.name);
+        ast.dispatch = nameGen(ast.name);
         return ast;
     };
 
