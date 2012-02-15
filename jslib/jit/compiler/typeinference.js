@@ -114,7 +114,16 @@ RiverTrail.Typeinference = function () {
     };
     Tp.getOpenCLAddressSpace = function () {
         return "";
-    }
+    };
+    Tp.hasAddressSpace = function () {
+        return (this.getAddressSpace() !== undefined);
+    };
+    Tp.getAddressSpace = function () {
+        return undefined;
+    };
+    Tp.setAddressSpace = function (val) {
+        return;
+    };
 
     //
     // literal type for all literals
@@ -283,6 +292,16 @@ RiverTrail.Typeinference = function () {
     };
     TOp.getOpenCLAddressSpace = function () {
         return this.properties.addressSpace || "";
+    }
+    TOp.getAddressSpace = function () {
+        return this.properties.addressSpace;
+    };
+    TOp.setAddressSpace = function (val) {
+        if (this.registry[this.name].setAddressSpace) {
+            return this.registry[this.name].setAddressSpace.call(this, val);
+        } else {
+            this.properties.adressSpace = val;
+        }
     }
 
     //
@@ -612,6 +631,10 @@ RiverTrail.Typeinference = function () {
             return (this.properties.shape.length === other.properties.shape.length) &&
                    this.properties.shape.every( function (val, idx) { return val === other.properties.shape[idx]; }) &&
                    (this.properties.elements.equals(other.properties.elements));
+        },
+        setAddressSpace : function (val) {
+            this.properties.addressSpace = val;
+            this.properties.elements.setAddressSpace(val);
         }
     };
 
@@ -730,6 +753,10 @@ RiverTrail.Typeinference = function () {
             return (this.properties.shape.length === other.properties.shape.length) &&
                    this.properties.shape.every( function (val, idx) { return val === other.properties.shape[idx]; }) &&
                    (this.properties.elements.equals(other.properties.elements));
+        },
+        setAddressSpace : function (val) {
+            this.properties.addressSpace = val;
+            this.properties.elements.setAddressSpace(val);
         }
     };
 
@@ -1041,6 +1068,7 @@ RiverTrail.Typeinference = function () {
                         left.properties.addressSpace = tEnv.accu.properties.addressSpace;
                         left.properties.elements = tEnv.accu.properties.elements.clone();
                         left.updateOpenCLType();
+                        left.registerFlow(tEnv.accu);
                     }
                     tEnv.accu = left;
                 } else {
@@ -1058,9 +1086,15 @@ RiverTrail.Typeinference = function () {
                 tEnv.accu = new TObject("Array");
                 tEnv.accu.properties.elements = left[0].clone();
                 tEnv.accu.properties.shape = [ast.children.length];
-                tEnv.accu.properties.addressSpace = "__private";
                 tEnv.accu.updateOpenCLType();
                 tEnv.addRoot(tEnv.accu);
+                // Store flow information for local array. If the elements are scalars, there is no flow information, so this is save.
+                // If the elements are arrays themselves, their address space will flow to the local array. As local arrays essentially are
+                // arrays of pointers to the elements, they can point to the global address space, although they are local. Also, the n:1
+                // flow will automatically demote mixed arrays to the private address space.
+                // left.forEach(function (v) { tEnv.accu.registerFlow(v); });
+                // this needs a more sophisticated type representation, so we leave it at local for now.
+                tEnv.accu.setAddressSpace("__private");
                 break;
 
             // function application
@@ -1080,7 +1114,7 @@ RiverTrail.Typeinference = function () {
                         ast.children[1] = drive(ast.children[1], tEnv, fEnv);
                         // we clone the argument types here to ensure that later type
                         // upgrades do not propagate to function signatures!
-                        var argT = tEnv.accu.map(function (t) { return t.clone();});
+                        var argT = tEnv.accu.map(function (t) { var nt = t.clone(); nt.registerFlow(t); return nt;});
                         tEnv.resetAccu();
                         // grab function
                         var fname = ast.children[0].value;
@@ -1156,7 +1190,9 @@ RiverTrail.Typeinference = function () {
                 left = [];
                 for (var idx in ast.children) {
                     ast.children[idx] = drive(ast.children[idx], tEnv, fEnv);
-                    left.push(tEnv.accu.clone());
+                    var inner = tEnv.accu.clone();
+                    inner.registerFlow(tEnv.accu);
+                    left.push(inner);
                 }
                 tEnv.accu = left;
                 break;
@@ -1289,7 +1325,7 @@ RiverTrail.Typeinference = function () {
             case "object":
                 var name = TObject.deriveObjectType(val) || reportError("unsupported object as argument encountered");
                 var type = TObject.makeType(name, val);
-                type.properties.addressSpace = "__global";
+                type.setAddressSpace("__global");
                 break;
             default:
                 reportError("unsupported argument kind encountered");
@@ -1321,7 +1357,7 @@ RiverTrail.Typeinference = function () {
                             workset.push(val);
                             debug && console.log("FLOW: enqueued " + val.toString() + " with flowOut " + flowOut);
                         }
-                        val._flow = flowOut;
+                        val._flow = flowInit(val);
                     }});
             }
         }
@@ -1426,19 +1462,23 @@ RiverTrail.Typeinference = function () {
         // propagate address space qualifiers
         flow(tEnv._roots, 
              function (val) {
-                 return val.properties.addressSpace;
+                 if (val.isObjectType()) {
+                     return val.properties.addressSpace;
+                 } else {
+                     return undefined;
+                 }
              },
              function (val, addressspace) {
                 debug && console.log("flowing address space " + addressspace);
                  if (val.isObjectType()) { // address space qualifiers are only 
                                            // a property of object types (as they 
                                            // are pointers in OpenCL)
-                    if (!val.properties.addressSpace) {
-                        val.properties.addressSpace = addressspace;
+                    if (!val.hasAddressSpace()) {
+                        val.setAddressSpace(addressspace);
                         debug && console.log("propagated address space " + addressspace);
                         return addressspace;
-                    } else if (val.properties.addressSpace !== addressspace) {
-                        val.properties.addressSpace = "__private";
+                    } else if (val.getAddressSpace() !== addressspace) {
+                        val.setAddressSpace("__private");
                         debug && console.log("privatized address space due to conflict");
                         return "__private";
                     } else {
