@@ -1146,7 +1146,7 @@ RiverTrail.Typeinference = function () {
                                     break;
                                 }
                             }
-                            if (found) {
+                            if (false && found) {
                                 resType = found.typeInfo.result;
                                 fun = found;
                             } else {
