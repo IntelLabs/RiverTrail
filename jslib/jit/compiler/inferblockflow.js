@@ -215,7 +215,9 @@ RiverTrail.InferBlockFlow = function () {
                 locals.union(thenLocals);
                 break;
             case SEMICOLON:
-                infer(ast.expression, ins, outs, locals);
+                if (ast.expression) {
+                    infer(ast.expression, ins, outs, locals);
+                }
                 break;
             case VAR:
             case CONST:

@@ -469,11 +469,11 @@ RiverTrail.RangeAnalysis = function () {
         var result;
 
         if (!ast) {
-            throw "Oppsie";
+            reportBug("malformed syntax tree encountered.", ast);
         }
 
         if (!ast.type) {
-            throw "Oppsie";
+            reportBug("missing type information in syntax tree.", ast);
         }
 
         switch (ast.type) {
@@ -598,7 +598,11 @@ RiverTrail.RangeAnalysis = function () {
                 varEnv.merge(thenVE);
                 break;
             case SEMICOLON:
-                result = drive(ast.expression, varEnv, doAnnotate);
+                if (ast.expression) {
+                    result = drive(ast.expression, varEnv, doAnnotate);
+                } else {
+                    result = new Range(undefined, undefined, false);
+                }
                 break;
             case VAR:
             case CONST:
@@ -1001,11 +1005,11 @@ RiverTrail.RangeAnalysis = function () {
 
         function push(ast, tEnv, expectInt) {
             if (!ast) {
-                throw "Oppsie";
+                reportBug("malformed syntax tree encountered.", ast);
             }
 
             if (!ast.type) {
-                throw "Oppsie";
+                reportBug("missing type information in syntax tree.", ast);
             }
 
             switch (ast.type) {
@@ -1068,7 +1072,9 @@ RiverTrail.RangeAnalysis = function () {
                     }
                     break;
                 case SEMICOLON:
-                    ast.expression = push(ast.expression, tEnv, isIntValue(ast));
+                    if (ast.expression) {
+                        ast.expression = push(ast.expression, tEnv, isIntValue(ast));
+                    }
                     break;
                 case VAR:
                 case CONST:
