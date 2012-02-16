@@ -693,7 +693,11 @@ RiverTrail.compiler.codeGen = (function() {
                     }
                     s = s + "}";
                 } else if(rhs.typeInfo.properties.addressSpace === "__global") {
-                    throw "unimplemented !! ";
+                    s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+                    var elements = rhs.typeInfo.getOpenCLShape().reduce(function (a,b) { return a*b;});
+                    s += " int _writeback_idx = 0 ;";
+                    s += "for (_writeback_idx = 0; _writeback_idx < " + elements + "; " + "_writeback_idx++) {"; 
+                    s += " retVal[_writeoffset + _writeback_idx]  = " + boilerplate.localResultName + "[_writeback_idx] ; }";
                 }
                 else {
                     // arbitrary expression, possibly a nested array identifier
@@ -1281,14 +1285,14 @@ RiverTrail.compiler.codeGen = (function() {
                         if (ast.allocatedMem) {
                             //console.log(ast.children[0].type, ast.children[0].value);
                             //throw new Error("a memcopy would be required to compile this code.");
-                            console.log("Doing assignment copy for ", ast.children[0].value);
+                            //console.log("Doing assignment copy for ", ast.children[0].value);
                             var s_tmp = ""; var s_decl = "";
                             //var sourceShape = ast.typeInfo.getOpenCLShape();
                             var sourceShape = ast.children[1].typeInfo.getOpenCLShape();
                             var sourceType = ast.children[1].typeInfo.OpenCLType;
                             var maxDepth = sourceShape.length;
-                            console.log("Source shape = ", sourceShape);
-                            console.log("Source type = ", sourceType);
+                            //console.log("Source shape = ", sourceShape);
+                            //console.log("Source type = ", sourceType);
                             //var post_parens = "";
                             if(!(ast.children[1].typeInfo.isScalarType()) && maxDepth > 1) {
                                 var source_tmp_name = "tmp_" + ast.children[0].value;
@@ -1318,11 +1322,6 @@ RiverTrail.compiler.codeGen = (function() {
                                     }
                                     redu = redu*sourceShape[i];
                                 }
-                                // Now, copy the leaves.
-                                //for(var i = 0; i < elements; i++) {
-                                //    s_tmp += ast.memBuffers.list[last] + " = " + as
-                                //}
-
                                 s_tmp += " " + ast.memBuffers.list[0] + ");";
                                 s += s_decl + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + s_tmp + ")";
                             }
