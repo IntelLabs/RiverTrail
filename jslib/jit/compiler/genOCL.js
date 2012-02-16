@@ -1250,8 +1250,6 @@ RiverTrail.compiler.codeGen = (function() {
             case SEMICOLON:
                 if (ast.expression) {
                     s += oclStatement(ast.expression)+";";
-                } else {
-                    reportError("expected a semicolon to have an expression. ", ast);
                 }
                 break;
             case VAR:

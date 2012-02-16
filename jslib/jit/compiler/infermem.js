@@ -238,7 +238,9 @@ RiverTrail.InferMem = function () {
                 memVars.join(thenMem);
                 break;
             case SEMICOLON:
-                infer(ast.expression, memVars, ins, outs);
+                if (ast.expression) {
+                    infer(ast.expression, memVars, ins, outs);
+                }
                 break;
             case VAR:
             case CONST:

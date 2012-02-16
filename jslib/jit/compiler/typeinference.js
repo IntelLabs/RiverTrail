@@ -798,7 +798,7 @@ RiverTrail.Typeinference = function () {
         var left, right;
 
         if ((ast === null) || (ast === undefined)) {
-            throw "Oppsie";
+            reportBug("malformed syntax tree", ast);
         }
 
         switch (ast.type) {

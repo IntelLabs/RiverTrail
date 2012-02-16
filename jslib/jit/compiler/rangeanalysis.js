@@ -211,6 +211,12 @@ RiverTrail.RangeAnalysis = function () {
     Rp.clone = function () {
         return new Range(this.lb, this.ub, this.isInt);
     };
+    Rp.isUndefined = function () {
+        return (this.lb === undefined) && (this.ub === undefined) && !this.isIntl
+    };
+    Rp.forceInt = function forceInt(val) {
+        this.isInt = val;
+    };
     Rp.toString = function () {
         return "[" + ((this.lb !== undefined) ? this.lb.toString() : "--") + "," + ((this.ub !== undefined) ? this.ub.toString() : "--") + "]<" + (this.isInt ? "int" : "fp") + ">";
     };
@@ -238,9 +244,9 @@ RiverTrail.RangeAnalysis = function () {
             var result = new RangeArray();
             for (var cnt = 0; cnt < this._store.length; cnt++) {
                 if (this._store[cnt] instanceof RangeArray) {
-                    result._store[cnt] = selfF.call(this._store[cnt], val._store[cnt]);
+                    result._store[cnt] = selfF.call(this._store[cnt], (val instanceof RangeArray ? val._store[cnt] : val));
                 } else {
-                    result._store[cnt] = f.call(this._store[cnt], val._store[cnt]);
+                    result._store[cnt] = f.call(this._store[cnt], (val instanceof RangeArray ? val._store[cnt] : val));
                 }
             }
             return result;
@@ -267,11 +273,18 @@ RiverTrail.RangeAnalysis = function () {
     RAp.setInt = function setInt(other, union) {
         this._store.forEach( function (mine, idx) { 
                                  if (mine instanceof RangeArray) {
-                                     mine.setInt(other._store[idx], union);
+                                     mine.setInt((other instanceof RangeArray ? other._store[idx] : other), union);
                                  } else {
-                                     mine.isInt = other._store[idx].isInt && (!union || mine.isInt);
+                                     mine.isInt = (other instanceof RangeArray ? other._store[idx] : other).isInt && (!union || mine.isInt);
                                  }
                              });
+    };
+    RAp.forceInt = function forceInt(val) {
+        this._store.forEach( function (v) { v.forceInt(val); });
+    };
+    RAp.isUndefined = function () {
+        // range arrays at least carry some information about how many elements there are
+        return false;
     };
     RAp.toString = function toString() {
         var result = "[[";
@@ -302,14 +315,18 @@ RiverTrail.RangeAnalysis = function () {
     VEp.update = function (name, range) {
         var current = this.lookup(name);
         if (current) {
-            if (current instanceof RangeArray) {
-                (range instanceof RangeArray) || reportBug("update of array range with scalar range?");
-                this.bindings[name] = range.clone();
-                this.bindings[name].setInt(current, true);
+            if (!current.isUndefined() && !range.isUndefined()) {
+                if (current instanceof RangeArray) {
+                    (range instanceof RangeArray) || reportBug("update of array range with scalar range?");
+                    this.bindings[name] = range.clone();
+                    this.bindings[name].setInt(current, true);
+                } else {
+                    !(range instanceof RangeArray) || reportBug("update of scalar range with array range?");
+                    this.bindings[name] = range.clone();
+                    this.bindings[name].isInt = range.isInt && current.isInt;
+                }
             } else {
-                !(range instanceof RangeArray) || reportBug("update of scalar range with array range?");
-                this.bindings[name] = range.clone();
-                this.bindings[name].isInt = range.isInt && current.isInt;
+                this.bindings[name] = new Range(undefined, undefined, false);
             }
         } else {
             this.bindings[name] = range;
@@ -469,11 +486,11 @@ RiverTrail.RangeAnalysis = function () {
         var result;
 
         if (!ast) {
-            throw "Oppsie";
+            reportBug("malformed syntax tree encountered.", ast);
         }
 
         if (!ast.type) {
-            throw "Oppsie";
+            reportBug("missing type information in syntax tree.", ast);
         }
 
         switch (ast.type) {
@@ -598,7 +615,11 @@ RiverTrail.RangeAnalysis = function () {
                 varEnv.merge(thenVE);
                 break;
             case SEMICOLON:
-                result = drive(ast.expression, varEnv, doAnnotate);
+                if (ast.expression) {
+                    result = drive(ast.expression, varEnv, doAnnotate);
+                } else {
+                    result = new Range(undefined, undefined, false);
+                }
                 break;
             case VAR:
             case CONST:
@@ -954,7 +975,7 @@ RiverTrail.RangeAnalysis = function () {
                 if ((e instanceof TypeError) || (e instanceof ReferenceError)) {
                     throw e;
                 }
-                debug && console.log(e.toString());
+                console.log("range analysis failed: " + e.toString());
             }
             debug && console.log(env.toString());
 
@@ -999,13 +1020,29 @@ RiverTrail.RangeAnalysis = function () {
             return result;
         }
 
+        function adaptStatusToRoot( expr, tEnv) {
+            var result = false;
+
+            switch (expr.type) {
+                case IDENTIFIER:
+                    result = validIntRepresentation(tEnv.lookup(expr.value).type.OpenCLType);
+                    break;
+                case INDEX:
+                    result = adaptStatusToRoot(expr.children[0], tEnv);
+                    break;
+            }
+            expr.rangeInfo.forceInt(result);
+
+            return result;
+        }
+
         function push(ast, tEnv, expectInt) {
             if (!ast) {
-                throw "Oppsie";
+                reportBug("malformed syntax tree encountered.", ast);
             }
 
             if (!ast.type) {
-                throw "Oppsie";
+                reportBug("missing type information in syntax tree.", ast);
             }
 
             switch (ast.type) {
@@ -1068,7 +1105,9 @@ RiverTrail.RangeAnalysis = function () {
                     }
                     break;
                 case SEMICOLON:
-                    ast.expression = push(ast.expression, tEnv, isIntValue(ast));
+                    if (ast.expression) {
+                        ast.expression = push(ast.expression, tEnv, isIntValue(ast));
+                    }
                     break;
                 case VAR:
                 case CONST:
@@ -1102,10 +1141,11 @@ RiverTrail.RangeAnalysis = function () {
                             }
                             break;
                         case INDEX:
-                            // first do the lhs expression. We do not care whether the lhs is int or not, we will adapt. The case
-                            // where the lhs is int and the rhs is double cannot happen (the lhs is at most a nested selection
-                            // operation and we would have propagated the double status to the lhs in the drive phase).
-                            ast.children[0] = push(ast.children[0], tEnv, undefined); 
+                            // first do the lhs expression. We do not care whether the lhs is int or not, we will adapt. We have to take
+                            // special care for the case where the LHS's root has been demoted to double after the selection was processed.
+                            // For this, we first adapt the integer status of the range information back from the root.
+                            adaptStatusToRoot(ast.children[0], tEnv);
+                            ast.children[0] = push(ast.children[0], tEnv, undefined);
                             // as above, we have to make sure that the types match...
                             if (validIntRepresentation(ast.children[1].typeInfo.OpenCLType) && 
                                 (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
