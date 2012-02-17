@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = true;
+    const verboseDebug = false;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -1283,18 +1283,15 @@ RiverTrail.compiler.codeGen = (function() {
                         if (ast.allocatedMem) {
                             //console.log(ast.children[0].type, ast.children[0].value);
                             //throw new Error("a memcopy would be required to compile this code.");
-                            //console.log("Doing assignment copy for ", ast.children[0].value);
                             var s_tmp = ""; var s_decl = "";
-                            //var sourceShape = ast.typeInfo.getOpenCLShape();
                             var sourceShape = ast.children[1].typeInfo.getOpenCLShape();
                             var sourceType = ast.children[1].typeInfo.OpenCLType;
                             var maxDepth = sourceShape.length;
-                            //console.log("Source shape = ", sourceShape);
-                            //console.log("Source type = ", sourceType);
-                            //var post_parens = "";
-                            if(!(ast.children[1].typeInfo.isScalarType()) && maxDepth > 1) {
-                                var source_tmp_name = "tmp_" + ast.children[0].value;
-                                s_decl += sourceType + " " + source_tmp_name + " = " + oclExpression(ast.children[1]) + ";" ;
+                            if(!(ast.children[1].typeInfo.isScalarType()) && maxDepth >= 1) {
+                                verboseDebug && console.log("Doing copy assignment to value ", ast.children[0].value, " from shape ", sourceShape);
+
+                                var source_tmp_name = "tmp_" + ast.memBuffers.list[0];
+                                s_decl += "/* Copying Assignment */ " + sourceType + " " + source_tmp_name + " = " + oclExpression(ast.children[1]) + ";" ;
                                 s_tmp += "(";
                                 var post_parens = ""; 
                                 var redu = 1; var rhs = ""; var lhs = ""; post_parens = ")";
@@ -1320,20 +1317,14 @@ RiverTrail.compiler.codeGen = (function() {
                                     }
                                     redu = redu*sourceShape[i];
                                 }
-                                s_tmp += " " + ast.memBuffers.list[0] + ");";
+                                s_tmp += " (" + sourceType + ")" + ast.memBuffers.list[0] + ")";
                                 s += s_decl + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + s_tmp + ")";
                             }
-                            else if(maxDepth === 1) {
-                                console.log("Flat array copy here!!!");
-                                // Copy a flat array
-                            }
                             else if(ast.typeInfo.isScalarType()) {
-                                console.log("Scalar assignment here!!!");
                                 // Do scalars ever have memory allocated to
                                 // them ?
-                                // Simply emit an assign statement
+                                throw new Error("Compiler bug: Memory allocated for scalar copy");
                             }
-
 
                         } else {
                             s = s + "(" + ast.children[0].value + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")"; // no ; because ASSIGN is an expression!
