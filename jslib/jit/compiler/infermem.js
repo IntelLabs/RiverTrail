@@ -34,7 +34,7 @@ RiverTrail.InferMem = function () {
     eval(definitions.consts);
     eval(RiverTrail.definitions.consts);
 
-    const debug = false;
+    const debug = true;
 
     // A MemSet models a set of memory variables for a given size. Optinally,
     // each memory name might be associated with a set of aliases that may
@@ -496,9 +496,7 @@ RiverTrail.InferMem = function () {
                 throw "unhandled node type in analysis: " + ast.type;
         }
 
-        if (debug && ast.allocatedMem) {
-            console.log("new allocation " + ast.allocatedMem);
-        }
+        //debug && ast.allocatedMem && console.log("new allocation " + ast.allocatedMem);
     };
 
     function doInfer (ast) {

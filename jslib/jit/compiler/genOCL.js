@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = false;
+    const verboseDebug = true;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -644,8 +644,8 @@ RiverTrail.compiler.codeGen = (function() {
                         var maxDepth = sourceShape.length;
                         var i; var idx; var indexString = ""; var post_parens = "";
                         s += " int _writeback_idx = 0 ;";
-                        verboseDebug && console.log("Generating return code. # dimensions = ", maxDepth);
-                        verboseDebug && console.log("Return shape = ", sourceShape);
+                        //verboseDebug && console.log("Generating return code. # dimensions = ", maxDepth);
+                        //verboseDebug && console.log("Return shape = ", sourceShape);
                         for(i =0 ;i<maxDepth;i++) {
                             idx = "_idx" + i;
                             s += " { int " + idx + "; ";

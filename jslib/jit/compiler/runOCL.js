@@ -236,6 +236,7 @@ RiverTrail.compiler.runOCL = function () {
                 // console.log("791:new:rank: "+rank+" iterSpace: "+iterSpace);
                 //console.log("driver:389 did not run.");
                 var kernelFailure = kernel.run(rank, iterSpace, iterSpace.map(function () { return 1; }));
+                //var kernelFailure = true;
             } catch (e) {
                 console.log("kernel.run fails: ", e);
                 throw e;
