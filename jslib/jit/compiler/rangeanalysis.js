@@ -1127,13 +1127,13 @@ RiverTrail.RangeAnalysis = function () {
                 case ASSIGN:
                     // children[0] is the left hand side, children[1] is the right hand side.
                     // both can be expressions. 
-                    ast.children[1] = push(ast.children[1], tEnv, isIntValue(ast.children[0]));
                     switch (ast.children[0].type) {
                         case IDENTIFIER:
                             // simple case of a = expr
                             // we first update the type information for the lhs to the new global state. 
                             // It might be that we compute on int but the variable is a double. In such
                             // a case, we have to cast the expression to double.
+                            ast.children[1] = push(ast.children[1], tEnv, isIntValue(ast.children[0]));
                             ast.children[0].typeInfo = tEnv.lookup(ast.children[0].value).type;
                             if (validIntRepresentation(ast.children[1].typeInfo.OpenCLType) && 
                                 (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
@@ -1151,6 +1151,7 @@ RiverTrail.RangeAnalysis = function () {
                                 (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
                                 ast.children[1] = makeCast(ast.children[1], "double");
                             }
+                            ast.children[1] = push(ast.children[1], tEnv, isIntValue(ast.children[0]));
                         case DOT:
                             // we do not infer range information for objects 
                             break;
