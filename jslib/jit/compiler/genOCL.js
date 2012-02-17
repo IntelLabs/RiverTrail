@@ -258,13 +258,12 @@ RiverTrail.compiler.codeGen = (function() {
         //
         // This generates code for a function that is presmable called from the kernel function.
         // 
-        function genCalledFunction(ast) {
+        //
+        function genCalledFunctionHeader(ast) {
             "use strict";
             var s = "";
             var formals = "";
 
-            var previousCalledScope = calledScope.inCalledScope();
-            calledScope.enter();
             if (ast.value != "function") {
                 throw "expecting function found " + ast.value;
             }
@@ -285,8 +284,23 @@ RiverTrail.compiler.codeGen = (function() {
                 // If the return type of the result is an Array then a pointer to it is passed in.
                 s = s + ", " + returnType + " retVal";
             }
-
             s = s + " ) ";
+
+            return s;
+        };
+
+        function genCalledFunction(ast) {
+            "use strict";
+            var s = "";
+
+            var previousCalledScope = calledScope.inCalledScope();
+            calledScope.enter();
+            if (ast.value != "function") {
+                throw "expecting function found " + ast.value;
+            }
+            var returnType = ast.typeInfo.result.OpenCLType;
+
+            s = s + genCalledFunctionHeader(ast);
             s = s + " { ";// function body
             s = s + " const int _writeoffset = 0; "; // add a write offset to fool the rest of code generation
             s = s + " bool _FAIL = 0;"; // declare local _FAIL variable for selection failures
@@ -370,6 +384,20 @@ RiverTrail.compiler.codeGen = (function() {
                 return result.OpenCLType + "*";
             return (RiverTrail.Helper.stripToBaseType(result.OpenCLType) + "*");
         }
+
+        function declareLocalFunctions(decls) {
+            var s = "";
+
+            if (!decls)
+                return s;
+
+            for (var cnt = 0; cnt < decls.length; cnt ++) {
+                s = s + declareLocalFunctions(decls[cnt].body.funDecls);
+                s = s + genCalledFunctionHeader(decls[cnt]) + ";";
+            }
+
+            return s;
+        }
         function generateLocalFunctions(decls) {
             var s = "";
 
@@ -417,7 +445,8 @@ RiverTrail.compiler.codeGen = (function() {
             // Dump the helper function first, c99 requires this.
             // The kernel function has now been dumped.
             // We now turn our attention to function the kernel function might have called.
-            // Do we need to dump signatures in case there is a forward reference?
+            // We dump signatures in case there is a forward reference
+            s = s + declareLocalFunctions(ast.body.funDecls);
             s = s + generateLocalFunctions(ast.body.funDecls);
             s = s + "__kernel void " + funDecl.name + "(";
 
