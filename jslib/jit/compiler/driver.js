@@ -252,7 +252,7 @@ RiverTrail.compiler = (function () {
                 // numbers are floats
                 argumentTypes.push({ inferredType: defaultNumberType, dimSize: [] });
             } else {
-                throw new CompilerBug("Type derivation for argument not implemented yet");
+                throw new Error("Type derivation for argument not implemented yet");
             }
         }
         return argumentTypes;
@@ -291,16 +291,6 @@ RiverTrail.compiler = (function () {
                 Array.prototype.every.call(shapeA, function (a,idx) { return a == shapeB[idx];}));
     };
     
-    // I create three names for Error here so that we can, should we ever wish
-    // distinguish both or have our own implementation for exceptions
-    var errorHelper = function errorHelper(e) {
-        throw (e);
-    };
-
-    var CompilerError = errorHelper;
-    var CompilerBug = errorHelper;     // something went wrong although it should not
-    var CompilerAbort = errorHelper;   // exception thrown to influence control flow, e.g., misspeculation
-
 // end code from parallel array
     return {
         verboseDebug: false,
