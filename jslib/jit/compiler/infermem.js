@@ -74,19 +74,23 @@ RiverTrail.InferMem = function () {
         var keys = Object.keys(this._store);
         var keyPos = 0;
         for (var mem in other._store) {
+            var ms;
             if (keyPos < keys.length) {
                 if (this._store[keys[keyPos]] === null) {
                     this._store[keys[keyPos]] = new MemSet();
                 }
-                this._store[keys[keyPos]].add(mem);
-                if (other._store[mem] !== null) {
-                    for (var alias in other._store[mem]._store) {
-                        this._store[keys[keyPos]].add(alias);
-                    }
-                }
+                ms = this._store[keys[keyPos]];
+                ms.add(mem);
             } else {
                 this.add(mem);
+                ms = this._store[mem] = new MemSet();
             }
+            if (other._store[mem] !== null) {
+                for (var alias in other._store[mem]._store) {
+                    ms.add(alias);
+                }
+            }
+            keyPos++;
         }
     };
     MSP.declare = function declare (size) {
@@ -184,9 +188,8 @@ RiverTrail.InferMem = function () {
         switch (ast.type) {
             case SCRIPT:
                 ast.funDecls.forEach(function (f) {infer(f.body);});
-                memVars = new MemList();
-                ast.children.forEach(function (child) { infer(child, memVars, ast.ins, ast.outs); });
-                ast.memVars = memVars;
+                ast.memVars = new MemList();
+                ast.children.forEach(function (child) { infer(child, ast.memVars, ast.ins, ast.outs); });
                 break;
 
             case BLOCK:

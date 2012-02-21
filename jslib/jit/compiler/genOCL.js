@@ -774,7 +774,7 @@ RiverTrail.compiler.codeGen = (function() {
                 s = s + statements.symbols.emitDeclarations();
             }
             if (statements.memVars) {
-                statements.memVars.declare();
+                s = s + statements.memVars.declare();
             }
 
             for (i=0; i<statements.children.length;i++) {
