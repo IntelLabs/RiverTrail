@@ -344,7 +344,7 @@ RiverTrail.Typeinference = function () {
             name.forEach( this.bind);
         } else {
             if (!duplicates && this.bindings[name] !== undefined) {
-                reportError("variable bound twice in single scope: " + name);
+                debug && console.log("variable bound twice in single scope: " + name);
             } else {
                 this.bindings[name] = {initialized : false, type : null};
             }
@@ -440,7 +440,20 @@ RiverTrail.Typeinference = function () {
         } else {
             return this.parent.addRoot(val);
         }
-    }
+    };
+
+    TEp.emitDeclarations = function () {
+        s = "";
+        for (var name in this.bindings) {
+            var type = this.bindings[name].type;
+            // only declare variables that are actually used (and thus have a type) 
+            if (type) {
+                s = s + " " + type.getOpenCLAddressSpace() + " " + type.OpenCLType + " " + name + "; ";
+            } 
+        }
+        return s;
+    };
+
                     
 
 
@@ -814,7 +827,7 @@ RiverTrail.Typeinference = function () {
                 tEnv = new TEnv(tEnv);
                 // add all local variable declarations to environment to shadow old
                 // ones from previous scopes
-                ast.varDecls.forEach(function (name) { tEnv.bind(name.value, true); });
+                ast.varDecls.forEach(function (name) { tEnv.bind(name.value); });
                 // add all locally declared functions to the environment
                 // strictly speaking they are not variable bindings yet they can shadow variables and be shadowed
                 // by variables so we disallow these

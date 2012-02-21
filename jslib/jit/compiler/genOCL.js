@@ -769,23 +769,13 @@ RiverTrail.compiler.codeGen = (function() {
         var i;
         var x;
         var s = "";
-        if (statements.type === BLOCK) {
-            for (i=0; i<statements.children.length;i++) {
-                s = s + oclStatement(statements.children[i]) + ";";
+        if ((statements.type === BLOCK) || (statements.type === SCRIPT)) {
+            if (statements.symbols) {
+                s = s + statements.symbols.emitDeclarations();
             }
-        } else if (statements.type === SCRIPT) {
-            for(x in statements.varDecls) {
-                var name = statements.varDecls[x].value;
-                var type = statements.symbols.getType(name);
-                if (type) {
-                    s = s + " " + type.getOpenCLAddressSpace() + " " + type.OpenCLType + " " + name + "; ";
-                } else {
-                    // This variable isn't used so drop on floor for now.
-                }
+            if (statements.memVars) {
+                statements.memVars.declare();
             }
-
-            // declare memory variables associated with this script
-            s = s + statements.memVars.declare();
 
             for (i=0; i<statements.children.length;i++) {
                 s = s + oclStatement(statements.children[i]) + ";";
