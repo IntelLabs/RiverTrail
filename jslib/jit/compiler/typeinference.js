@@ -1095,6 +1095,7 @@ RiverTrail.Typeinference = function () {
                     ast.children[idx] = drive(ast.children[idx], tEnv, fEnv);
                     left.push(tEnv.accu);
                 }
+                (left.length > 0) || reportError("empty arrays are not supported", ast);
                 left.reduce(function(a,b) { a.equals(b) || reportError("inhomogeneous element types in array initialiser", ast); return a;});
                 tEnv.accu = new TObject("Array");
                 tEnv.accu.properties.elements = left[0].clone();
