@@ -34,7 +34,7 @@ RiverTrail.InferMem = function () {
     eval(definitions.consts);
     eval(RiverTrail.definitions.consts);
 
-    const debug = true;
+    const debug = false;
 
     // A MemSet models a set of memory variables for a given size. Optinally,
     // each memory name might be associated with a set of aliases that may

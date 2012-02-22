@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = true;
+    const verboseDebug = false;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -1306,11 +1306,11 @@ RiverTrail.compiler.codeGen = (function() {
                             var sourceShape = ast.children[1].typeInfo.getOpenCLShape();
                             var sourceType = ast.children[1].typeInfo.OpenCLType;
                             var maxDepth = sourceShape.length;
+                            var sourceAddressSpace = (ast.children[1].typeInfo.getOpenCLAddressSpace() == "__global" ? "__global": "");
                             if(!(ast.children[1].typeInfo.isScalarType()) && maxDepth >= 1) {
                                 verboseDebug && console.log("Doing copy assignment to value ", ast.children[0].value, " from shape ", sourceShape);
-
                                 var source_tmp_name = "tmp_" + ast.memBuffers.list[0];
-                                s_decl += "/* Copying Assignment */ " + sourceType + " " + source_tmp_name + " = " + oclExpression(ast.children[1]) + ";" ;
+                                s_decl += "/* Copying Assignment */ " + sourceAddressSpace + " " + sourceType + " " + source_tmp_name + " = " + oclExpression(ast.children[1]) + ";" ;
                                 s_tmp += "(";
                                 var post_parens = ""; 
                                 var redu = 1; var rhs = ""; var lhs = ""; post_parens = ")";
