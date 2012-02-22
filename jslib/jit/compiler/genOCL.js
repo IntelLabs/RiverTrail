@@ -267,6 +267,9 @@ RiverTrail.compiler.codeGen = (function() {
             if (ast.value != "function") {
                 throw "expecting function found " + ast.value;
             }
+
+            var previousCalledScope = calledScope.inCalledScope();
+            calledScope.enter();
             // Need code here to deal with array values being returned.
             // NOTE: use dispatched function name here
             s = s + " " +ast.typeInfo.result.OpenCLType + " " + ast.dispatch;
@@ -285,6 +288,8 @@ RiverTrail.compiler.codeGen = (function() {
                 s = s + ", " + returnType + " retVal";
             }
             s = s + " ) ";
+
+            calledScope.exit(previousCalledScope);
 
             return s;
         };
