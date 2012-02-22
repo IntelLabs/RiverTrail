@@ -491,7 +491,7 @@ RiverTrail.Typeinference = function () {
                 case "tan":
                     // number -> number functions
                     argtypes.length === 1 || reportError("too many arguments for Math." + name, ast);
-                    argtypes[0].isArithType() || reportError("argument to Math." + name + " is not a number", ast);
+                    argtypes[0].isArithType() || reportError("argument to Math." + name + " is not a number (found " + argTypes[0].toString() + ")", ast);
                     type = new TLiteral(TLiteral.NUMBER);
                     break;
 
@@ -499,8 +499,8 @@ RiverTrail.Typeinference = function () {
                 case "pow":
                     // number, number -> number functions
                     argtypes.length === 2 || reportError("too many arguments for Math." + name, ast);
-                    argtypes[0].isArithType() || reportError("first argument to Math." + name + " is not a number", ast);
-                    argtypes[1].isArithType() || reportError("second argument to Math." + name + " is not a number", ast);
+                    argtypes[0].isArithType() || reportError("first argument to Math." + name + " is not a number (found " + argTypes[0].toString() + ")", ast);
+                    argtypes[1].isArithType() || reportError("second argument to Math." + name + " is not a number (found " + argTypes[1].toString() + ")", ast);
                     type = new TLiteral(TLiteral.NUMBER);
                     break;
 
@@ -994,9 +994,9 @@ RiverTrail.Typeinference = function () {
             case DIV:
             case MOD:    
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
-                tEnv.accu.isArithType() || reportError("first argument not a number", ast);
+                tEnv.accu.isArithType() || reportError("first argument not a number (found " + tEnv.accu.toString() + ")", ast);
                 ast.children[1] = drive(ast.children[1], tEnv, fEnv);
-                tEnv.accu.isArithType() || reportError("second argument not a number", ast);
+                tEnv.accu.isArithType() || reportError("second argument not a number (found " + tEnv.accu.toString() + ")", ast);
                 // result always is a number
                 tEnv.accu = new TLiteral(TLiteral.NUMBER);
                 break;
@@ -1006,10 +1006,10 @@ RiverTrail.Typeinference = function () {
             case AND:
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
                 // XXX what do we allow as legal argument types to OR and AND? For now, numbers should do.
-                tEnv.accu.isArithType() || reportError("first argument not a number", ast);
+                tEnv.accu.isArithType() || reportError("first argument not a number (found " + tEnv.accu.toString() + ")", ast);
                 ast.children[1] = drive(ast.children[1], tEnv, fEnv);
                 // XXX same here
-                tEnv.accu.isArithType() || reportError("second argument not a number", ast);
+                tEnv.accu.isArithType() || reportError("second argument not a number (found " + tEnv.accu.toString() + ")", ast);
                 // result always is a bool
                 tEnv.accu = new TLiteral( TLiteral.BOOL);
                 break;
@@ -1026,7 +1026,7 @@ RiverTrail.Typeinference = function () {
             case INCREMENT:
             case DECREMENT:
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
-                tEnv.accu.isArithType() || reportError("argument not a number", ast);
+                tEnv.accu.isArithType() || reportError("argument not a number (found " + tEnv.accu.toString() + ")", ast);
                 if (ast.type === NOT) {
                     // result is bool
                     tEnv.accu = new TLiteral(TLiteral.BOOL);
@@ -1063,7 +1063,7 @@ RiverTrail.Typeinference = function () {
             // array operations
             case INDEX:
                 ast.children[1] = drive(ast.children[1], tEnv, fEnv);
-                tEnv.accu.isArithType() || reportError("index not a number", ast);
+                tEnv.accu.isArithType() || reportError("index not a number (found " + tEnv.accu.toString() + ")", ast);
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
                 if (tEnv.accu.isObjectType("Array")) {
                     left = tEnv.accu.properties.elements.clone();
