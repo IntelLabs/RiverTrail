@@ -268,7 +268,7 @@ RiverTrail.compiler = (function () {
         if (key === 'tokenizer'  ) {
             return '-- hidden --';
         }
-        if ((key === 'flowTo') || (key === 'flowFrom')) {
+        if (key === 'flowTo') {
             return '-- cyclic --';
         }
         return value;

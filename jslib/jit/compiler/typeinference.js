@@ -56,11 +56,28 @@ RiverTrail.Typeinference = function () {
     }
     var reportBug = RiverTrail.Helper.reportBug;
 
+    // 
+    // tree copying
+    //
+    var cloneFunctionNoTypes = RiverTrail.Helper.cloneFunction(true);
+    var cloneFunction = RiverTrail.Helper.cloneFunction(false);
+
+    //
+    // unique label generator
+    //
+    var labelGen = function () {
+        var cnt = 0;
+
+        return function () { return cnt++; };
+    }();
+
+    //
     //
     // Base prototype shared by all type structures
     //
     var Type = function (kind) {
         this.kind = kind;
+        this.label = labelGen();
     };
     Type.OBJECT = "OBJECT";
     Type.LITERAL = "LITERAL";
@@ -103,8 +120,10 @@ RiverTrail.Typeinference = function () {
         return (this.kind === Type.BOTTOM);
     };
     Tp.registerFlow = function (from) {
-        (this.flowFrom || (this.flowFrom = [])).push(from);
         (from.flowTo || (from.flowTo = [])).push(this);
+    };
+    Tp.registerParamFlow = function (param) {
+        (this.flowTo || (this.flowTo = [])).push(param);
     };
     Tp.getOpenCLShape = function () {
         return []; // everything is a scalar unless defined otherwise
@@ -143,6 +162,7 @@ RiverTrail.Typeinference = function () {
             default:
                 reportBug("unknown type for literal " + type);
         }
+        this.label = labelGen();
     };
     TLiteral.NUMBER = "NUMBER";
     TLiteral.STRING = "STRING";
@@ -154,10 +174,15 @@ RiverTrail.Typeinference = function () {
         return (this.constructor.prototype.equals.call(this, other) &&
                 (this.type === other.type));
     };
-    TLp.clone = function () {
-        var result = new TLiteral(this.type);
+    TLp.clone = function (lut) {
+        var result;
+        if (lut && (result = lut[this.label])) {
+           return result;
+        }
+        result = new TLiteral(this.type);
         result.OpenCLType = this.OpenCLType;
 
+        lut && (lut[this.label] = result);
         return result;
     };
     TLp.getOpenCLSize = function getOpenCLSize() {
@@ -192,6 +217,7 @@ RiverTrail.Typeinference = function () {
     var TFunction = function (parameters, result) {
         this.parameters = parameters;
         this.result = result;
+        this.label = labelGen();
     };
 
     var TFp = TFunction.prototype = new Type(Type.FUNCTION);
@@ -209,8 +235,16 @@ RiverTrail.Typeinference = function () {
                 (this.parameters.length === other.parameters.length) &&
                 this.parameters.every( function (oneP, index) { return oneP.equals(other.parameters[index]);}));
     };
-    TFp.clone = function () {
-        var result = new TFunction(this.parameters, this.result);
+    TFp.clone = function (lut) {
+        var result;
+        if (lut && (result = lut[this.label])) {
+            return result;
+        }
+        result = new TFunction(this.parameters, this.result);
+        lut && (lut[this.label] = result);
+
+        result.parameters = result.parameters.map(function (v) { return v.clone(lut); });
+        result.result = result.result.clone(lut);
 
         return result;
     };
@@ -223,6 +257,7 @@ RiverTrail.Typeinference = function () {
         this.name = name;
         this.properties = {};
         this.properties.__proto__ = null;
+        this.label = labelGen();
     };
     TObject.ARRAY = "Array";
     TObject.PARALLELARRAY = "ParallelArray";
@@ -267,10 +302,17 @@ RiverTrail.Typeinference = function () {
                 (this.name === other.name) &&
                 (this.registry[this.name].equals.call(this, other)));
     };
-    TOp.clone = function () {
-        var result = new TObject(this.name);
+    TOp.clone = function (lut) {
+        var result;
+        if (lut && (result = lut[this.label])) {
+            return result;
+        }
+        result = new TObject(this.name);
+
+        lut && (lut[this.label] = result);
+
         if (this.properties.elements) {
-            result.properties.elements = this.properties.elements.clone();
+            result.properties.elements = this.properties.elements.clone(lut);
         }
         result.properties.shape = this.properties.shape;
         result.OpenCLType = this.OpenCLType;
@@ -307,22 +349,22 @@ RiverTrail.Typeinference = function () {
     //
     // Bottom type for error states
     //
-    var TBottom = function () { };
+    var TBottom = function () { 
+        this.label = labelGen();
+    };
     var TBp = TBottom.prototype = new Type(Type.BOTTOM);
     TBp.equals = function (other) { return false; };
 
     // 
     // type environment AKA symbol table
     //
-    var TEnv = function (env, functionFrame, topLevel) {
+    var TEnv = function (env, functionFrame) {
         this.parent = env;
         this.bindings = {};
         this.bindings.__proto__ = null;
         this._accu = null;
         if (functionFrame) {
             this._functionResult = null;
-        }
-        if (topLevel) {
             this._roots = [];
         }
         this.openCLFloatType = env ? env.openCLFloatType : undefined;
@@ -439,6 +481,13 @@ RiverTrail.Typeinference = function () {
             this._roots.push(val);
         } else {
             return this.parent.addRoot(val);
+        }
+    };
+    TEp.getRoots = function () {
+        if (this._roots) {
+            return this._roots;
+        } else {
+            return this.parent.getRoots();
         }
     };
 
@@ -785,10 +834,14 @@ RiverTrail.Typeinference = function () {
     FEp.lookup = function (name) {
         return (this.bindings[name] || (this.parent && this.parent.lookup(name)) || undefined);
     };
-    FEp.add = function (f, name) {
-        var fname = name || f.name || reportBug("unnamed functions cannot be added to environment");
-        if (this.bindings[fname] !== undefined) reportError("functions need to be uniquely defined within a scope", f);
-        this.bindings[fname] = f;
+    FEp.add = function (f, name, global) {
+        if (global && this.parent) {
+            this.parent.add(f, name, global);
+        } else {
+            var fname = name || f.name || reportBug("unnamed functions cannot be added to environment");
+            if (this.bindings[fname] !== undefined) reportError("functions need to be uniquely defined within a scope", f);
+            this.bindings[fname] = f;
+        }
     };
     FEp.toFunDecls = function () {
         var result = [];
@@ -836,10 +889,9 @@ RiverTrail.Typeinference = function () {
                         tEnv.bind(f.name);
                         });
                 // add all locally declared functions to the function store. Other than the variable environment, this
-                // is about storing their code in case we find a call. Furhtermore, we have to memoize the functions visible
-                // from this function. We do this by glueing the function store to the function instance. 
+                // is about storing their code in case we find a call. 
                 fEnv = new FEnv(fEnv);
-                ast.funDecls.forEach(function (f) {fEnv.add(f); f.fEnv = fEnv});
+                ast.funDecls.forEach(function (f) {fEnv.add(f);});
                 ast.children.map(function (ast) { return drive(ast, tEnv, fEnv); });
                 tEnv.resetAccu();
                 // remember symbol table for later phases
@@ -1126,9 +1178,7 @@ RiverTrail.Typeinference = function () {
                     case IDENTIFIER: // function call
                         // grab argument types
                         ast.children[1] = drive(ast.children[1], tEnv, fEnv);
-                        // we clone the argument types here to ensure that later type
-                        // upgrades do not propagate to function signatures!
-                        var argT = tEnv.accu.map(function (t) { var nt = t.clone(); nt.registerFlow(t); return nt;});
+                        var argT = tEnv.accu;
                         tEnv.resetAccu();
                         // grab function
                         var fname = ast.children[0].value;
@@ -1144,7 +1194,7 @@ RiverTrail.Typeinference = function () {
                                (typeof(obj) === 'function') || reportError("not a function `" + fname + "`", ast);
                                fun = RiverTrail.Helper.parseFunction(obj.toString());
                                // if we get here, we can just add the function to the function environment for future use
-                               fEnv.add(fun, ast.children[0].value);
+                               fEnv.add(fun, ast.children[0].value, true);
                            } else {
                                reportError("unknown function `" + fname + "`", ast);
                            }
@@ -1160,12 +1210,12 @@ RiverTrail.Typeinference = function () {
                                     break;
                                 }
                             }
-                            if (false && found) {
+                            if (true && found) {
                                 resType = found.typeInfo.result;
                                 fun = found;
                             } else {
                                 // specialize
-                                fun = RiverTrail.Helper.cloneAST(fun);
+                                fun = cloneFunctionNoTypes(fun);
                             }
                         } 
                         
@@ -1176,22 +1226,35 @@ RiverTrail.Typeinference = function () {
                             stackTrace.push({ast: ast, fun: fun});
                             // add parameter / value type mapping
                             fun.params.length === argT.length || reportError("number of parameters and arguments in call does not match", ast);
-                            fun.params.forEach(function(arg, idx) { innerTEnv.bind(arg); innerTEnv.update(arg, argT[idx]); });
+                            // we clone the argument types here to ensure that later type
+                            // upgrades do not propagate to function signatures!
+                            fun.params.forEach(function(arg, idx) { innerTEnv.bind(arg); innerTEnv.update(arg, argT[idx].clone()); });
                             // go derive
                             fun.body = drive(fun.body, innerTEnv, fEnv);
-                            fun.typeInfo = new TFunction(argT, innerTEnv.functionResult);
                             // initialize specialisation store
                             if (rootFun.specStore === undefined) {
                                 rootFun.specStore = [];
                             }
                             rootFun.specStore.push(fun);
-                            debug && console.log(fun.name + " has type " + fun.typeInfo.toString());
                             resType = innerTEnv.functionResult;
                             // drop call from tracing stack
                             stackTrace.pop();
+                            // create a new flow frame around this function
+                            var innerArgT = fun.params.map(function (v) { return innerTEnv.lookup(v).type; });
+                            innerArgT.forEach(function (v) { innerTEnv.addRoot(v); });
+                            fun.flowFrame = new FFunction(innerArgT, resType, fun);
+                            fun.typeInfo = new TFunction(innerArgT, resType);
+                            fun.flowRoots = innerTEnv.getRoots();
+                            debug && console.log(fun.name + " has type " + fun.typeInfo.toString());
                         }
-                        tEnv.accu = resType;
+                        // tie the arguments to the function call
+                        ast.callFrame = new FCall(argT, fun.flowFrame, resType.clone(), ast);
+                        argT.forEach(function(arg, idx) {arg.registerParamFlow(new FParam(idx, ast.callFrame))});
+                        // remember how often this instance is used
+                        fun.flowFrame.uses++;
+                        // store the name of the instance
                         ast.children[0].dispatch = fun.dispatch;
+                        tEnv.accu = ast.callFrame.result;
                         break;
 
                     default:
@@ -1348,43 +1411,228 @@ RiverTrail.Typeinference = function () {
         return type;
     }
 
-    function flow(roots, flowInit, flowPass, flowJoin) {
-        var workset = roots.map(function (val) { 
-                !val._flow || reportBug ("leftover flow information!");
-                val._flow = flowInit(val);
-                debug && console.log("FLOW: adding root " + val.toString() + " with _flow " + val._flow);
+    // 
+    // data flow graph for address space forwarding
+    //
+    // The graph is double linked, directed. It consits of three kinds of nodes:
+    //
+    // Type objects: these are data objects in the DFG.
+    // FFunction objects: these keep the ins and outs of the DFG of a function in one place.
+    // FCall objects: encode a call site
+    // FParam objects: these are pointers into a FFunction object, encoding arguments that flow in.
+    //
+    var FlowNode = function () {
+        return this;
+    };
+    var FFunction = function (params, result, root, ast) {
+        this.params = params;
+        this.result = result;
+        this.root = root;
+        this.ast = ast || root;
+        this.uses = 0;
+        this.label = labelGen();
+    };
+    FFunction.prototype = new FlowNode();
+    var FCall = function (params, frame, result, ast) {
+        this.params = params;
+        this.frame = frame;
+        this.result = result;
+        this.ast = ast;
+        this.label = labelGen();
+    };
+    FCall.prototype = new FlowNode();
+    var FParam = function (number, call) {
+        this.number = number;
+        this.call = call;
+        this.label = labelGen();
+    };
+    var FPp = FParam.prototype = new FlowNode();
+    FPp.getTarget = function () {
+        return this.call.frame.params[this.number];
+    };
+    FPp.getFrame = function () {
+        return this.call.frame;
+    };
+    FPp.redispatch = function (frame) {
+        this.call.frame.uses--;
+        this.call.frame = frame;
+        this.call.frame.uses++;
+        this.call.ast.children[0].dispatch = this.call.frame.ast.dispatch;
+    };
+    FPp.getCall = function () {
+        return this.call;
+    };
+
+    function resetAddressSpaces(roots) {
+        var seen = [];
+        var workset = roots.map(function (val) {
+                !val._reset || reportBug ("leftover reset flow information!");
+                val._reset = true;
+                debug && console.log("RESET: adding root " + val.toString());
                 return val;
             });
-                   
         while (workset.length > 0) {
             var current = workset.pop();
-            debug && console.log("FLOW: processing " + current.toString() + " with _flow " + current._flow);
-            var flowInfo = current._flow;
-            delete current._flow;
-            current._flowVisited = true;
-            if (current.flowTo !== undefined) {
-                current.flowTo.forEach(function (val) {
-                    var flowIn = (val._flow) ? flowJoin(flowInfo, val._flow) : flowInfo;
-                    var flowOut = flowPass(val, flowIn);
-                    if (flowOut || !val._flowVisited) {
-                        if (!val._flow) {
-                            workset.push(val);
-                            debug && console.log("FLOW: enqueued " + val.toString() + " with flowOut " + flowOut);
-                        }
-                        val._flow = flowInit(val);
-                    }});
+            seen.push(current);
+            if (current.flowTo) {
+                current.flowTo.forEach( function (v) {
+                    if (!v._reset) {
+                        v._reset = true;
+                        v.setAddressSpace && v.setAddressSpace(undefined);
+                        workset.push(v);
+                    }
+                });
+            } else if (current instanceof FParam) {
+                if (!current.call._reset) {
+                    current.call._reset = true;
+                    workset.push(current.call);
+                }
+            } else if (current instanceof FCall) {
+                if (!current.result._reset) {
+                    current.result._reset = true;
+                    workset.push(current.result);
+                }
             }
         }
-        roots.forEach(function erase(x) {
-            if (x._flowVisited) {
-                delete x._flowVisited;
-                x.flowTo !== undefined && x.flowTo.forEach(erase);
+        seen.forEach( function (v) { delete v._reset; });
+    };
+
+    function propagateAddressSpaces(roots) {
+        var workset = roots.map(function (val) { 
+                !val._flow || reportBug ("leftover flow information!");
+                val._flow = true;
+                debug && console.log("FLOW: adding root " + val.toString());
+                return val;
+            });
+        var mergeFlow = function (val, currentAS) {
+            if (!val._flowVisited && !val._flow) {
+                // every node is visited once no matter what
+                workset.push(val);
+                val._flow = true;
             }
-        });
+            if (!val.hasAddressSpace()) {
+                val.setAddressSpace(currentAS);
+                if (!val._flow) {
+                    workset.push(val);
+                    val._flow = true;
+                }
+                debug && console.log("propagated address space " + currentAS);
+            } else if (val.getAddressSpace() !== currentAS) {
+                if (val.getAddressSpace() !== "__private") {
+                    val.setAddressSpace("__private");
+                    if (!val._flow) {
+                        workset.push(val);
+                        val._flow = true;
+                    }
+                    debug && console.log("privatized address space due to conflict");
+                }
+            } else {
+                debug && console.log("address space remains " + val.properties.addressSpace);
+            }
+        };
+
+        while (workset.length > 0) {
+            var current = workset.pop();
+            delete current._flow;
+            current._flowVisited = true;
+            var currentAS = current.getAddressSpace();
+            debug && console.log("FLOW: processing " + current.toString() + " with addressspace " + currentAS);
+            if (current.flowTo !== undefined) {
+                current.flowTo.forEach(function (val) {
+                    if (val instanceof FParam) {
+                        // we have a function call, which might need specialisation
+                        var target = val.getTarget();
+                        var frame = val.getFrame();
+                        debug && console.log("inspecting call " + RiverTrail.Helper.wrappedPP(val.getCall().ast) + " currently at " + frame.ast.dispatch);
+                        debug && console.log("signature is " + frame.params.reduce(function (p,v) { return p + " " + v.getAddressSpace(); }, "") + ", propagating " + val.number + " as " + currentAS);
+                        // we do not propagate undefined address spaces (like scalar arguments)
+                        if ((currentAS !== undefined) && (!target.hasAddressSpace() || (target.getAddressSpace() !== currentAS))) {
+                            // first, we try to find a matching specialization
+                            var specs = frame.root.adrSpecStore;
+                            var match = undefined;
+                            if (specs) {
+                                specs.some(function (v) { 
+                                        if (v.typeInfo.parameters.every(function (v,idx) {
+                                                if (idx === val.number) {
+                                                    // current arg
+                                                    return (v.getAddressSpace() === currentAS);
+                                                } else {
+                                                    return (v.getAddressSpace() === frame.params[idx].getAddressSpace());
+                                                }
+                                            })) {
+                                            match = v;
+                                            return true;
+                                        } else {
+                                            return false;
+                                        }
+                                    });
+                            }
+                            if (match) {
+                                // redispatch things
+                                debug && console.log("redispatching call " + RiverTrail.Helper.wrappedPP(val.getCall().ast) + " to " + match.dispatch);
+                                val.redispatch(match.flowFrame);
+                                target = val.getTarget();
+                                frame = val.getFrame();
+                            } else {
+                                // we need to create a new version
+                                if (frame.uses !== 1) {
+                                    // we share this call site, so create a new specialisation
+                                    var newfun = cloneFunction(frame.ast);
+                                    debug && console.log("specializing call " + RiverTrail.Helper.wrappedPP(val.getCall().ast) + " to " + newfun.dispatch);
+                                    // store this specialisation
+                                    if (!frame.root.adrSpecStore) {
+                                        // setup store for specialisations
+                                        frame.root.adrSpecStore = [frame.root];
+                                    }
+                                    frame.root.adrSpecStore.push(newfun);
+                                    val.redispatch(newfun.flowFrame);
+                                    // update local state
+                                    target = val.getTarget();
+                                    frame = val.getFrame();
+                                } else {
+                                    debug && console.log("re-specializing call " + RiverTrail.Helper.wrappedPP(val.getCall().ast) + " instance " + frame.ast.dispatch);
+                                }
+                                // propagate new information into function
+                                target.setAddressSpace(currentAS);
+                                frame._flowVisited = true;
+                                debug && console.log("looking into function " + frame.ast.dispatch);
+                                debug && console.log("signature is " + frame.params.reduce(function (p,v) { return p + " " + v.getAddressSpace(); }, ""));
+                                resetAddressSpaces(frame.ast.flowRoots);
+                                propagateAddressSpaces(frame.ast.flowRoots);
+                                debug && console.log("done with function " + frame.ast.dispatch);
+                            }
+                        } else if (!frame._flowVisited) {
+                            // we have to look at each function at least once
+                            debug && console.log("looking into function " + frame.ast.dispatch);
+                            frame._flowVisited = true;
+                            propagateAddressSpaces(frame.ast.flowRoots);
+                            debug && console.log("done with function " + frame.ast.dispatch);
+                        }
+                        // apply the new result address space to the return node
+                        if (frame.result.hasAddressSpace()) {
+                            mergeFlow(val.getCall().result, frame.result.getAddressSpace());
+                        }
+                        debug && console.log("signature of " + RiverTrail.Helper.wrappedPP(val.getCall().ast) + " now is " + frame.params.reduce(function (p,v) { return p + " " + v.getAddressSpace(); }, ""));
+                    } else {
+                        // merge flow information
+                        mergeFlow(val, currentAS);
+                    }
+                });
+            }
+        }
+    }
+
+    function insertSpecialisations(ast, where) {
+        (ast.type === FUNCTION) || reportBug("unexpected node found");
+        if (ast.adrSpecStore) {
+            where || reportBug("fun specs found but no target to insert into");
+            ast.adrSpecStore.forEach(function (v,idx) { if ((idx>0) && (v.flowFrame.uses > 0)) { where.push(v); } });
+        }
+        ast.body.funDecls.forEach(function (v) {insertSpecialisations(v, ast.body.funDecls);});
     }
 
     function analyze(ast, pa, construct, rank, extraArgs, lowPrecision) {
-        var tEnv = new TEnv(rootEnvironment, true, true); // create a new top-level function frame
+        var tEnv = new TEnv(rootEnvironment, true); // create a new top-level function frame
         var params = ast.params;
         var argT = [];
 
@@ -1466,49 +1714,14 @@ RiverTrail.Typeinference = function () {
                                               type.isObjectType() && tEnv.addRoot(type);
                                               argT.push(type);});
 
-        var fEnv = new FEnv();
-
-        ast.body = drive(ast.body, tEnv, fEnv);
+        ast.body = drive(ast.body, tEnv, undefined);
 
         var type = new TFunction(argT, tEnv.functionResult);
         ast.typeInfo = type;
 
         // propagate address space qualifiers
-        flow(tEnv._roots, 
-             function (val) {
-                 if (val.isObjectType()) {
-                     return val.properties.addressSpace;
-                 } else {
-                     return undefined;
-                 }
-             },
-             function (val, addressspace) {
-                debug && console.log("flowing address space " + addressspace);
-                 if (val.isObjectType()) { // address space qualifiers are only 
-                                           // a property of object types (as they 
-                                           // are pointers in OpenCL)
-                    if (!val.hasAddressSpace()) {
-                        val.setAddressSpace(addressspace);
-                        debug && console.log("propagated address space " + addressspace);
-                        return addressspace;
-                    } else if (val.getAddressSpace() !== addressspace) {
-                        val.setAddressSpace("__private");
-                        debug && console.log("privatized address space due to conflict");
-                        return "__private";
-                    } else {
-                        debug && console.log("address space remains " + val.properties.addressSpace);
-                        return false;
-                    }
-                }
-                return false;
-             },
-             function (a,b) {
-                 if (a===b) {
-                     return a;
-                 } else {
-                     return "__private";
-                 }
-             });
+        propagateAddressSpaces(tEnv.getRoots());
+        insertSpecialisations(ast);
                     
         debug && console.log("Overall function has type (first arg. is this) " + type.toString());
         debug && console.log(RiverTrail.dotviz.plotTypes(tEnv._roots));
@@ -1522,6 +1735,10 @@ RiverTrail.Typeinference = function () {
         "TLiteral" : TLiteral,
         "TObject" : TObject,
         "TFunction" : TFunction,
+        "FlowNode" : FlowNode,
+        "FFunction" : FFunction,
+        "FParam" : FParam,
+        "FCall" : FCall,
         "typeOracle" : typeOracle
     };
 }();
