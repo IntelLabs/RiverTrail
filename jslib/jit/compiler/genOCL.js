@@ -995,10 +995,9 @@ RiverTrail.compiler.codeGen = (function() {
         var sourceRank;
         var indexLen;
         if (ast.type === CAST) {  // deals with adding things like (float *)mumble) to generated code. 
-            //if (ast.typeInfo.OpenCLType === "int") {
-            //s = "((" + ast.typeInfo.OpenCLType + ") (" 
-            //+ oclExpression(ast.children[0]) + " + 0.5 * sign(" + oclExpression(ast.children[0]) + "))))";
-            //} else {
+            if (!ast.typeInfo.isScalarType()) {
+                reportError("non-scalar cast encountered", ast);
+            }
             s = "((" + ast.typeInfo.OpenCLType + ")" 
                 + oclExpression(ast.children[0]) + ")";
             //}

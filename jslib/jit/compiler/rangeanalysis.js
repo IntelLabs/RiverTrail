@@ -498,7 +498,9 @@ RiverTrail.RangeAnalysis = function () {
                 varEnv = new VarEnv(varEnv);
                 ast.rangeSymbols = varEnv;
                 ast.funDecls.forEach(function (f) {
-                        drive(f.body, new VarEnv(), true);
+                        var innerVEnv = new VarEnv();
+                        f.params.forEach(function (v) { innerVEnv.update(v, new Range(undefined, undefined, false)); });
+                        drive(f.body, innerVEnv, true);
                     });
                 // fallthrough
             case BLOCK:
@@ -516,6 +518,11 @@ RiverTrail.RangeAnalysis = function () {
                 // return does not really produce a value as it exists the current scope. However,
                 // it is a non int ast, as we always return floats. This is modelled this way...
                 result = new Range(undefined, undefined, false);
+                // also, if the rhs is an identifier, we promote its type to double to avoid casting on return
+                if (ast.value.type === IDENTIFIER) {
+                    varEnv.lookup(ast.value.value).forceInt(false);
+                }
+
                 break;
             //
             // loops (SAH)
@@ -852,7 +859,14 @@ RiverTrail.RangeAnalysis = function () {
                         break;
 
                     default:
-                        // TODO: handle nested functions!
+                        // functions arguments are always represented as double, so we have to enforce that
+                        // here for all identifiers passed in to avoid later casts.
+                        ast.children[1].children.forEach(function (v) { 
+                                if (v.type === IDENTIFIER) {
+                                    varEnv.lookup(v.value).forceInt(false);
+                                }
+                            });
+
                         result = new Range(undefined, undefined, false);
                 }
                 break;
@@ -955,19 +969,29 @@ RiverTrail.RangeAnalysis = function () {
 
         function analyze(ast, array, construct, rankOrShape, args) {
             var env = new VarEnv();
+            var argoffset = 0;
 
             // add range info for index vector. 
             if (construct === "combine")  {
                 var shape = array.getShape().slice(0,rankOrShape);
                 var range = new RangeArray(shape, function (val) { return new Range(0, val - 1, true); });
                 env.update(ast.params[0], range);
+                argoffset = 1;
             } else if (construct === "comprehension") {
                 var range = new RangeArray(rankOrShape, function (val) { return new Range(0, val - 1, true); });
                 env.update(ast.params[0], range);
+                argoffset = 1;
             } else if (construct === "comprehensionScalar") {
                 var range = new Range(0, rankOrShape[0] - 1, true);
                 env.update(ast.params[0], range);
+                argoffset = 1;
             }
+            // add empty range info for all arguments
+            ast.params.forEach(function (v, idx) { 
+                    if (idx >= argoffset) {
+                        env.update(v, new Range(undefined, undefined, false));
+                    }
+                });
 
             try {
                 drive(ast.body, env, true);
@@ -1012,12 +1036,23 @@ RiverTrail.RangeAnalysis = function () {
 
         function makeCast(ast, type) {
             debug && console.log("casting " + RiverTrail.Helper.wrappedPP(ast) + " to " + type);
-            var result = new Narcissus.parser.Node(ast.tokenizer);
-            result.type = CAST;
-            result.typeInfo = ast.typeInfo.clone();
-            updateToNew(result.typeInfo, type);
-            result.children = [ast];
-            return result;
+            if (ast.type === CAST) {
+                /* we just eat the cast */
+                return makeCast(ast.children[0], type);
+            } else if (ast.type === ARRAY_INIT) {
+                /* special case: we push the cast down to the values */
+                ast.children.map(function (v) { return makeCast(v, type); });
+                updateToNew(ast.typeInfo, type);
+                return ast;
+            } else {
+                /* general case, we cast right here */
+                var result = new Narcissus.parser.Node(ast.tokenizer);
+                result.type = CAST;
+                result.typeInfo = ast.typeInfo.clone();
+                updateToNew(result.typeInfo, type);
+                result.children = [ast];
+                return result;
+            }
         }
 
         function adaptStatusToRoot( expr, tEnv) {
