@@ -177,11 +177,21 @@ RiverTrail.compiler.codeGen = (function() {
             // Skip the first argument since it is the index for combine and comprehension and value for map.
             start = 2; // the extras do not include |this| and the first formal since that is the index generated in the body.
         }
-
-        for (i = start; i < formalsTypes.length; i++) {
+        if (construct === "combine") { 
+            formalsNames = formalsNames.slice(1); // This skips the index argument
+            formalsTypes = formalsTypes.slice(2); // This skips this and the index argument
+        } else if ((construct === "comprehension") || (construct === "comprehensionScalar")) {
+            formalsTypes = formalsTypes.slice(1);
+            formalsNames = formalsNames.slice(1);
+        } else if (construct === "map") {
+            formalsTypes = formalsTypes.slice(2); // Skip this and the val argument.
+            formalsNames = formalsNames.slice(1); // Skip the val argument
+        }
+        for (i = 0; i < formalsTypes.length; i++) {
             // array arguments have an extra offset qualifier
             if (formalsTypes[i].isObjectType("ParallelArray")) {
-                s = s + formalsNames[i-1] + " = &"+formalsNames[i-1]+"["+formalsNames[i-1]+"__offset];"; //offset
+                //s = s + formalsNames[i-1] + " = &"+formalsNames[i-1]+"["+formalsNames[i-1]+"__offset];"; //offset
+                s = s + formalsNames[i] + " = &"+formalsNames[i]+"["+formalsNames[i]+"__offset];"; //offset
             }
         }
 
@@ -664,10 +674,10 @@ RiverTrail.compiler.codeGen = (function() {
                     //
                     var elements = rhs.typeInfo.getOpenCLShape().reduce(function (a,b) { return a*b;});
                     if(rhs.typeInfo.properties.addressSpace === "__global") {
-                        s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
+                        s = "__global " + rhs.typeInfo.OpenCLType + " " + boilerplate.localResultName + "_g" + " = " +  oclExpression(rhs) + ";";
                         s += " int _idx1; ";
                         s += "for ( _idx1 = 0; _idx1 < " + elements + "; _idx1++) {"; 
-                        s += " retVal[_idx1] = " + boilerplate.localResultName + "[_idx1]; }";
+                        s += " retVal[_idx1] = " + boilerplate.localResultName + "_g" + "[_idx1]; }";
                     }
                     else {
                         // arbitrary expression, possibly a nested array identifier
