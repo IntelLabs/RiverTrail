@@ -1393,6 +1393,12 @@ RiverTrail.compiler.codeGen = (function() {
                 break;
 
                 // binary operations on all literals
+            case STRICT_EQ:
+            case STRICT_NE:
+                // we map these to the no strict case for now
+                ast.value = ast.value.substring(0,2);
+                // fallthrough;
+                
             case PLUS: 
                 // we do not support strings yet, so this case is the same as numbers
                 // fallthrough
@@ -1403,8 +1409,6 @@ RiverTrail.compiler.codeGen = (function() {
             case BITWISE_AND:
             case EQ:
             case NE:
-            case STRICT_EQ:
-            case STRICT_NE:
             case LT:
             case LE:
             case GE:
