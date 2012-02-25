@@ -739,9 +739,9 @@ RiverTrail.compiler.codeGen = (function() {
                 } else if(rhs.typeInfo.properties.addressSpace === "__global") {
                     s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                     var elements = rhs.typeInfo.getOpenCLShape().reduce(function (a,b) { return a*b;});
-                    s += " int _writeback_idx = 0 ;";
+                    s += "{ int _writeback_idx = 0 ;";
                     s += "for (_writeback_idx = 0; _writeback_idx < " + elements + "; " + "_writeback_idx++) {"; 
-                    s += " retVal[_writeoffset + _writeback_idx]  = " + boilerplate.localResultName + "[_writeback_idx] ; }";
+                    s += " retVal[_writeoffset + _writeback_idx]  = " + boilerplate.localResultName + "[_writeback_idx] ; } }";
                 }
                 else {
                     // arbitrary expression, possibly a nested array identifier
@@ -751,7 +751,7 @@ RiverTrail.compiler.codeGen = (function() {
                     s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                     var maxDepth = sourceShape.length;
                     var i; var idx; var indexString = ""; var post_parens = "";
-                    s += " int _writeback_idx = 0 ;";
+                    s += "{ int _writeback_idx = 0 ;";
                     for(i =0 ;i<maxDepth;i++) {
                         idx = "_idx" + i;
                         s += " { int " + idx + ";";
@@ -761,7 +761,7 @@ RiverTrail.compiler.codeGen = (function() {
                     }
                     s += " retVal[_writeoffset + _writeback_idx++]  = " + "((" +
                     sourceType.OpenCLType + ")" + boilerplate.localResultName +
-                    ")" + indexString + ";" + post_parens;
+                    ")" + indexString + ";" + post_parens + "}";
                 }
             }
             s = s + "if (_FAIL) {*_FAILRET = 1;}";
