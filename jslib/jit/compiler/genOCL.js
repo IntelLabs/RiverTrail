@@ -687,7 +687,7 @@ RiverTrail.compiler.codeGen = (function() {
                         s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                         var maxDepth = sourceShape.length;
                         var i; var idx; var indexString = ""; var post_parens = "";
-                        s += " int _writeback_idx = 0 ;";
+                        s += "{ int _writeback_idx = 0 ;";
                         //verboseDebug && console.log("Generating return code. # dimensions = ", maxDepth);
                         //verboseDebug && console.log("Return shape = ", sourceShape);
                         for(i =0 ;i<maxDepth;i++) {
@@ -697,7 +697,7 @@ RiverTrail.compiler.codeGen = (function() {
                             indexString += "[" + idx + "]";
                             post_parens += "}}";
                         }
-                        s += " retVal" + indexString + " = " + "((" + sourceType.OpenCLType + ")" +  boilerplate.localResultName + ")" + indexString + ";" + post_parens;
+                        s += " retVal" + indexString + " = " + "((" + sourceType.OpenCLType + ")" +  boilerplate.localResultName + ")" + indexString + ";" + post_parens + "}";
                     }
                 }
                 s = s + "if (_FAIL) {*_FAILRET = 1;}";
