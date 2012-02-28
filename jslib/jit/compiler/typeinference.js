@@ -637,7 +637,8 @@ RiverTrail.Typeinference = function () {
         },
         constructor : undefined,
         constructors : [Array, Float64Array, Float32Array, Uint32Array, Int32Array, 
-                        Uint16Array, Int16Array, Uint8ClampedArray, Uint8Array, Int8Array],
+                        Uint16Array, Int16Array, Uint8ClampedArray, Uint8Array, Int8Array,
+                        RiverTrail.Helper.FlatArray],
         makeType : function (val) {
             var type;
             if (typeof(val) === "number") {
@@ -657,6 +658,16 @@ RiverTrail.Typeinference = function () {
                     reportError("empty arrays are not supported yet");
                 }
                 type.updateOpenCLType();
+            } else if (val instanceof RiverTrail.Helper.FlatArray) {
+                type = new TLiteral(TLiteral.NUMBER);
+                type.OpenCLType = RiverTrail.Helper.inferTypedArrayType(val.data);
+                for (var i = val.shape.length-1; i >= 0; i--) {
+                    var ntype = new TObject(TObject.ARRAY);
+                    ntype.properties.shape = [val.shape[i]];
+                    ntype.properties.elements = type;
+                    type = ntype;
+                    type.updateOpenCLType();
+                }
             } else if (RiverTrail.Helper.isTypedArray(val)) {
                 // This is cheating, as typed arrays do not have the same interface, really.
                 // However, we do not support map/reduce etc. anyway.

@@ -81,7 +81,6 @@ RiverTrail.compiler = (function () {
         var kernelString;
         var lowPrecision;
         var ast;
-        var rawArgs = args;
         var i;
         // If f is a low_precision wrapped function, unwrap it first
         if (f instanceof low_precision.wrapper) {
@@ -92,16 +91,13 @@ RiverTrail.compiler = (function () {
         }
         const defaultNumberType = lowPrecision ? "float": "double";
 
-        // First convert all arguments to ParallelArray representation. As we need to have shape and type
-        // information anyhow, this has little overhead to only converting the data to a typed array.
-        // I use the prototype here as args might not be a real array.
+        // First convert all array arguments into suitable flat representations that can be passed to
+        // the OpenCL side
 
         args = Array.prototype.map.call(args, 
                                      function (object) {
                                          if (object instanceof Array) {
-                                             var result = new ParallelArray( lowPrecision ? Float32Array : Float64Array, object);
-                                             result._wasArray = true;
-                                             return result;
+                                             return new RiverTrail.Helper.FlatArray( lowPrecision ? Float32Array : Float64Array, object);
                                          } else {
                                              return object;
                                          }});
@@ -133,7 +129,7 @@ RiverTrail.compiler = (function () {
         }
                         
         try {
-            ast = parse(paSource, construct, rankOrShape, f.toString(), rawArgs, lowPrecision); // parse, no code gen
+            ast = parse(paSource, construct, rankOrShape, f.toString(), args, lowPrecision); // parse, no code gen
             kernelString = RiverTrail.compiler.codeGen(ast, paSource, rankOrShape, construct); // Creates an OpenCL kernel function
         } catch (e) {
             RiverTrail.Helper.debugThrow(e);
@@ -236,9 +232,13 @@ RiverTrail.compiler = (function () {
             var argument = args[i];
             if (argument instanceof ParallelArray) {
                 argumentTypes.push(inferPAType(argument));
+            } else if (argument instanceof RiverTrail.Helper.FlatArray) {
+                argumentTypes.push({ inferredType: defaultNumberType, dimSize: argument.shape});
             } else if (argument instanceof Array) {
                 // SAH: treating all non-PA arrays as float requires a check for regularity and 
-                //      homogeneity! This is done in the transfer code.
+                //      homogeneity! This is done in the transfer code. Also note that the below
+                //      is only true for flat arrays. All other arrays have to be transformed into
+                //      flat arrays first.
                 argumentTypes.push({ inferredType: defaultNumberType, dimSize: [argument.length] });
             } else if (RiverTrail.Helper.isTypedArray(argument)) {
                 argumentTypes.push({ inferredType: RiverTrail.Helper.inferTypedArrayType(argument), dimSize: [argument.length] });

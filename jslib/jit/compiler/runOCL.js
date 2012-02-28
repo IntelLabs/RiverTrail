@@ -109,9 +109,9 @@ RiverTrail.compiler.runOCL = function () {
                 // Parallel Array arguments, only! The kernel will have been created 
                 // accordingly.
                 // Use the Integer Object here.
-                if (!object._wasArray) {
-                    args.push(new RiverTrail.Helper.Integer(object.offset));
-                }
+            } else if (object instanceof RiverTrail.Helper.FlatArray) {
+                // these are based on a flat array, so we can just push the data over
+                args.push(RiverTrail.compiler.openCLContext.mapData(object.data));
             } else if (typeof (object) === "number") {
                 // Scalar numbers are passed directly, as doubles.
                 args.push(object);

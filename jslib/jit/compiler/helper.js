@@ -175,6 +175,57 @@ RiverTrail.Helper = function () {
         return this;
     };
     
+    var FlatArray = function FlatArray(constructor, src) {
+        var shape = this.shape = new Array();
+        var ptr = src;
+        var len = 1;
+
+        while (ptr instanceof Array) {
+            shape.push(ptr.length);
+            len *= ptr.length;
+            ptr = ptr[0];
+        }
+
+        var data = this.data = new constructor(len);
+        
+        var ptrstack = new Array();
+        var pstack = new Array();
+        var level = 0;
+        var wpos = 0, pos = 0;
+        ptr = src;
+        
+        while (wpos < len) {
+            if (ptr[pos] instanceof Array) {
+                // check conformity
+                if (ptr[pos].length != shape[level+1]) throw "inhomogeneous array encountered";
+                // go deeper
+                ptrstack[level] = ptr;
+                pstack[level] = pos+1;
+                ptr = ptr[pos];
+                pos = 0;
+                level++;
+            } else {
+                // copy elements. If we get here, first check that we are at the bottom level
+                // according to the shape
+                if (level != shape.length-1) throw "inhomogeneous array encountered";
+                // if this is uniform, we can just copy the rest of this level without 
+                // further checking for arrays
+                for (; pos < ptr.length; pos++,wpos++) {
+                    this.data[wpos] = ptr[pos];
+                    if (this.data[wpos] !== ptr[pos]) throw new "conversion error";
+                }
+            }
+            if (pos === ptr.length) {
+                // end of level
+                level--;
+                pos = pstack[level];
+                ptr = ptrstack[level];
+            }
+        }
+
+        return this;
+    };
+
     // helper function that throws an exception and logs it if verboseDebug is on
     var debugThrow = function (e) {
         if (RiverTrail.compiler.verboseDebug) {
@@ -395,6 +446,7 @@ RiverTrail.Helper = function () {
              "stripToBaseType" : stripToBaseType,
              "getOpenCLSize" : getOpenCLSize,
              "Integer" : Integer,
+             "FlatArray" : FlatArray,
              "debugThrow" : debugThrow,
              "isTypedArray" : isTypedArray,
              "inferTypedArrayType" : inferTypedArrayType,
