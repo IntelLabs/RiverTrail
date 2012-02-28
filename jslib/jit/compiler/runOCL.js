@@ -105,10 +105,8 @@ RiverTrail.compiler.runOCL = function () {
                     // to convert it, as the constructor would already have tried.
                     throw new Error("Cannot transform regular array to OpenCL kernel arguments");
                 }
-                // Add the offset as an additional integer argument. We do this for 
-                // Parallel Array arguments, only! The kernel will have been created 
-                // accordingly.
-                // Use the Integer Object here.
+                // Add the offset as an additional integer argument. Use the Integer Object here.
+                args.push(new RiverTrail.Helper.Integer(object.offset));
             } else if (object instanceof RiverTrail.Helper.FlatArray) {
                 // these are based on a flat array, so we can just push the data over
                 args.push(RiverTrail.compiler.openCLContext.mapData(object.data));
