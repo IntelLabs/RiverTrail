@@ -174,8 +174,64 @@ RiverTrail.Helper = function () {
         this.value = value;
         return this;
     };
-    
+
+    // Returns a flat copy of a potentially nested JS Array "src"
+    // We essentially do a depth first traversal of the nested array structure
+    // and copy each Array of scalars encountered to the destination object.
+    // This is potentially slower than the _fast implementation below.
     var FlatArray = function FlatArray(constructor, src) {
+        var shape = this.shape = new Array();
+        var ptr = src; var len = 1;
+        var pos = 0;
+        while (ptr instanceof Array) {
+            shape.push(ptr.length);
+            len *= ptr.length;
+            ptr = ptr[0];
+        }
+        var data = this.data = new constructor(len);
+        if(shape.length === 1) {
+            for(var k = 0; k < shape[0]; k++) {
+                this.data[pos++] = src[k];
+                if(src[k] !== this.data[pos-1]) {
+                    throw new "Error: Conversion to flat array failed!";
+                }
+            }
+            return this;
+        }
+        ptr = src;
+        var stack = new Array();
+        stack.push(ptr);
+        pos = 0;
+        while(stack.length !== 0) {
+            var node = stack.pop(); 
+            if(!(node instanceof Array)) {
+                throw "Error: Non array node pushed!! Flattening kernel argument failed.";
+            }
+            if (node[0] instanceof Array) {
+                var len = node[0].length;
+                for(var i = node.length-1; i >= 0; i--) {
+                    if(!(node[i] instanceof Array) || (node[i].length !== len)) {
+                        throw "Error: Invalid array shape !! Flattening kernel argument failed";
+                    }
+                    stack.push(node[i]);
+                }
+                continue;
+            }
+            else {
+                if(node.length !== shape[shape.length-1]) {
+                    throw "Error: Leaf length and shape are different! Flattening kernel argument failed";
+                }
+                for(var j = 0; j < node.length; j++) {
+                    this.data[pos++] = node[j];
+                    if(this.data[pos-1] !== node[j]) {
+                        throw new "Error: Conversion to flat array failed!";
+                    }
+                }
+            }
+        }
+        return this;
+    }
+    var FlatArray_fast = function FlatArray_fast(constructor, src) {
         var shape = this.shape = new Array();
         var ptr = src;
         var len = 1;
