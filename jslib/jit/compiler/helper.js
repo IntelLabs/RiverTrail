@@ -193,7 +193,7 @@ RiverTrail.Helper = function () {
             for(var k = 0; k < shape[0]; k++) {
                 this.data[pos++] = src[k];
                 if(src[k] !== this.data[pos-1]) {
-                    throw new "Error: Conversion to flat array failed!";
+                    throw "Error: Conversion to flat array failed!";
                 }
             }
             return this;
@@ -224,7 +224,7 @@ RiverTrail.Helper = function () {
                 for(var j = 0; j < node.length; j++) {
                     this.data[pos++] = node[j];
                     if(this.data[pos-1] !== node[j]) {
-                        throw new "Error: Conversion to flat array failed!";
+                        throw "Error: Conversion to flat array failed!";
                     }
                 }
             }
