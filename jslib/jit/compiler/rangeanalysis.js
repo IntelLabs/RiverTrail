@@ -1172,7 +1172,7 @@ RiverTrail.RangeAnalysis = function () {
                             ast.children[0].typeInfo = tEnv.lookup(ast.children[0].value).type;
                             if (validIntRepresentation(ast.children[1].typeInfo.OpenCLType) && 
                                 (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
-                                ast.children[1] = makeCast(ast.children[1], "double");
+                                ast.children[1] = makeCast(ast.children[1], tEnv.openCLFloatType);
                             }
                             break;
                         case INDEX:
@@ -1184,7 +1184,7 @@ RiverTrail.RangeAnalysis = function () {
                             // as above, we have to make sure that the types match...
                             if (validIntRepresentation(ast.children[1].typeInfo.OpenCLType) && 
                                 (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
-                                ast.children[1] = makeCast(ast.children[1], "double");
+                                ast.children[1] = makeCast(ast.children[1], tEnv.openCLFloatType);
                             }
                             ast.children[1] = push(ast.children[1], tEnv, isIntValue(ast.children[0]));
                         case DOT:
@@ -1407,7 +1407,7 @@ RiverTrail.RangeAnalysis = function () {
                     } else {
                         // SAH: special case for array literals: we propagate the double requirement to
                         //      the elements, so those will already be doubles or CAST nodes.
-                        updateToNew(ast.typeInfo.properties.elements, (expectInt ? "int" : "double"));
+                        updateToNew(ast.typeInfo.properties.elements, (expectInt ? "int" : tEnv.openCLFloatType));
                         ast.typeInfo.updateOpenCLType();
                     }
                 } else {
