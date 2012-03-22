@@ -334,13 +334,15 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
 	
 	// USE_HOST_PTR is save as the CData object will keep the associated typed array alive as long as the
 	// memory buffer lives
-	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, JS_GetTypedArrayByteLength(tArray), JS_GetTypedArrayData(tArray), &err_code);
+	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, 
+                                                JS_GetTypedArrayByteLength(tArray), JS_GetTypedArrayData(tArray), &err_code);
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("MapData", err_code);
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 
-	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray), JS_GetTypedArrayLength(tArray), JS_GetTypedArrayByteLength(tArray), source);
+	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray), JS_GetTypedArrayLength(tArray), 
+                                                       JS_GetTypedArrayByteLength(tArray), tArray);
 
 	if (result == NS_OK) {
 		data.forget((dpoCData **)_retval);
@@ -363,7 +365,6 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 	JSObject *tArray;
 	size_t bytePerElements;
 	nsCOMPtr<dpoCData> data;
-	jsval jsBuffer;
 
 	if (!JS_EnterLocalRootScope(cx)) {
 		DEBUG_LOG_STATUS("AllocateData", "Cannot root local scope");
@@ -397,10 +398,10 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 		return NS_ERROR_OUT_OF_MEMORY;
 	}
 
-	jsBuffer = OBJECT_TO_JSVAL(jsArray);
-	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, length * bytePerElements, JS_GetTypedArrayData(jsArray), &err_code);
+	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, 
+                                                JS_GetTypedArrayByteLength(jsArray), JS_GetTypedArrayData(jsArray), &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
-	jsBuffer = JSVAL_VOID;
+	JSObject *jsArray = nsnull;
 	cl_mem memObj = clCreateBuffer(context, CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
 #endif /* PREALLOCATE_IN_JS_HEAP */
 	if (err_code != CL_SUCCESS) {
@@ -408,7 +409,7 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 
-	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray), length, length * bytePerElements, jsBuffer);
+	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray), length, length * bytePerElements, jsArray);
 
 	if (result == NS_OK) {
 		data.forget((dpoCData **) _retval);
@@ -457,10 +458,10 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, PRUint32 length, JSCon
 		return NS_ERROR_OUT_OF_MEMORY;
 	}
 
-	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, length * bytePerElements, JS_GetTypedArrayData(jsArray), &err_code);
-	jsBuffer = OBJECT_TO_JSVAL(jsArray);
+	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, 
+                                                JS_GetTypedArrayByteLength(jsArray), JS_GetTypedArrayData(jsArray), &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
-	jsBuffer = JSVAL_VOID;
+	JSObject *jsArray;
 	cl_mem memObj = clCreateBuffer(context, CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
 #endif /* PREALLOCATE_IN_JS_HEAP */
 	if (err_code != CL_SUCCESS) {
@@ -468,7 +469,7 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, PRUint32 length, JSCon
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 
-	result = data->InitCData(cx, cmdQueue, memObj, cData->GetType(), length, length * bytePerElements, jsBuffer);
+	result = data->InitCData(cx, cmdQueue, memObj, cData->GetType(), length, length * bytePerElements, jsArray);
 
 	if (result == NS_OK) {
 		data.forget((dpoCData **) _retval);
