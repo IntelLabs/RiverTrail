@@ -138,8 +138,15 @@ nsresult dpoCData::InitCData(JSContext *cx, cl_command_queue aQueue, cl_mem aMem
 	length = aLength;
 	size = aSize;
 	memObj = aMemObj;
-	theArray = anArray;
 	theContext = cx;
+
+	if (anArray) {
+		// tell the JS runtime that we hold this typed array
+		DPO_HOLD_JS_OBJECTS(this, dpoCData);
+		theArray = anArray;
+	} else {
+		theArray = nsnull;
+	}
 
 	DEBUG_LOG_STATUS("InitCData", "queue is " << aQueue << " buffer is " << aMemObj);
 
@@ -191,7 +198,7 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 		*aValue = OBJECT_TO_JSVAL(theArray);
 		return NS_OK;
 	} else {
-        // tell the runtime that we cache this array object
+        	// tell the runtime that we cache this array object
 		DPO_HOLD_JS_OBJECTS(this, dpoCData);
 
 		theArray = js_CreateTypedArray(cx, type, length);
