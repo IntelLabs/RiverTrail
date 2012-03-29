@@ -800,9 +800,7 @@ RiverTrail.RangeAnalysis = function () {
                 // we support array.length and PA.length as it is somewhat a common loop bound. Could be more elaborate
                 drive(ast.children[0], varEnv, doAnnotate);
                 //drive(ast.children[1], varEnv, doAnnotate); // this needs to be an identifier, so no need to range infer it
-                if ((ast.children[1].value === "length") &&
-                    ((ast.children[0].typeInfo.isObjectType("Array") ||
-                      ast.children[0].typeInfo.isObjectType("ParallelArray")))) {
+                if ((ast.children[1].value === "length") && ast.children[0].typeInfo.isArrayishType()) {
                     result = new Range(ast.children[0].typeInfo.properties.shape[0], ast.children[0].typeInfo.properties.shape[0], true);
                 } else {
                     result = new Range(undefined, undefined, false);
@@ -1024,7 +1022,7 @@ RiverTrail.RangeAnalysis = function () {
             debug && console.log("updating " + type.toString() + " to " + target);
             if (type.isNumberType()) {
                 type.OpenCLType = target;
-            } else if (type.isObjectType("Array") || type.isObjectType("ParallelArray")) {
+            } else if (type.isArrayishType()) {
                 updateToNew(type.properties.elements, target);
                 type.updateOpenCLType();
             } else if (type.isBoolType()) {

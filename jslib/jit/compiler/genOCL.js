@@ -112,7 +112,7 @@ RiverTrail.compiler.codeGen = (function() {
                 s = s + ", "; // leave out the , before the first parameter
             }
 
-            if (formalsTypes[i].isObjectType("ParallelArray") || formalsTypes[i].isObjectType("Array")) {
+            if (formalsTypes[i].isArrayishType()) {
                 // array argument, so needs address space qualifier
                 s = s + formalsTypes[i].getOpenCLAddressSpace() + " ";
             }
@@ -152,7 +152,7 @@ RiverTrail.compiler.codeGen = (function() {
                 s = s + ", "; // leave out the , before the first parameter
             }
 
-            if (formalsTypes[i].isObjectType("ParallelArray") || formalsTypes[i].isObjectType("Array")) {
+            if (formalsTypes[i].isArrayishType()) {
                 // array argument, so needs address space qualifier
                 s = s + formalsTypes[i].getOpenCLAddressSpace() + " ";
             }
@@ -334,6 +334,53 @@ RiverTrail.compiler.codeGen = (function() {
         // returns: The openCL code represented by the ast.
         //
 
+        // 
+        // some helper functions used in compiled kernels are defined here
+        //
+        var prelude = 
+            // a jsval on 32 bit platforms uses nun boxing
+            //
+            // http://evilpie.github.com/sayrer-fatval-backup/cache.aspx.htm
+            //
+            // which means that if the value is a NaN double with 0xFFFFFFFF81 as the higher part, 
+            // the lower part is actually an unsigned 32 bit integer. That is what the below code
+            // checks. Note that 64 Bit platforms use a different scheme and thus probably need
+            // a different implementation.
+            "double __JS_array_sel_S(__global double *src, int idx) {" +
+            "            if (!src) {" +
+            "                /* previous selection failed */" +
+            "                return 0;" +
+            "            } else {" +
+            "                unsigned int *asInt = (unsigned int *) &(src[idx]);" +
+            "                if (asInt[1] == 0xFFFFFF81) return (double) asInt[0]; else return src[idx];" +
+            "            }" +
+            "}" +
+
+            // Nested arrays essentially are chains of JSObjects, From the C shadow definition in
+            // jsfriendapi.h we know that the slots of an JSObject (which are the elements of an
+            // array in case of arrays) are the 9th pointer in the object. That leads to the magic
+            // offset of 8 below.
+            // The length of the array is stored in the private pointer, which is at offset 6. We
+            // check whether the length of what we selected corresponds to what we expected. This
+            // is required as we do not check for regularity when we pass the argument but only
+            // when we access it.
+            "__global double *__JS_array_sel_A(__global double *src, int idx, int exp_len, bool *_FAIL) {" +
+            "            if (!src) {" +
+            "                /* previous selection failed */" +
+            "                return src;" +
+            "            }" +
+            "            unsigned int *asInt = (unsigned int *) &(src[idx]);" +
+            "            double **asPtr = (double **) asInt[0];" +
+            "            unsigned int len = (unsigned int) asPtr[6];" +
+            "            if (exp_len != len) {" +
+            "                *_FAIL = 1;" +
+            "                return (__global double *) 0;" +
+            "            } else {" +
+            "                return (__global double *) asPtr[8];" +
+            "            }" +
+            "}"
+       
+
         // boilerplate holds the various strings used for the signature of opneCL kernel function,
         // the declaration of some locals and the postfix (used by return). 
         var boilerplateTemplates = {
@@ -383,7 +430,7 @@ RiverTrail.compiler.codeGen = (function() {
             "use strict";
             var kernelCode;
             try {        
-                kernelCode = genKernelHelper(ast, pa, rank, construct);
+                kernelCode = prelude + genKernelHelper(ast, pa, rank, construct);
                 if (verboseDebug) {
                     console.log(kernelCode);
                 }
@@ -885,63 +932,75 @@ RiverTrail.compiler.codeGen = (function() {
         var sourceShape = sourceType.getOpenCLShape();
         var sourceRank = sourceShape.length;
         var elemRank = ast.typeInfo.getOpenCLShape().length;
-        var isParallelArray = (sourceType.isObjectType("ParallelArray"));
-        var isGlobal = (sourceType.getOpenCLAddressSpace() === "__global");
-        if (elemRank !== 0) {
-            if(isParallelArray || isGlobal) {
-                // The result is a pointer to a sub dimension.
-                s = s + "( &";
-            }
-            else {
-                s = s + "(";
-            }
-        }
-        elemSize = ast.typeInfo.getOpenCLShape().reduce( function (p,n) { return p*n;}, 1);
-        if(isParallelArray || isGlobal) {
-            s = s + " ( " + oclExpression(source) + "[0 ";
-        }
-        else {
-            s = s + oclExpression(source) ;
-        }
-
-        stride = elemSize;
-
-        if (arrayOfIndices.type !== LIST) {
-            // we have a single scalar index from an INDEX op
+        if (sourceType.isObjectType("JSArray")) {
+            // special treatment for JavaScript encoded arrays
             rangeInfo = arrayOfIndices.rangeInfo;
-            if(isParallelArray || isGlobal) {
-                s = s + " + " + stride + " * ("+wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ")";
-            }
-            else {
-                s = s + "[" + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + "]";
+            if (elemRank === 0) {
+                // scalar case 
+                s = s + "__JS_array_sel_S(" + oclExpression(source) + ", " + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ")";
+            } else {
+                s = s + "__JS_array_sel_A(" + oclExpression(source) + ", " + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ", " + sourceShape[1] + ", &_FAIL)";
             }
         } else {
-            // this is a get
-            if (arrayOfIndices.children[0] && (arrayOfIndices.children[0].type === ARRAY_INIT)) { 
-                // We might have get([0,0]); instead of get(0,0);
-                arrayOfIndices = arrayOfIndices.children[0];
+            // C style arrays
+            var isParallelArray = sourceType.isObjectType("ParallelArray");
+            var isGlobal = (sourceType.getOpenCLAddressSpace() === "__global");
+            if (elemRank !== 0) {
+                if(isParallelArray || isGlobal) {
+                    // The result is a pointer to a sub dimension.
+                    s = s + "( &";
+                }
+                else {
+                    s = s + "(";
+                }
             }
-            rangeInfo = arrayOfIndices.rangeInfo;
-            // the first argument could be an index vector, in which case we have to produce dynamic
-            // selection code
-            dynamicSel = arrayOfIndices.children[0].typeInfo.getOpenCLShape().length !== 0;
-            for (i = sourceRank - elemRank - 1; i >= 0; i--) { // Ususally only 2 or 3 dimensions so ignore complexity
-                s = s + " + " + stride + " * ("
-                    if (dynamicSel) {
-                        s = s + wrapIntoCheck(rangeInfo.get(0).get(i), sourceShape[i], oclExpression(arrayOfIndices.children[0]) + "[" + i + "]") + ")";
-                    } else {
-                        s = s + wrapIntoCheck(rangeInfo.get(i), sourceShape[i], oclExpression(arrayOfIndices.children[i])) + ")";
-                    }
-                stride = stride * sourceType.getOpenCLShape()[i];
+            elemSize = ast.typeInfo.getOpenCLShape().reduce( function (p,n) { return p*n;}, 1);
+            if(isParallelArray || isGlobal) {
+                s = s + " ( " + oclExpression(source) + "[0 ";
             }
-        }
-        if(isParallelArray || isGlobal) {
-            s = s + "])";
-        }
+            else {
+                s = s + oclExpression(source) ;
+            }
 
-        if (elemRank !== 0) {
-            // The result is a pointer to a sub dimension.
-            s = s + " )";
+            stride = elemSize;
+
+            if (arrayOfIndices.type !== LIST) {
+                // we have a single scalar index from an INDEX op
+                rangeInfo = arrayOfIndices.rangeInfo;
+                if(isParallelArray || isGlobal) {
+                    s = s + " + " + stride + " * ("+wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ")";
+                }
+                else {
+                    s = s + "[" + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + "]";
+                }
+            } else {
+                // this is a get
+                if (arrayOfIndices.children[0] && (arrayOfIndices.children[0].type === ARRAY_INIT)) { 
+                    // We might have get([0,0]); instead of get(0,0);
+                    arrayOfIndices = arrayOfIndices.children[0];
+                }
+                rangeInfo = arrayOfIndices.rangeInfo;
+                // the first argument could be an index vector, in which case we have to produce dynamic
+                // selection code
+                dynamicSel = arrayOfIndices.children[0].typeInfo.getOpenCLShape().length !== 0;
+                for (i = sourceRank - elemRank - 1; i >= 0; i--) { // Ususally only 2 or 3 dimensions so ignore complexity
+                    s = s + " + " + stride + " * ("
+                        if (dynamicSel) {
+                            s = s + wrapIntoCheck(rangeInfo.get(0).get(i), sourceShape[i], oclExpression(arrayOfIndices.children[0]) + "[" + i + "]") + ")";
+                        } else {
+                            s = s + wrapIntoCheck(rangeInfo.get(i), sourceShape[i], oclExpression(arrayOfIndices.children[i])) + ")";
+                        }
+                    stride = stride * sourceType.getOpenCLShape()[i];
+                }
+            }
+            if(isParallelArray || isGlobal) {
+                s = s + "])";
+            }
+
+            if (elemRank !== 0) {
+                // The result is a pointer to a sub dimension.
+                s = s + " )";
+            }
         }
 
         return s;
