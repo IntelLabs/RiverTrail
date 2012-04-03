@@ -518,6 +518,12 @@ RiverTrail.RangeAnalysis = function () {
                 // return does not really produce a value as it exists the current scope. However,
                 // it is a non int ast, as we always return floats. This is modelled this way...
                 result = new Range(undefined, undefined, false);
+                // also, if the rhs is an identifier with non-scalar type, we promote its type to double to avoid casting on return
+                if ((ast.value.type === IDENTIFIER) && (!ast.value.typeInfo.isScalarType())) {
+                    varEnv.lookup(ast.value.value).forceInt(false);
+                    ast.value.rangeInfo = varEnv.lookup(ast.value.value);
+                }
+
                 break;
             //
             // loops (SAH)

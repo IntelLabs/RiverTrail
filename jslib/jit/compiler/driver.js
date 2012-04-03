@@ -246,7 +246,7 @@ RiverTrail.compiler = (function () {
                 //      each dimension.
                 // NOTE: I use /* jsval */ double as type to make sure these are not confused with 
                 //       ordinary arrays when checking for matching signatures.
-                argumentTypes.push({ inferredType: "/* jsval */ double", dimSize: function makeShape(a, r) { if (a instanceof Array) { r.push(a.length); makeShape(a[0], r); } }(argument, []) });
+                argumentTypes.push({ inferredType: "/* jsval */ double", dimSize: function makeShape(a, r) { if (a instanceof Array) { r.push(a.length); makeShape(a[0], r); } return r;}(argument, []) });
             } else if (RiverTrail.Helper.isTypedArray(argument)) {
                 argumentTypes.push({ inferredType: RiverTrail.Helper.inferTypedArrayType(argument), dimSize: [argument.length] });
             } else if (argument instanceof RiverTrail.Helper.Integer) {

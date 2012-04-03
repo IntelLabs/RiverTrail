@@ -285,7 +285,7 @@ RiverTrail.compiler.codeGen = (function() {
             s = s + " " +ast.typeInfo.result.OpenCLType + " " + ast.dispatch;
             s = s + "("; // start param list.
             // add extra parameter for failure propagation
-            s = s + "bool * _FAILRET";
+            s = s + "int * _FAILRET";
             formals = genFormalParams(ast, "ignore");
             if (formals !== "") {
                 s = s + ", " + formals;
@@ -318,7 +318,7 @@ RiverTrail.compiler.codeGen = (function() {
             s = s + genCalledFunctionHeader(ast);
             s = s + " { ";// function body
             s = s + " const int _writeoffset = 0; "; // add a write offset to fool the rest of code generation
-            s = s + " bool _FAIL = 0;"; // declare local _FAIL variable for selection failures
+            s = s + " int _FAIL = 0;"; // declare local _FAIL variable for selection failures
             s = s + " int _sel_idx_tmp;"; // tmp var required for selections
             s = s + returnType + " " + boilerplate.localResultName + ";"; // tmp var for parking result
             s = s + oclStatements(ast.body); // Generate the statements;
@@ -364,16 +364,16 @@ RiverTrail.compiler.codeGen = (function() {
             // check whether the length of what we selected corresponds to what we expected. This
             // is required as we do not check for regularity when we pass the argument but only
             // when we access it.
-            "__global double *__JS_array_sel_A(__global double *src, int idx, int exp_len, bool *_FAIL) {" +
+            "__global double *__JS_array_sel_A(__global double *src, int idx, int exp_len, int *_FAIL) {" +
             "            if (!src) {" +
             "                /* previous selection failed */" +
             "                return src;" +
             "            }" +
             "            unsigned int *asInt = (unsigned int *) &(src[idx]);" +
             "            double **asPtr = (double **) asInt[0];" +
-            "            unsigned int len = (unsigned int) asPtr[6];" +
+            "            unsigned int len = ((unsigned int*) asPtr)[6];" +
             "            if (exp_len != len) {" +
-            "                *_FAIL = 1;" +
+            "                *_FAIL = 42;" +
             "                return (__global double *) 0;" +
             "            } else {" +
             "                return (__global double *) asPtr[8];" +
@@ -558,7 +558,7 @@ RiverTrail.compiler.codeGen = (function() {
             s = s + " {";
 
             // add declaration of bounds checks helper variables
-            s = s + "int _sel_idx_tmp; bool _FAIL = 0;";
+            s = s + "int _sel_idx_tmp; int _FAIL = 0;";
 
             // add code to declare id_x for each iteration dimension
             for (i = 0; i < rank; i++) {
@@ -655,7 +655,7 @@ RiverTrail.compiler.codeGen = (function() {
                 // scalar result
                 // propagate failure code
                 s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-                s = s + "if (_FAIL) {*_FAILRET = 1;}";
+                s = s + "if (_FAIL) {*_FAILRET = _FAIL;}";
                 s = s + " return " + boilerplate.localResultName + ";";
             } else {            
                 // vector result. We have two cases: either it is an identifier, then we do an elementwise assign.
@@ -684,7 +684,7 @@ RiverTrail.compiler.codeGen = (function() {
                     s = s + " retVal[_writeoffset + _writeback_idx] = " + convPre + "tempResult[_writeback_idx]" + convPost + ";",
                       s = s + "}";
                 }
-                s = s + "if (_FAIL) {*_FAILRET = 1;}";
+                s = s + "if (_FAIL) {*_FAILRET = _FAIL;}";
                 s = s + "return retVal;";
             } // end else code that returns a non-scalar
             return s;
@@ -701,7 +701,7 @@ RiverTrail.compiler.codeGen = (function() {
             if (rhs.typeInfo.isScalarType()) {
                 // scalar result
                 s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
-                s = s + "if (_FAIL) {*_FAILRET = 1;}";
+                s = s + "if (_FAIL) {*_FAILRET = _FAIL;}";
                 s = s + " return " + boilerplate.localResultName + ";";
                 //s = s + "retVal[_writeoffset] = " + boilerplate.localResultName + ";"; 
             } else {
@@ -747,7 +747,7 @@ RiverTrail.compiler.codeGen = (function() {
                         s += " retVal" + indexString + " = " + "((" + sourceType.OpenCLType + ")" +  boilerplate.localResultName + ")" + indexString + ";" + post_parens + "}";
                     }
                 }
-                s = s + "if (_FAIL) {*_FAILRET = 1;}";
+                s = s + "if (_FAIL) {*_FAILRET = _FAIL;}";
                 s = s + " return retVal; ";
             }
             return s;
@@ -811,7 +811,7 @@ RiverTrail.compiler.codeGen = (function() {
                     ")" + indexString + ";" + post_parens + "}";
                 }
             }
-            s = s + "if (_FAIL) {*_FAILRET = 1;}";
+            s = s + "if (_FAIL) {*_FAILRET = _FAIL;}";
             s = s + " return; ";
             return s;
         }
@@ -887,7 +887,7 @@ RiverTrail.compiler.codeGen = (function() {
                 ((range.lb === undefined) ||
                  (range.lb < 0))) {
             // emit lower bound check
-            result += "(_sel_idx_tmp < 0 ? (_FAIL = 1, 0) : ";
+            result += "(_sel_idx_tmp < 0 ? (_FAIL = 2, 0) : ";
             postfix = ")" + postfix;
             dynCheck = true;
         }
@@ -896,7 +896,7 @@ RiverTrail.compiler.codeGen = (function() {
                 ((range.ub === undefined) ||
                  (range.ub >= bound))) {
             // emit upper bound check
-            result += "(_sel_idx_tmp >= " + bound + " ? (_FAIL = 1, 0) : ";
+            result += "(_sel_idx_tmp >= " + bound + " ? (_FAIL = 3, 0) : ";
             postfix = ")" + postfix;
             dynCheck = true;
         }
