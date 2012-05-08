@@ -113,6 +113,9 @@ RiverTrail.compiler.runOCL = function () {
             } else if (object instanceof RiverTrail.Helper.FlatArray) {
                 // these are based on a flat array, so we can just push the data over
                 args.push(RiverTrail.compiler.openCLContext.mapData(object.data));
+            } else if (object instanceof Array) {
+                // we have an ordinary JS array, which has passed the uniformity checks and thus can be mapped
+                args.push(RiverTrail.compiler.openCLContext.mapData(object));
             } else if (typeof (object) === "number") {
                 // Scalar numbers are passed directly, as doubles.
                 args.push(object);

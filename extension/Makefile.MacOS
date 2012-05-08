@@ -57,7 +57,7 @@ DEPFILES := $(patsubst %.cpp,%.d,$(CPPFILES))
 
 OUTPUTS := $(OUTPUTDIR)/$(OUTPUTNAME)
 
-ifdef GECKODIR32
+ifneq "$(GECKODIR32)" ""
 OUTPUTS := $(OUTPUTS) $(OUTPUTDIR)/$(OUTPUTNAME32)
 DEPFILES := $(DEPFILES) $(patsubst %.cpp,%.32.d,$(CPPFILES))
 endif
@@ -79,7 +79,7 @@ $(OUTPUTDIR):
 	mkdir -p $(OUTPUTDIR)
 
 $(OUTPUTDIR)/$(OUTPUTNAME): $(OUTPUTDIR) $(OBJFILES)
-	$(CXX) $(OBJFILES) -bundle -framework OpenCL -L$(GECKODIR)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR)/$(GECKOLIB)/XUL -o $@
+	$(CXX) $(OBJFILES) -bundle -framework OpenCL -L$(GECKODIR)/$(GECKOLIB) -I$(GECKODIR)/$(GECKOINC) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR)/$(GECKOLIB)/XUL -o $@
 
 $(OUTPUTDIR)/$(OUTPUTNAME32): $(OUTPUTDIR) $(OBJFILES32)
 	$(CXX) $(OBJFILES32) -bundle -framework OpenCL -L$(GECKODIR32)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR32)/$(GECKOLIB)/XUL -arch i386 -o $@ 

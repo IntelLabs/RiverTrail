@@ -518,9 +518,10 @@ RiverTrail.RangeAnalysis = function () {
                 // return does not really produce a value as it exists the current scope. However,
                 // it is a non int ast, as we always return floats. This is modelled this way...
                 result = new Range(undefined, undefined, false);
-                // also, if the rhs is an identifier, we promote its type to double to avoid casting on return
-                if (ast.value.type === IDENTIFIER) {
+                // also, if the rhs is an identifier with non-scalar type, we promote its type to double to avoid casting on return
+                if ((ast.value.type === IDENTIFIER) && (!ast.value.typeInfo.isScalarType())) {
                     varEnv.lookup(ast.value.value).forceInt(false);
+                    ast.value.rangeInfo = varEnv.lookup(ast.value.value);
                 }
 
                 break;
@@ -800,9 +801,7 @@ RiverTrail.RangeAnalysis = function () {
                 // we support array.length and PA.length as it is somewhat a common loop bound. Could be more elaborate
                 drive(ast.children[0], varEnv, doAnnotate);
                 //drive(ast.children[1], varEnv, doAnnotate); // this needs to be an identifier, so no need to range infer it
-                if ((ast.children[1].value === "length") &&
-                    ((ast.children[0].typeInfo.isObjectType("Array") ||
-                      ast.children[0].typeInfo.isObjectType("ParallelArray")))) {
+                if ((ast.children[1].value === "length") && ast.children[0].typeInfo.isArrayishType()) {
                     result = new Range(ast.children[0].typeInfo.properties.shape[0], ast.children[0].typeInfo.properties.shape[0], true);
                 } else {
                     result = new Range(undefined, undefined, false);
@@ -1026,7 +1025,7 @@ RiverTrail.RangeAnalysis = function () {
             debug && console.log("updating " + type.toString() + " to " + target);
             if (type.isNumberType()) {
                 type.OpenCLType = target;
-            } else if (type.isObjectType("Array") || type.isObjectType("ParallelArray")) {
+            } else if (type.isArrayishType()) {
                 updateToNew(type.properties.elements, target);
                 type.updateOpenCLType();
             } else if (type.isBoolType()) {
@@ -1174,7 +1173,7 @@ RiverTrail.RangeAnalysis = function () {
                             ast.children[0].typeInfo = tEnv.lookup(ast.children[0].value).type;
                             if (validIntRepresentation(ast.children[1].typeInfo.OpenCLType) && 
                                 (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
-                                ast.children[1] = makeCast(ast.children[1], "double");
+                                ast.children[1] = makeCast(ast.children[1], tEnv.openCLFloatType);
                             }
                             break;
                         case INDEX:
@@ -1186,7 +1185,7 @@ RiverTrail.RangeAnalysis = function () {
                             // as above, we have to make sure that the types match...
                             if (validIntRepresentation(ast.children[1].typeInfo.OpenCLType) && 
                                 (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
-                                ast.children[1] = makeCast(ast.children[1], "double");
+                                ast.children[1] = makeCast(ast.children[1], tEnv.openCLFloatType);
                             }
                             ast.children[1] = push(ast.children[1], tEnv, isIntValue(ast.children[0]));
                         case DOT:
@@ -1418,7 +1417,7 @@ RiverTrail.RangeAnalysis = function () {
                     } else {
                         // SAH: special case for array literals: we propagate the double requirement to
                         //      the elements, so those will already be doubles or CAST nodes.
-                        updateToNew(ast.typeInfo.properties.elements, (expectInt ? "int" : "double"));
+                        updateToNew(ast.typeInfo.properties.elements, (expectInt ? "int" : tEnv.openCLFloatType));
                         ast.typeInfo.updateOpenCLType();
                     }
                 } else {

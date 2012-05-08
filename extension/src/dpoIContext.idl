@@ -49,6 +49,8 @@ interface dpoIContext : nsISecurityCheckedComponent
 	dpoIData allocateData( in jsval templ, [optional] in PRUint32 length);
 	[implicit_jscontext]
 	dpoIData allocateData2( in dpoIData templ, [optional] in PRUint32 length);
+  [implicit_jscontext]
+  bool canBeMapped( in jsval source);
 
 	// Profiling support
 	readonly attribute PRUint64 lastExecutionTime;

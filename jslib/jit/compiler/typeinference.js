@@ -43,6 +43,7 @@ RiverTrail.Typeinference = function () {
     const debug = false;
     //const allowGlobalFuns = false; // Set to true so kernel functions can call global functions.
     const allowGlobalFuns = true; // Set to true so kernel functions can call global functions.
+    const lazyJSArrayCheck = true; // check for homogeneity of JS Arrays at runtime
 
     var openCLUseLowPrecision = false;
 
@@ -117,6 +118,9 @@ RiverTrail.Typeinference = function () {
         return ((this.kind === Type.OBJECT) &&
                 ((name === undefined) ||
                  (this.name === name)));
+    };
+    Tp.isArrayishType = function () { // checks whether the type is an array like type
+        return this.isObjectType("Array") || this.isObjectType("JSArray") || this.isObjectType("ParallelArray");
     };
     Tp.isBottomType = function () {
         return (this.kind === Type.BOTTOM);
@@ -262,6 +266,7 @@ RiverTrail.Typeinference = function () {
         this.label = labelGen();
     };
     TObject.ARRAY = "Array";
+    TObject.JSARRAY = "JSArray";
     TObject.PARALLELARRAY = "ParallelArray";
     TObject.INLINEOBJECT = "InlineObject";
     TObject.makeType = function (name, val) {
@@ -733,28 +738,13 @@ RiverTrail.Typeinference = function () {
             return type;
         },
         constructor : undefined,
-        constructors : [Array, Float64Array, Float32Array, Uint32Array, Int32Array, 
+        constructors : [Float64Array, Float32Array, Uint32Array, Int32Array, 
                         Uint16Array, Int16Array, Uint8ClampedArray, Uint8Array, Int8Array,
                         RiverTrail.Helper.FlatArray],
         makeType : function (val) {
             var type;
             if (typeof(val) === "number") {
                 type = new TLiteral(TLiteral.NUMBER);
-            } else if (val instanceof Array) {
-                type = new TObject(TObject.ARRAY);
-                type.properties.shape = [val.length];
-                if (val.length > 0) {
-                    type.properties.elements = this.makeType(val[0]);
-                    for (var i = 1; i < val.length; i++) {
-                        var eType = this.makeType(val[i]);
-                        if (!type.properties.elements.equals(eType)) {
-                            reportError("inhomogeneous arrays not supported");
-                        }
-                    }
-                } else {
-                    reportError("empty arrays are not supported yet");
-                }
-                type.updateOpenCLType();
             } else if (val instanceof RiverTrail.Helper.FlatArray) {
                 type = new TLiteral(TLiteral.NUMBER);
                 type.OpenCLType = RiverTrail.Helper.inferTypedArrayType(val.data);
@@ -806,6 +796,47 @@ RiverTrail.Typeinference = function () {
             this.properties.addressSpace = val;
             this.properties.elements.setAddressSpace(val);
         }
+    };
+
+    TOp.registry["JSArray"] = {
+        methodCall : TOp.registry["Array"].methodCall,
+        propertySelection : TOp.registry["Array"].propertySelection,
+        constructor : Array,
+        makeType : function (val) {
+            var type;
+            if (typeof(val) === "number") {
+                type = new TLiteral(TLiteral.NUMBER);
+                type.OpenCLType = "double";
+            } else if (val instanceof Array) {
+                type = new TObject(TObject.JSARRAY);
+                type.properties.shape = [val.length];
+                if (val.length > 0) {
+                    type.properties.elements = this.makeType(val[0]);
+                    if (!lazyJSArrayCheck) {
+                        for (var i = 1; i < val.length; i++) {
+                            var eType = this.makeType(val[i]);
+                            if (!type.properties.elements.equals(eType)) {
+                                reportError("inhomogeneous arrays not supported");
+                            }
+                        }
+                    }
+                } else {
+                    reportError("empty arrays are not supported yet");
+                }
+                type.updateOpenCLType();
+            } else {
+                reportError("unsupported array contents encountered");
+            }
+            return type;
+        },
+        updateOpenCLType : function () {
+            /* this type is hardwired */
+            this.OpenCLType = "/* jsval */ double*";
+        },
+        getOpenCLShape : TOp.registry["Array"].getOpenCLShape,
+        getOpenCLSize : TOp.registry["Array"].getOpenCLSize,
+        equals : TOp.registry["Array"].equals,
+        setAddressSpace : TOp.registry["Array"].setAddressSpace
     };
 
     TOp.registry["ParallelArray"] = {
@@ -1264,7 +1295,7 @@ RiverTrail.Typeinference = function () {
                 ast.children[1] = drive(ast.children[1], tEnv, fEnv);
                 tEnv.accu.isArithType() || reportError("index not a number (found " + tEnv.accu.toString() + ")", ast);
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
-                if (tEnv.accu.isObjectType("Array")) {
+                if (tEnv.accu.isObjectType("Array") || tEnv.accu.isObjectType("JSArray")) {
                     left = tEnv.accu.properties.elements.clone();
                     left.registerFlow(tEnv.accu);
                     tEnv.accu = left;

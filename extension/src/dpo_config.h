@@ -37,7 +37,8 @@
 #define DPO_BUILDLOG_MAX 1024	/* size of buildlog buffer */
 #define DEBUG_OFF				/* disable debugging code */
 #undef WINDOWS_ROUNDTRIP		/* enable code to measure rounttrip time of kernel run using windows API */
-//#define PREALLOCATE_IN_JS_HEAP  /* allocate buffers in the JS heap and use CL_MEM_USE_HOST_POINTER */
+#define PREALLOCATE_IN_JS_HEAP  /* allocate buffers in the JS heap and use CL_MEM_USE_HOST_POINTER */
+#undef SUPPORT_MAPPING_ARRAYS  /* allow dense arrays to be mapped to JavaScript */
 
 #define DPO_PREFERENCE_BRANCH "extensions.dpointerface."	/* preference branch to use */
 #define DPO_DEFAULT_PLATFORM_PREFNAME "defaultPlatform"		/* preference name for default platform */
