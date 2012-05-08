@@ -917,6 +917,8 @@ RiverTrail.RangeAnalysis = function () {
             case NEW:
             case NEW_WITH_ARGS:
             case OBJECT_INIT:
+                result = new Range(undefined, undefined, false);
+                break;
             case WITH:
                 reportError("general objects not yet implemented", ast);
                 break;
@@ -1354,7 +1356,16 @@ RiverTrail.RangeAnalysis = function () {
                     break;
                 case NEW:
                 case NEW_WITH_ARGS:
+                case PROPERTY_INIT:
+                    ast.children[1] = push(ast.children[1], tEnv, false);
+                    break;
                 case OBJECT_INIT:
+                    console.log("This one is type", ast.type);
+                    for(var idx in ast.children) {
+                        ast.children[idx] = push(ast.children[idx], tEnv, false);
+                    }
+                    //ast.children = ast.children.map(function (child) { return push(child, tEnv, false);});
+                    break;
                 case WITH:
                     reportError("general objects not yet implemented", ast);
                     break;

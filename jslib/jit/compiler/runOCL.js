@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
  *
@@ -81,10 +81,13 @@ RiverTrail.compiler.runOCL = function () {
 
         if (ast.typeInfo.result.properties) {
             resShape = iterSpace.concat(ast.typeInfo.result.getOpenCLShape());
+            console.log(ast.typeInfo.result.getOpenCLShape());
+            console.log("Result shape is", resShape);
         } else {
             resShape = iterSpace;
         }
         resSize = shapeToLength(resShape);
+        console.log("Result size is", resSize);
         // construct kernel arguments
         var jsObjectToKernelArg = function (args, object) {
             if (object instanceof ParallelArray) {

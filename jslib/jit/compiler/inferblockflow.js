@@ -381,6 +381,12 @@ RiverTrail.InferBlockFlow = function () {
             case NEW:
             case NEW_WITH_ARGS:
             case OBJECT_INIT:
+                console.log("InferBF", ast.children[0].children[1]);
+                console.log("InferBF", ast.children[1].children[1]);
+                for(var idx = 0; idx < ast.children.length; idx++) {
+                    infer(ast.children[idx].children[1], ins, outs, locals);
+                }
+                break;
             case WITH:
                 reportError("general objects not yet implemented", ast);
                 break;
