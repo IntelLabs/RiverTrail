@@ -192,6 +192,9 @@ RiverTrail.compiler.codeGen = (function() {
             if (formalsTypes[i].isObjectType("ParallelArray")) {
                 //s = s + formalsNames[i-1] + " = &"+formalsNames[i-1]+"["+formalsNames[i-1]+"__offset];"; //offset
                 s = s + formalsNames[i] + " = &"+formalsNames[i]+"["+formalsNames[i]+"__offset];"; //offset
+            } else if (formalsTypes[i].isObjectType("JSArray")) {
+                // these are passed with one level of indirection, so we need to unwrap them here
+                s = s + formalsNames[i] + " = *((" + formalsTypes[i].getOpenCLAddressSpace() + " double **)" + formalsNames[i] + ");";
             }
         }
 
