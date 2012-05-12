@@ -316,7 +316,7 @@ RiverTrail.Typeinference = function () {
         if (lut && (result = lut[this.label])) {
             return result;
         }
-        console.log("Creating new type object", this.name);
+        //console.log("Creating new type object", this.name);
         result = new TObject(this.name);
 
         lut && (lut[this.label] = result);
@@ -324,7 +324,6 @@ RiverTrail.Typeinference = function () {
         if(this.properties.fields) {
             result.properties.fields = {};
             for(var i in this.properties.fields) {
-                console.log("Cloning ahoy! Doing ", i, this.properties.fields[i]);
                 result.properties.fields[i] = this.properties.fields[i].clone(lut);
             }
         }
@@ -424,14 +423,14 @@ RiverTrail.Typeinference = function () {
     }
     TEp.update = function (name, type) {
         var current = this.lookup(name);
-        console.log("Doing lookup for named variable", name, current, type);
+        //console.log("Doing lookup for named variable", name, current, type);
         if (current === undefined) {
             reportError("variable " + name + " has not been previously declared!");
         } else if (current.type === null) {
             var newT = type.clone();
             newT.registerFlow(type);
             this.bindings[name] = {initialized : true, type : newT}; // force a new entry in the dataflow graph
-            console.log("New type is", newT);
+            //console.log("New type is", newT);
         } else if (!current.type.equals(type)) {
             reportError("variable " + name + " is polymorphic: " + current.type.toString() + "/" + type.toString());
         } else {
@@ -662,14 +661,14 @@ RiverTrail.Typeinference = function () {
         },
         makeType : function(val) {
             var type = new TObject(TObject.INLINEOBJECT);
-            console.log("Making new type");
+            //console.log("Making new type");
             type.updateOpenCLType();
             return type;
         },
         getOpenCLSize : function () {
         },
         updateOpenCLType : function () {
-            console.log("In updateOpenCLType", this.properties.fields);
+            //console.log("In updateOpenCLType", this.properties.fields);
         },
         setAddressSpace : function (val) {
             this.properties.addressSpace = val;
@@ -679,14 +678,18 @@ RiverTrail.Typeinference = function () {
         //makeType : null,
         //updateOpenCLType : null,
         equals : function (other) {
-            if(other.kind !== "InlineObject")
+            if(other.kind !== "OBJECT" || other.name !== "InlineObject")
                 return false;
             var fields = this.properties.fields;
             var other_fields = other.properties.fields;
             if(other_fields === undefined)  return false;
+            // other_fields should have exactly the properties which
+            // are also in fields, no more, no less. Order doesn't matter since
+            // we don't allow "f2 = &(a.f1)+sizeof(f1)" type property addressing.
+            if(other_fields.length !== fields.length) return false;
             for(var idx in fields) {
                 if(!fields.hasOwnProperty(idx))
-                    continue;
+                    return false;
                 if(!other_fields.hasOwnProperty(idx))
                     return false;
                 if(fields[idx] === other_fields[idx])
@@ -694,6 +697,7 @@ RiverTrail.Typeinference = function () {
                 if(fields[idx].OpenCLType !== other_fields[idx].OpenCLType)
                     return false;
                 // The following only compares the outer shape!
+                // Fix this to compare the entire shape array
                 if(fields[idx].properties.shape !== other_fields[idx].properties.shape)
                     return false;
             }
@@ -777,6 +781,8 @@ RiverTrail.Typeinference = function () {
                 this.OpenCLType = elemType.OpenCLType + "*";
             } else if (elemType.isObjectType("Array") || elemType.isObjectType("ParallelArray")) {
                 this.OpenCLType = elemType.OpenCLType;
+            } else if (elemType.isObjectType("InlineObject")) {
+                this.OpenCLType = elemType.OpenCLType + "*";
             } else {
                 reportBug("unhandled element type in Array");
             }
@@ -1081,8 +1087,8 @@ RiverTrail.Typeinference = function () {
                 ast.value = drive(ast.value, tEnv, fEnv);
                 tEnv.functionResult = tEnv.accu;
                 var outp = tEnv.functionResult;
-                console.log("tenv is ", tEnv.accu);
-                console.log("Function result = ", outp);
+                //console.log("tenv is ", tEnv.accu);
+                //console.log("Function result = ", outp);
                 break;
             case FOR:
                 ast.setup = drive(ast.setup, tEnv, fEnv);
@@ -1137,7 +1143,7 @@ RiverTrail.Typeinference = function () {
                 switch (ast.children[0].type) {
                     case IDENTIFIER:
                         // simple case of a = expr
-                        console.log("Updating", left.value, "to", tEnv.accu);
+                        //console.log("Updating", left.value, "to", tEnv.accu);
                         tEnv.update(left.value, tEnv.accu);
                         break;
                     case INDEX:
@@ -1172,7 +1178,7 @@ RiverTrail.Typeinference = function () {
             // expressions
             //
             case COMMA:
-                console.log("Here in comma");
+                //console.log("Here in comma");
                 ast.children.map(function (ast) { return drive(ast, tEnv, fEnv);});
                 // we keep the type of the last child
                 break;
@@ -1267,7 +1273,10 @@ RiverTrail.Typeinference = function () {
                 tEnv.accu = idType.type;
                 break;
             case DOT:
-                ast.children[0].type === IDENTIFIER || reportError("unsupported lhs in dot selection", ast);
+                //ast.children[0] = drive(ast.children[0], tEnv, fEnv);
+                if(ast.children[0].type !== IDENTIFIER) {
+                    reportError("unsupported lhs in dot selection", ast);
+                }
                 var obj = tEnv.lookup(ast.children[0].value) || reportError("unknown object `" + ast.children[0].value + "`", ast);
                 obj.initialized || reportError("variable " + ast.children[0].value + " might be uninitialized", ast);
                 ast.children[0].typeInfo = obj.type;
@@ -1320,7 +1329,7 @@ RiverTrail.Typeinference = function () {
                 break;
 
             case ARRAY_INIT:
-                console.log("Doing ARRAY_INIT");
+                //console.log("Doing ARRAY_INIT");
                 left = [];
                 for (var idx in ast.children) {
                     ast.children[idx] = drive(ast.children[idx], tEnv, fEnv);
@@ -1416,7 +1425,7 @@ RiverTrail.Typeinference = function () {
                             }
                             rootFun.specStore.push(fun);
                             resType = innerTEnv.functionResult;
-                            console.log("ResType = ", resType);
+                            //console.log("ResType = ", resType);
                             // drop call from tracing stack
                             stackTrace.pop();
                             // create a new flow frame around this function
@@ -1425,7 +1434,7 @@ RiverTrail.Typeinference = function () {
                             fun.flowFrame = new FFunction(innerArgT, resType, fun);
                             fun.typeInfo = new TFunction(innerArgT, resType);
                             fun.flowRoots = innerTEnv.getRoots();
-                            debug && console.log(fun.name + " has type " + fun.typeInfo.toString());
+                            //debug && console.log(fun.name + " has type " + fun.typeInfo.toString());
                         }
                         // tie the arguments to the function call
                         ast.callFrame = new FCall(argT, fun.flowFrame, resType.clone(), ast);
@@ -1435,7 +1444,7 @@ RiverTrail.Typeinference = function () {
                         // store the name of the instance
                         ast.children[0].dispatch = fun.dispatch;
                         tEnv.accu = ast.callFrame.result;
-                        console.log("In CALL typeinference, accu = ", tEnv.accu);
+                        //console.log("In CALL typeinference, accu = ", tEnv.accu);
                         break;
 
                     default:
@@ -1520,20 +1529,20 @@ RiverTrail.Typeinference = function () {
                 }
                 reportError("general object construction not yet implemented", ast);
             case OBJECT_INIT:
-                console.log("In OBJECT_INIT");
+                //console.log("In OBJECT_INIT");
                 var property_names = [];
                 var property_typeInfo = [];
                 var fields = {};
                 //console.log(ast.type);
                 for(var idx in ast.children) {
                 //    //console.log("here ", ast.children[idx], "value is", ast.children[idx].value, "type is", ast.children[idx].type);
-                    console.log("In object_init, doing child", idx);
+                    //console.log("In object_init, doing child", idx);
                     var prop = drive(ast.children[idx], tEnv, fEnv);
-                    console.log("prop is", prop.value);
+                    //console.log("prop is", prop.value);
                     if(prop.type === PROPERTY_INIT) {
-                        console.log("Pushing name", prop.typeInfo.name);
+                        //console.log("Pushing name", prop.typeInfo.name);
                         property_names.push(prop.typeInfo.name);
-                        console.log("Pushing type", prop.typeInfo.tInfo);
+                        //console.log("Pushing type", prop.typeInfo.tInfo);
                         property_typeInfo.push(prop.typeInfo.tInfo);
                         fields[prop.typeInfo.name] = prop.typeInfo.tInfo;
                     }
@@ -1548,7 +1557,14 @@ RiverTrail.Typeinference = function () {
                 var obj_typeinfo = null; var found = false;
                 LOuter:
                 for(var i = 0; i < globalInlineObjectTypes.length; i++) {
-                    var ofields = globalInlineObjectTypes[i].type.properties.fields;
+                    var ofields = globalInlineObjectTypes[i].properties.fields;
+                    if(RiverTrail.Helper.compareObjectFields(fields, ofields)) {
+                        obj_typeinfo = globalInlineObjectTypes[i];
+                        //console.log("Found a type match ************************");
+                        break;
+                    }
+                    /*
+
                     if(!ofields)
                         break;
                     for(var idx in fields) {
@@ -1563,6 +1579,7 @@ RiverTrail.Typeinference = function () {
                     }
                     // We have a match
                     obj_typeinfo = globalInlineObjectTypes[i];
+                    */
                 }
                 if(obj_typeinfo === null) {
                     //console.log("Left is", left);
@@ -1574,16 +1591,18 @@ RiverTrail.Typeinference = function () {
                     //obj_typeinfo.properties.elements.property_types = property_typeInfo;
                     obj_typeinfo.properties.fields = fields;
                     //obj_typeinfo.OpenCLType = genOpenCLTypeName(obj_typeinfo);
-                    var obj_base_opencltype = "InlineObj_struct" + labelGen();
-                    obj_typeinfo.OpenCLType =  obj_base_opencltype + "*";
-                    console.log("Final property types = ", obj_typeinfo.properties.fields);
+                    // We will defer generating the OpenCLType to actual code
+                    // generation
+                    obj_typeinfo.baseType = "InlineObj_struct" + labelGen();
+                    obj_typeinfo.OpenCLType =  obj_typeinfo.baseType + "*";
+                    //console.log("Final property types = ", obj_typeinfo.properties.fields);
                     //globalInlineObjectTypes.push({baseType:obj_base_opencltype, fieldTypes:fields});
-                    globalInlineObjectTypes.push({type:obj_typeinfo, id:labelGen()});
+                    globalInlineObjectTypes.push(obj_typeinfo);
                 }
                 
                 tEnv.accu = obj_typeinfo;
                 tEnv.accu.setAddressSpace("__private");
-                console.log("Final accu = ", tEnv.accu);
+                //console.log("Final accu = ", tEnv.accu);
                 //console.log(ast.children);
                 
                 //tEnv.accu.properties.elements = left[0].clone();
@@ -1596,14 +1615,14 @@ RiverTrail.Typeinference = function () {
                 //reportError("general object construction not yet implemented", ast);
                 break;
             case PROPERTY_INIT:
-                console.log("In property_init, ast.value = ", ast.value);
-                console.log("In property_init, ast.children = ", ast.children);
-                console.log("Property name = ", ast.children[0].value, " property value = ", ast.children[1].value);
+                //console.log("In property_init, ast.value = ", ast.value);
+                //console.log("In property_init, ast.children = ", ast.children);
+                //console.log("Property name = ", ast.children[0].value, " property value = ", ast.children[1].value);
                 var right = drive(ast.children[1], tEnv, fEnv);
                 //tEnv.accu = {};
-                console.log("TypeInfo is", ast.children[1].typeInfo);
+                //console.log("TypeInfo is", ast.children[1].typeInfo);
                 tEnv.accu = {name:ast.children[0].value, tInfo:ast.children[1].typeInfo};
-                console.log("Accu = ", tEnv.accu);
+                //console.log("Accu = ", tEnv.accu);
                 //tEnv.accu = ast.children[1];
                 //left = ast.children[0];
                 //tEnv.update(left.value, tEnv.accu);
@@ -1649,7 +1668,7 @@ RiverTrail.Typeinference = function () {
 
             case DEBUGGER:  // whatever this is...
             default:
-                console.log("Can't find", ast.value);
+                //console.log("Can't find", ast.value);
                 throw "unhandled node type in analysis: " + ast.type + " is " + RiverTrail.Helper.wrappedPP(ast);
         }
         ast.typeInfo = tEnv.accu;

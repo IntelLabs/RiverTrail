@@ -508,10 +508,14 @@ RiverTrail.compiler.codeGen = (function() {
             var numGlobalObjTypes = globalInlineObjectTypes.length;
 
             for(var i = 0; i < numGlobalObjTypes; i++) {
+                //var objOpenCLType = "InlineObj_struct" + globalInlineObjectTypes[i].id;
                 s += "typedef struct struct_" + globalInlineObjectTypes[i].baseType + " { ";
-                var fields = globalInlineObjectTypes[i].fieldTypes;
+                var fields = globalInlineObjectTypes[i].properties.fields;
+                var count = 0;
                 for (var idx in fields) {
+        
                     s += fields[idx].OpenCLType + " " + idx + ";" ;
+                    //if(count === 0) { s += "double padding; "; count++; }
                 }
                 s += "} " + globalInlineObjectTypes[i].baseType + ";" ;
             }
@@ -740,22 +744,41 @@ RiverTrail.compiler.codeGen = (function() {
                 } 
                 else if(rhs.typeInfo.name === "InlineObject") {
                     var numProps = 0;
-                    s += "void *tempResult1;";
+                    var nonScalarResultContainer = "tempResult_p";
+                    var scalarResultContainer = "tempResult_s";
+                    s += "void * " + nonScalarResultContainer + ";" + "double " + scalarResultContainer + ";";
+                    var propResultContainer = "";
                     for(var idx in rhs.typeInfo.properties.fields) {
-                        console.log("Field ", idx,  rhs.typeInfo.properties.fields[idx]);
+                        //console.log("Field ", idx,  rhs.typeInfo.properties.fields[idx]);
                         var propType = rhs.typeInfo.properties.fields[idx];
-                        if(propType.properties.addressSpace === "__global") {
-                           s += "__global " + propType.OpenCLType + " " + boilerplate.localResultName 
+                        var is_scalar_property = propType.isScalarType();
+                        propResultContainer = is_scalar_property ? scalarResultContainer : nonScalarResultContainer;
+                        if(!is_scalar_property && propType.properties.addressSpace === "__global") {
+                           s += "__global " + propType.OpenCLType + " " + nonScalarResultContainer + "_g"; 
                                + "_g" + " = " +  oclExpression(rhs.children[numProps].children[1]) + ";";
                            s += " int _idx1; ";
                            s += "for ( _idx1 = 0; _idx1 < " + elements + "; _idx1++) {";
-                           s += " retVal[_idx1] = " + boilerplate.localResultName + "_g" + "[_idx1]; }"; 
+                           s += " retVal[_idx1] = " + nonScalarResultContainer + "_g" + "[_idx1]; }"; 
                         }
                         else {
-                            console.log("Arbitrary ident");
+                            //console.log("Arbitrary ident");
                             //s +=  boilerplate.localResultName + " = " + oclExpression(rhs.children[numProps].children[1]) + ";";
-                            s +=  "tempResult1" + " = " + oclExpression(rhs.children[numProps].children[1]) + ";";
-                            var propShape = propType.getOpenCLShape();
+                            //s +=  "tempResult1" + " = " + oclExpression(rhs.children[numProps].children[1]) + ";";
+                            
+                            // The order of properties in the object type being
+                            // returned may be different than in the actual expression
+                            // being returned. So we should map between these types.
+                            var prop_index = 0;
+                            while(1) {
+                                if(rhs.children[prop_index++].children[0].value === idx) {
+                                    s +=  propResultContainer + " = " + oclExpression(rhs.children[prop_index-1].children[1]) + "; ";
+                                    break;
+                                }
+                                if(prop_index >= rhs.typeInfo.properties.fields.length) {
+                                    reportError("Statement return: Field", idx, "could not be found! ", ast);
+                                }
+                            }
+                            var propShape = !(is_scalar_property) ? propType.getOpenCLShape() : [];
                             var propShapeLength = propShape.length;
                             var i; var index; var indexString = ""; var post_parens = "";
                             for( i = 0; i < propShapeLength; i++) {
@@ -766,12 +789,10 @@ RiverTrail.compiler.codeGen = (function() {
                                 post_parens += "}}";
                             }
                             //s += " retVal" + "->" + idx + indexString + " = " + "((" + propType.OpenCLType + ")" +  boilerplate.localResultName + ")" + indexString + ";" + post_parens;
-                            s += " (retVal" + "->" + idx + ")" + indexString + " = " + "((" + propType.OpenCLType + ")" +  "tempResult1" + ")" + indexString + ";" + post_parens;
+                            s += " (retVal" + "->" + idx + ")" + indexString + " = " + "((" + propType.OpenCLType + ")" +  propResultContainer + ")" + indexString + ";" + post_parens;
                         }
                         numProps++;
                     }
-                    console.log("Generated", s); 
-                    //reportError("Gen simple return for objects not implemented");
                 }
                 /*
                 else if(rhs.type === ARRAY_INIT && 0) {
@@ -894,7 +915,7 @@ RiverTrail.compiler.codeGen = (function() {
                     var shapeandtypes = getShapesAndTypes(rhs);
                     var shapes = shapeandtypes.shapes;
                     var types = shapeandtypes.types;
-                    console.log(shapes, types); 
+                    //console.log(shapes, types); 
                     //s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                     var idx;
                     s += "{ int _writeback_idx = 0 ;";
@@ -914,7 +935,7 @@ RiverTrail.compiler.codeGen = (function() {
                         ")" + indexString + ";" + post_parens;
                     }
                     s += "}";
-                    console.log(s);
+                    //console.log(s);
                 
                 } else if(rhs.typeInfo.properties.addressSpace === "__global") {
                     s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
@@ -928,7 +949,7 @@ RiverTrail.compiler.codeGen = (function() {
                     var source = rhs;
                     var sourceType = source.typeInfo;
                     var sourceShape = sourceType.getOpenCLShape();
-                    console.log(sourceShape);
+                    //console.log(sourceShape);
                     s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                     var maxDepth = sourceShape.length;
                     var i; var idx; var indexString = ""; var post_parens = "";
@@ -1254,31 +1275,36 @@ RiverTrail.compiler.codeGen = (function() {
                 }
             } else { // It is not a method call.
                 var actuals = "";
-                console.log("Doing call ");
+                //console.log("Doing call ");
                 actuals = oclExpression(ast.children[1]);
-                console.log("Done with call ");
+                //console.log("Done with call ");
                 var post_parens = "";
                 //if(ast.typeInfo.name === "InlineObject") {
                 //    
                 //}
                 if(ast.typeInfo.name === "InlineObject") {
-                    var rootBuffer = ast.memBuffers.list[ast.memBuffers.list.length-1];
+                    //var rootBuffer = ast.memBuffers.list[ast.memBuffers.list.length-1];
+                    var rootBuffer = ast.memBuffers.__root;
                     var root_index = 0;
                     s += "(";
                     for(var idx in ast.typeInfo.properties.fields) {
                         var propType = ast.typeInfo.properties.fields[idx];
+                        if(propType.isScalarType())
+                            continue;
                         var propShape = propType.getOpenCLShape();
                         var maxDepth = propShape.length;
-                        console.log("Doing", idx, "propShape =", propShape );
+                        //console.log("Doing", idx, "propShape =", propShape );
                         var post_parens = ""; 
                         var redu = 1; var rhs = ""; var lhs = ""; post_parens = ")";
                         for(var i = 0 ; i < maxDepth-1; i++) {
                             for(var j = 0; j < propShape[i]*redu; j++) {
                                 lhs = "(" + getPointerCast(i, maxDepth, propType.OpenCLType) +
-                                    ast.memBuffers.list[i] + ")"
+                                    //ast.memBuffers.list[i] + ")"
+                                    ast.memBuffers[idx][i] + ")"
                                     + "[" + j + "]";
                                 rhs = "&((" + getPointerCast(i+1, maxDepth, propType.OpenCLType)
-                                    + ast.memBuffers.list[i+1]
+                                    //+ ast.memBuffers.list[i+1]
+                                    + ast.memBuffers[idx][i+1]
                                     + ")" + "[" + j*propShape[i+1] + "]" + ")";
                                 s += lhs + " = " + rhs + " ,"; 
                             }
@@ -1286,7 +1312,7 @@ RiverTrail.compiler.codeGen = (function() {
                         }
                         //console
                         s += "((" + ast.typeInfo.OpenCLType + ")" + rootBuffer + ")" + "->" + idx + "=" +
-                            "(" + propType.OpenCLType + ")" + ast.memBuffers.roots[root_index++] + ",";
+                            "(" + propType.OpenCLType + ")" + ast.memBuffers[idx][0] + ",";
                     }
                     //reportError("Caller code gen for returning object not implemented"); 
                     s = s + ast.children[0].dispatch + "( &_FAIL" + (actuals !== "" ? ", " : "") + actuals;
@@ -1820,11 +1846,11 @@ RiverTrail.compiler.codeGen = (function() {
         case OBJECT_INIT:
                 //reportError("general objects not yet implemented", ast);
                 //break;
-                console.log("ast.value is ", ast.value, "ast.type is ", ast.type);
-                for(var i = 0; i < ast.children.length; i++) {
-                    console.log("child", i, "is", ast.children[i].value);
-                }
-                reportError("general1 objects not yet implemented", ast);
+                //console.log("ast.value is ", ast.value, "ast.type is ", ast.type);
+                //for(var i = 0; i < ast.children.length; i++) {
+                //    console.log("child", i, "is", ast.children[i].value);
+                //}
+                reportError("general object construction not yet implemented", ast);
         case WITH:
                 reportError("general objects not yet implemented", ast);
                 break;

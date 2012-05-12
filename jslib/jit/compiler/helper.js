@@ -282,6 +282,22 @@ RiverTrail.Helper = function () {
         return this;
     };
 
+    var compareObjectFields = function(f1, f2) {
+        if(!f1 || !f2)
+            return false;
+        for(var idx in f1) {
+            /*
+            if(!(f2.hasOwnProperty(idx) &&
+            (f1[idx].OpenCLType === f2[idx].OpenCLType) &&
+            (f1[idx].properties.shape === f2[idx].properties.shape))) {
+            */
+            if(!(f2.hasOwnProperty(idx) && f1[idx].equals(f2[idx]))) {
+                return false;
+            }
+        }
+        return true;
+    };
+
     // helper function that throws an exception and logs it if verboseDebug is on
     var debugThrow = function (e) {
         if (RiverTrail.compiler.verboseDebug) {
@@ -511,7 +527,8 @@ RiverTrail.Helper = function () {
              "parseFunction" : parseFunction,
              "reportError" : reportError,
              "reportBug" : reportBug,
-             "findSelectionRoot" : findSelectionRoot
+             "findSelectionRoot" : findSelectionRoot,
+             "compareObjectFields" : compareObjectFields
     };
 
 }();

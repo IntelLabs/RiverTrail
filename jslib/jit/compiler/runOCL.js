@@ -81,13 +81,13 @@ RiverTrail.compiler.runOCL = function () {
 
         if (ast.typeInfo.result.properties) {
             resShape = iterSpace.concat(ast.typeInfo.result.getOpenCLShape());
-            console.log(ast.typeInfo.result.getOpenCLShape());
-            console.log("Result shape is", resShape);
+            //console.log(ast.typeInfo.result.getOpenCLShape());
+            //console.log("Result shape is", resShape);
         } else {
             resShape = iterSpace;
         }
         resSize = shapeToLength(resShape);
-        console.log("Result size is", resSize);
+        //console.log("Result size is", resSize);
         // construct kernel arguments
         var jsObjectToKernelArg = function (args, object) {
             if (object instanceof ParallelArray) {
@@ -240,6 +240,7 @@ RiverTrail.compiler.runOCL = function () {
                 // console.log("791:new:rank: "+rank+" iterSpace: "+iterSpace);
                 //console.log("driver:389 did not run.");
                 var kernelFailure = kernel.run(rank, iterSpace, iterSpace.map(function () { return 1; }));
+                //var kernelFailure = true;
             } catch (e) {
                 console.log("kernel.run fails: ", e);
                 throw e;

@@ -185,54 +185,67 @@ RiverTrail.InferMem = function () {
 
 
     // We allocate memory for the fields of the object
-    // but the object itself is "implicit" and no memory 
-    // is allocated for it.
+    // and for the object itself (pointer to the fields)
     function allocateObjMem(ast, memVars) {
-        console.log("Num fields = ", ast.typeInfo);
-        console.log("value = ", ast.value);
-        console.log("Callframe.result = ", ast.callFrame.result);
-        console.log("Num properties = ", ast.typeInfo.properties);
+        //console.log("Num fields = ", ast.typeInfo);
+        //console.log("value = ", ast.value);
+        //console.log("Callframe.result = ", ast.callFrame.result);
+        //console.log("Num properties = ", ast.typeInfo.properties);
         var fields = ast.typeInfo.properties.fields;
         var objSize = 0;
-        ast.memBuffers = {size:0, list:[], roots:[]};
+        //ast.memBuffers = {size:0, list:[], roots:[]};
+        //ast.memBuffers = {size:0, list:[], roots:[], root:null};
+        ast.memBuffers = {__size:0, __root:null};
         for(var idx in fields) {
-            console.log("Allocating space for", idx, fields[idx]); 
-            var shape = fields[idx].getOpenCLShape();
-            var isScalarType = fields[idx].isScalarType();
-            var shape_len = shape.length;
-            console.log("Shape = ", shape);
-
-            objSize += RiverTrail.Helper.getOpenCLSize(fields[idx].OpenCLType)
-             
-            //if(isScalarType || shape_len === 1) {
-            if(0) {
-                ast.allocatedMem = memVars.allocate(fields[idx].getOpenCLSize(), "CALL");
+            ast.memBuffers[idx] = [];
+            if(fields[idx].isScalarType()) {
+                //reportError("Scalar type properties not implemented yet");
+                var allocation_size = RiverTrail.Helper.getOpenCLSize(fields[idx].OpenCLType);
+                //var memBufferName = memVars.allocate(allocation_size, "FLD_0");
+                //ast.memBuffers[idx].push(memBufferName);
+                //ast.memBuffers.__size +=1;
+                objSize += allocation_size;
             }
-            else {
+            else if (fields[idx].name === "InlineObject") {
+                reportError("InlineObject type properties not implemented yet");
+            }
+            else if(fields[idx].name === "Array") {
+                //console.log("Allocating space for", idx, fields[idx]); 
+                var shape = fields[idx].getOpenCLShape();
+                //var isScalarType = fields[idx].isScalarType();
+                var shape_len = shape.length;
+                //console.log("Shape = ", shape);
+
+                objSize += RiverTrail.Helper.getOpenCLSize(fields[idx].OpenCLType);
                 var redu = 1;
                 for(var i = 0; i < shape_len; i++) {
                     //var type_size = getTypeSize(i, shape, ast.typeInfo.OpenCLType);
                     var type_size = RiverTrail.Helper.getOpenCLSize(fields[idx].OpenCLType);
                     var allocation_size = type_size*shape[i]*redu;
-                    debug && console.log("Allocating " + allocation_size + " bytes in " +  "CALL_"
-                            + i + "  for i = " + i);
-                    var memBufferName = memVars.allocate(allocation_size, "CALL_" + i);
-                    ast.memBuffers.size +=1;
-                    ast.memBuffers.list.push(memBufferName);
-                    if(i === 0)
-                        ast.memBuffers.roots.push(memBufferName);
+                    //debug && console.log("Allocating " + allocation_size + " bytes in " +  "FLD_" + i + "  for i = " + i);
+                    var memBufferName = memVars.allocate(allocation_size, "FLD_" + i);
+                    ast.memBuffers.__size +=1;
+                    //ast.memBuffers.list.push(memBufferName);
+                    ast.memBuffers[idx].push(memBufferName);
+                    //if(i === 0)
+                    //    ast.memBuffers.roots.push(memBufferName);
                     redu = redu*shape[i];
                 }
                 // Set the primary memory buffer for this node to be the
                 // top-level buffer
-                debug && console.log("Total AST allocations: ", ast.memBuffers.size, ast.memBuffers.list.length);
+                //debug && console.log("Total AST allocations: ", ast.memBuffers.__size);
+            }
+            else {
+                reportError("Unknown field type");
             }
         }
         // Allocate space for the fields of the object
         var obj_memBufferName = memVars.allocate(objSize, "OBJ");
         ast.memBuffers.size += 1;
-        ast.memBuffers.list.push(obj_memBufferName);
-        ast.allocatedMem = ast.memBuffers.list[0];
+        //ast.memBuffers.list.push(obj_memBufferName);
+        ast.memBuffers.__root = obj_memBufferName;
+        //ast.allocatedMem = ast.memBuffers.list[0];
+        ast.allocatedMem = obj_memBufferName;
     }
 
     function infer(ast, memVars, ins, outs) {
@@ -309,8 +322,6 @@ RiverTrail.InferMem = function () {
             case ASSIGN:
                 // children[0] is the left hand side, children[1] is the right hand side.
                 // both can be expressions. 
-                //console.log("Assign node blah blah", ast.children[0].value);
-                console.log("Assign node blah blah");
                 infer(ast.children[0], memVars, ins, outs);
                 infer(ast.children[1], memVars, ins, outs);
                 switch (ast.children[0].type) {
@@ -331,15 +342,15 @@ RiverTrail.InferMem = function () {
                             if(!ast.typeInfo.isScalarType()) {
                                 var shape = ast.typeInfo.getOpenCLShape();
                                 var shape_len = shape.length;
-                                debug && console.log("Creating memory for " + ast.children[0].value + " with shape: ", shape);
+                                //debug && console.log("Creating memory for " + ast.children[0].value + " with shape: ", shape);
                                 ast.memBuffers = {size:0, list:[]};
                                 var redu = 1;
                                 for(var i = 0; i < shape_len; i++) {
                                     //var type_size = getTypeSize(i, shape, ast.typeInfo.OpenCLType);
                                     var type_size = RiverTrail.Helper.getOpenCLSize(ast.typeInfo.OpenCLType);
                                     var allocation_size = type_size*shape[i]*redu;
-                                    debug && console.log("Allocating " + allocation_size + " bytes in " +  ast.children[0].value
-                                      + "_" + i + "  for i = " + i);
+                                    //debug && console.log("Allocating " + allocation_size + " bytes in " +  ast.children[0].value
+                                    //  + "_" + i + "  for i = " + i);
                                     var memBufferName = memVars.allocate(allocation_size, ast.children[0].value + "_" + i);
                                     ast.memBuffers.size +=1;
                                     ast.memBuffers.list.push(memBufferName);
@@ -349,7 +360,7 @@ RiverTrail.InferMem = function () {
                                 // Set the primary memory buffer for this node to be the
                                 // top-level buffer
                                 ast.allocatedMem = ast.memBuffers.list[0];
-                                debug && console.log("Total AST allocations: ", ast.memBuffers.size, ast.memBuffers.list.length); 
+                                //debug && console.log("Total AST allocations: ", ast.memBuffers.size, ast.memBuffers.list.length); 
                             }
                         }
                         break;
@@ -391,9 +402,18 @@ RiverTrail.InferMem = function () {
                 break;
 
             case ARRAY_INIT:
-                // these require allocation
-                console.log("Typeinfo = ", ast.typeInfo.getOpenCLSize());
-                ast.allocatedMem = memVars.allocate(ast.typeInfo.getOpenCLSize(), "ARRAY_INIT");
+                // These require allocation
+                //console.log("Typeinfo = ", ast.typeInfo.getOpenCLSize());
+                //if(ast.typeInfo.properties.shape.length === 1) {
+                if((ast.typeInfo.properties.shape.length === 1) && ast.typeInfo.properties.elements.isScalarType()) {
+                //if(1) {
+                    ast.allocatedMem = memVars.allocate(ast.typeInfo.getOpenCLSize(), "ARRAY_INIT");
+                }
+                else {
+                    // If this is a nested array, we only need to allocate
+                    // memory for the current outermost array expression.
+                    ast.allocatedMem = memVars.allocate(RiverTrail.Helper.getOpenCLSize(ast.typeInfo.OpenCLType) * ast.typeInfo.properties.shape[0], "ARRAY_INIT");
+                }
                 // fallthrough;
                 
             // stuff where we just look at the children
@@ -449,12 +469,12 @@ RiverTrail.InferMem = function () {
                 // to some existing data, like |get| on ParallelArray, the type inference will have
                 // left an isShared annotation and no memory needs to be allocated.
                 else if (!ast.typeInfo.isScalarType() && !ast.typeInfo.properties.isShared) { 
-                    console.log("call type is", ast.typeInfo);
-                    if(ast.typeInfo.name === "InlineObject") {
-                        console.log("call type is", ast.typeInfo);
-                    }
-                    debug && console.log("Creating CALL memory shape ", ast.typeInfo.getOpenCLShape());
-                    debug && console.log("CALL shape type is : ", ast.typeInfo.OpenCLType);
+                    //console.log("call type is", ast.typeInfo);
+                    //if(ast.typeInfo.name === "InlineObject") {
+                        //console.log("call type is", ast.typeInfo);
+                    //}
+                    //debug && console.log("Creating CALL memory shape ", ast.typeInfo.getOpenCLShape());
+                    //debug && console.log("CALL shape type is : ", ast.typeInfo.OpenCLType);
                     var shape = ast.typeInfo.getOpenCLShape();
                     var shape_len = shape.length;
                     if(shape_len === 1) {
@@ -474,21 +494,21 @@ RiverTrail.InferMem = function () {
                        ast.memBuffers = {size:0, list:[]};
                        var redu = 1;
                        for(var i = 0; i < shape_len; i++) {
-                        //var type_size = getTypeSize(i, shape, ast.typeInfo.OpenCLType);
-                        var type_size = RiverTrail.Helper.getOpenCLSize(ast.typeInfo.OpenCLType);
-                        var allocation_size = type_size*shape[i]*redu;
-                        debug && console.log("Allocating " + allocation_size + " bytes in " +  "CALL_"
-                                    + i + "  for i = " + i);
-                        var memBufferName = memVars.allocate(allocation_size, "CALL_" + i);
-                        ast.memBuffers.size +=1;
-                        ast.memBuffers.list.push(memBufferName);
+                           //var type_size = getTypeSize(i, shape, ast.typeInfo.OpenCLType);
+                           var type_size = RiverTrail.Helper.getOpenCLSize(ast.typeInfo.OpenCLType);
+                           var allocation_size = type_size*shape[i]*redu;
+                           //debug && console.log("Allocating " + allocation_size + " bytes in " +  "CALL_"
+                           //        + i + "  for i = " + i);
+                           var memBufferName = memVars.allocate(allocation_size, "CALL_" + i);
+                           ast.memBuffers.size +=1;
+                           ast.memBuffers.list.push(memBufferName);
 
-                        redu = redu*shape[i];
+                           redu = redu*shape[i];
                        }
                        // Set the primary memory buffer for this node to be the
                        // top-level buffer
                        ast.allocatedMem = ast.memBuffers.list[0];
-                       debug && console.log("Total AST allocations: ", ast.memBuffers.size, ast.memBuffers.list.length);
+                       //debug && console.log("Total AST allocations: ", ast.memBuffers.size, ast.memBuffers.list.length);
                     }
 
                 }

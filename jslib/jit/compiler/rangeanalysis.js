@@ -1359,7 +1359,6 @@ RiverTrail.RangeAnalysis = function () {
                     ast.children[1] = push(ast.children[1], tEnv, false);
                     break;
                 case OBJECT_INIT:
-                    console.log("This one is type", ast.type);
                     for(var idx in ast.children) {
                         ast.children[idx] = push(ast.children[idx], tEnv, false);
                     }
