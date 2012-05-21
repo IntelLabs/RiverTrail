@@ -30,6 +30,8 @@
 //
 
 RiverTrail.Typeinference = function () {
+    var stackTrace = [];
+
     var definitions = Narcissus.definitions;
     eval(definitions.consts);
     eval(RiverTrail.definitions.consts);
@@ -39,20 +41,44 @@ RiverTrail.Typeinference = function () {
     const debug = false;
     //const allowGlobalFuns = false; // Set to true so kernel functions can call global functions.
     const allowGlobalFuns = true; // Set to true so kernel functions can call global functions.
+    const lazyJSArrayCheck = true; // check for homogeneity of JS Arrays at runtime
 
     var openCLUseLowPrecision = false;
 
     //
     // error reporting
     //
-    var reportError = RiverTrail.Helper.reportError;
+    function reportError(msg, ast) {
+        msg = stackTrace.reduce(function (p, c) {
+                        return p + " -> " + c.fun.name + " [call was: " + RiverTrail.Helper.wrappedPP(c.ast) + "]";
+                    }, "In main") + ": " + msg;
+
+        RiverTrail.Helper.reportError(msg, ast);
+    }
     var reportBug = RiverTrail.Helper.reportBug;
 
+    // 
+    // tree copying
+    //
+    var cloneFunctionNoTypes = RiverTrail.Helper.cloneFunction(true);
+    var cloneFunction = RiverTrail.Helper.cloneFunction(false);
+
+    //
+    // unique label generator
+    //
+    var labelGen = function () {
+        var cnt = 0;
+
+        return function () { return cnt++; };
+    }();
+
+    //
     //
     // Base prototype shared by all type structures
     //
     var Type = function (kind) {
         this.kind = kind;
+        this.label = labelGen();
     };
     Type.OBJECT = "OBJECT";
     Type.LITERAL = "LITERAL";
@@ -91,12 +117,17 @@ RiverTrail.Typeinference = function () {
                 ((name === undefined) ||
                  (this.name === name)));
     };
+    Tp.isArrayishType = function () { // checks whether the type is an array like type
+        return this.isObjectType("Array") || this.isObjectType("JSArray") || this.isObjectType("ParallelArray");
+    };
     Tp.isBottomType = function () {
         return (this.kind === Type.BOTTOM);
     };
     Tp.registerFlow = function (from) {
-        (this.flowFrom || (this.flowFrom = [])).push(from);
         (from.flowTo || (from.flowTo = [])).push(this);
+    };
+    Tp.registerParamFlow = function (param) {
+        (this.flowTo || (this.flowTo = [])).push(param);
     };
     Tp.getOpenCLShape = function () {
         return []; // everything is a scalar unless defined otherwise
@@ -106,7 +137,16 @@ RiverTrail.Typeinference = function () {
     };
     Tp.getOpenCLAddressSpace = function () {
         return "";
-    }
+    };
+    Tp.hasAddressSpace = function () {
+        return (this.getAddressSpace() !== undefined);
+    };
+    Tp.getAddressSpace = function () {
+        return undefined;
+    };
+    Tp.setAddressSpace = function (val) {
+        return;
+    };
 
     //
     // literal type for all literals
@@ -126,6 +166,7 @@ RiverTrail.Typeinference = function () {
             default:
                 reportBug("unknown type for literal " + type);
         }
+        this.label = labelGen();
     };
     TLiteral.NUMBER = "NUMBER";
     TLiteral.STRING = "STRING";
@@ -137,10 +178,15 @@ RiverTrail.Typeinference = function () {
         return (this.constructor.prototype.equals.call(this, other) &&
                 (this.type === other.type));
     };
-    TLp.clone = function () {
-        var result = new TLiteral(this.type);
+    TLp.clone = function (lut) {
+        var result;
+        if (lut && (result = lut[this.label])) {
+           return result;
+        }
+        result = new TLiteral(this.type);
         result.OpenCLType = this.OpenCLType;
 
+        lut && (lut[this.label] = result);
         return result;
     };
     TLp.getOpenCLSize = function getOpenCLSize() {
@@ -175,6 +221,7 @@ RiverTrail.Typeinference = function () {
     var TFunction = function (parameters, result) {
         this.parameters = parameters;
         this.result = result;
+        this.label = labelGen();
     };
 
     var TFp = TFunction.prototype = new Type(Type.FUNCTION);
@@ -192,8 +239,16 @@ RiverTrail.Typeinference = function () {
                 (this.parameters.length === other.parameters.length) &&
                 this.parameters.every( function (oneP, index) { return oneP.equals(other.parameters[index]);}));
     };
-    TFp.clone = function () {
-        var result = new TFunction(this.parameters, this.result);
+    TFp.clone = function (lut) {
+        var result;
+        if (lut && (result = lut[this.label])) {
+            return result;
+        }
+        result = new TFunction(this.parameters, this.result);
+        lut && (lut[this.label] = result);
+
+        result.parameters = result.parameters.map(function (v) { return v.clone(lut); });
+        result.result = result.result.clone(lut);
 
         return result;
     };
@@ -206,8 +261,10 @@ RiverTrail.Typeinference = function () {
         this.name = name;
         this.properties = {};
         this.properties.__proto__ = null;
+        this.label = labelGen();
     };
     TObject.ARRAY = "Array";
+    TObject.JSARRAY = "JSArray";
     TObject.PARALLELARRAY = "ParallelArray";
     TObject.makeType = function (name, val) {
         return this.prototype.registry[name].makeType(val);
@@ -250,10 +307,17 @@ RiverTrail.Typeinference = function () {
                 (this.name === other.name) &&
                 (this.registry[this.name].equals.call(this, other)));
     };
-    TOp.clone = function () {
-        var result = new TObject(this.name);
+    TOp.clone = function (lut) {
+        var result;
+        if (lut && (result = lut[this.label])) {
+            return result;
+        }
+        result = new TObject(this.name);
+
+        lut && (lut[this.label] = result);
+
         if (this.properties.elements) {
-            result.properties.elements = this.properties.elements.clone();
+            result.properties.elements = this.properties.elements.clone(lut);
         }
         result.properties.shape = this.properties.shape;
         result.OpenCLType = this.OpenCLType;
@@ -276,26 +340,36 @@ RiverTrail.Typeinference = function () {
     TOp.getOpenCLAddressSpace = function () {
         return this.properties.addressSpace || "";
     }
+    TOp.getAddressSpace = function () {
+        return this.properties.addressSpace;
+    };
+    TOp.setAddressSpace = function (val) {
+        if (this.registry[this.name].setAddressSpace) {
+            return this.registry[this.name].setAddressSpace.call(this, val);
+        } else {
+            this.properties.adressSpace = val;
+        }
+    }
 
     //
     // Bottom type for error states
     //
-    var TBottom = function () { };
+    var TBottom = function () { 
+        this.label = labelGen();
+    };
     var TBp = TBottom.prototype = new Type(Type.BOTTOM);
     TBp.equals = function (other) { return false; };
 
     // 
     // type environment AKA symbol table
     //
-    var TEnv = function (env, functionFrame, topLevel) {
+    var TEnv = function (env, functionFrame) {
         this.parent = env;
         this.bindings = {};
         this.bindings.__proto__ = null;
         this._accu = null;
         if (functionFrame) {
             this._functionResult = null;
-        }
-        if (topLevel) {
             this._roots = [];
         }
         this.openCLFloatType = env ? env.openCLFloatType : undefined;
@@ -317,7 +391,7 @@ RiverTrail.Typeinference = function () {
             name.forEach( this.bind);
         } else {
             if (!duplicates && this.bindings[name] !== undefined) {
-                reportBug("variable bound twice in single scope");
+                debug && console.log("variable bound twice in single scope: " + name);
             } else {
                 this.bindings[name] = {initialized : false, type : null};
             }
@@ -413,7 +487,27 @@ RiverTrail.Typeinference = function () {
         } else {
             return this.parent.addRoot(val);
         }
-    }
+    };
+    TEp.getRoots = function () {
+        if (this._roots) {
+            return this._roots;
+        } else {
+            return this.parent.getRoots();
+        }
+    };
+
+    TEp.emitDeclarations = function () {
+        s = "";
+        for (var name in this.bindings) {
+            var type = this.bindings[name].type;
+            // only declare variables that are actually used (and thus have a type) 
+            if (type) {
+                s = s + " " + type.getOpenCLAddressSpace() + " " + type.OpenCLType + " " + name + "; ";
+            } 
+        }
+        return s;
+    };
+
                     
 
 
@@ -451,7 +545,7 @@ RiverTrail.Typeinference = function () {
                 case "tan":
                     // number -> number functions
                     argtypes.length === 1 || reportError("too many arguments for Math." + name, ast);
-                    argtypes[0].isArithType() || reportError("argument to Math." + name + " is not a number", ast);
+                    argtypes[0].isArithType() || reportError("argument to Math." + name + " is not a number (found " + argTypes[0].toString() + ")", ast);
                     type = new TLiteral(TLiteral.NUMBER);
                     break;
 
@@ -459,8 +553,8 @@ RiverTrail.Typeinference = function () {
                 case "pow":
                     // number, number -> number functions
                     argtypes.length === 2 || reportError("too many arguments for Math." + name, ast);
-                    argtypes[0].isArithType() || reportError("first argument to Math." + name + " is not a number", ast);
-                    argtypes[1].isArithType() || reportError("second argument to Math." + name + " is not a number", ast);
+                    argtypes[0].isArithType() || reportError("first argument to Math." + name + " is not a number (found " + argTypes[0].toString() + ")", ast);
+                    argtypes[1].isArithType() || reportError("second argument to Math." + name + " is not a number (found " + argTypes[1].toString() + ")", ast);
                     type = new TLiteral(TLiteral.NUMBER);
                     break;
 
@@ -547,27 +641,23 @@ RiverTrail.Typeinference = function () {
             return type;
         },
         constructor : undefined,
-        constructors : [Array, Float64Array, Float32Array, Uint32Array, Int32Array, 
-                        Uint16Array, Int16Array, Uint8ClampedArray, Uint8Array, Int8Array],
+        constructors : [Float64Array, Float32Array, Uint32Array, Int32Array, 
+                        Uint16Array, Int16Array, Uint8ClampedArray, Uint8Array, Int8Array,
+                        RiverTrail.Helper.FlatArray],
         makeType : function (val) {
             var type;
             if (typeof(val) === "number") {
                 type = new TLiteral(TLiteral.NUMBER);
-            } else if (val instanceof Array) {
-                type = new TObject(TObject.ARRAY);
-                type.properties.shape = [val.length];
-                if (val.length > 0) {
-                    type.properties.elements = this.makeType(val[0]);
-                    for (var i = 1; i < val.length; i++) {
-                        var eType = this.makeType(val[i]);
-                        if (!type.properties.elements.equals(eType)) {
-                            reportError("inhomogeneous arrays not supported");
-                        }
-                    }
-                } else {
-                    reportError("empty arrays are not supported yet");
+            } else if (val instanceof RiverTrail.Helper.FlatArray) {
+                type = new TLiteral(TLiteral.NUMBER);
+                type.OpenCLType = RiverTrail.Helper.inferTypedArrayType(val.data);
+                for (var i = val.shape.length-1; i >= 0; i--) {
+                    var ntype = new TObject(TObject.ARRAY);
+                    ntype.properties.shape = [val.shape[i]];
+                    ntype.properties.elements = type;
+                    type = ntype;
+                    type.updateOpenCLType();
                 }
-                type.updateOpenCLType();
             } else if (RiverTrail.Helper.isTypedArray(val)) {
                 // This is cheating, as typed arrays do not have the same interface, really.
                 // However, we do not support map/reduce etc. anyway.
@@ -585,6 +675,9 @@ RiverTrail.Typeinference = function () {
             var elemType = this.properties.elements;
             if (elemType instanceof TLiteral) {
                 this.OpenCLType = this.properties.elements.OpenCLType + "*";
+            } else if( (elemType.properties.addressSpace === "__private") && (elemType.isObjectType("Array") || elemType.isObjectType("ParallelArray"))) {
+                // JS : Generate right type for nested local arrays (JS Arrays and ParallelArrays)
+                this.OpenCLType = elemType.OpenCLType + "*";
             } else if (elemType.isObjectType("Array") || elemType.isObjectType("ParallelArray")) {
                 this.OpenCLType = elemType.OpenCLType;
             } else {
@@ -601,7 +694,52 @@ RiverTrail.Typeinference = function () {
             return (this.properties.shape.length === other.properties.shape.length) &&
                    this.properties.shape.every( function (val, idx) { return val === other.properties.shape[idx]; }) &&
                    (this.properties.elements.equals(other.properties.elements));
+        },
+        setAddressSpace : function (val) {
+            this.properties.addressSpace = val;
+            this.properties.elements.setAddressSpace(val);
         }
+    };
+
+    TOp.registry["JSArray"] = {
+        methodCall : TOp.registry["Array"].methodCall,
+        propertySelection : TOp.registry["Array"].propertySelection,
+        constructor : Array,
+        makeType : function (val) {
+            var type;
+            if (typeof(val) === "number") {
+                type = new TLiteral(TLiteral.NUMBER);
+                type.OpenCLType = "double";
+            } else if (val instanceof Array) {
+                type = new TObject(TObject.JSARRAY);
+                type.properties.shape = [val.length];
+                if (val.length > 0) {
+                    type.properties.elements = this.makeType(val[0]);
+                    if (!lazyJSArrayCheck) {
+                        for (var i = 1; i < val.length; i++) {
+                            var eType = this.makeType(val[i]);
+                            if (!type.properties.elements.equals(eType)) {
+                                reportError("inhomogeneous arrays not supported");
+                            }
+                        }
+                    }
+                } else {
+                    reportError("empty arrays are not supported yet");
+                }
+                type.updateOpenCLType();
+            } else {
+                reportError("unsupported array contents encountered");
+            }
+            return type;
+        },
+        updateOpenCLType : function () {
+            /* this type is hardwired */
+            this.OpenCLType = "/* jsval */ double*";
+        },
+        getOpenCLShape : TOp.registry["Array"].getOpenCLShape,
+        getOpenCLSize : TOp.registry["Array"].getOpenCLSize,
+        equals : TOp.registry["Array"].equals,
+        setAddressSpace : TOp.registry["Array"].setAddressSpace
     };
 
     TOp.registry["ParallelArray"] = {
@@ -649,6 +787,10 @@ RiverTrail.Typeinference = function () {
                     }
                     // add flow information for dataflow graph
                     type.registerFlow(thisType);
+                    // tell the allocator that this result will share the memory of the source
+                    if (!type.isScalarType()) {
+                        type.properties.isShared = true;
+                    }
                     break;
 
                 case "getShape":
@@ -659,7 +801,6 @@ RiverTrail.Typeinference = function () {
                     type.properties.addressSpace = "__private"
                     type.updateOpenCLType();
                     tEnv.addRoot(type);
-                    tEnv.accu = type;
                     break;
 
                 case "concat":
@@ -716,6 +857,10 @@ RiverTrail.Typeinference = function () {
             return (this.properties.shape.length === other.properties.shape.length) &&
                    this.properties.shape.every( function (val, idx) { return val === other.properties.shape[idx]; }) &&
                    (this.properties.elements.equals(other.properties.elements));
+        },
+        setAddressSpace : function (val) {
+            this.properties.addressSpace = val;
+            this.properties.elements.setAddressSpace(val);
         }
     };
 
@@ -731,10 +876,14 @@ RiverTrail.Typeinference = function () {
     FEp.lookup = function (name) {
         return (this.bindings[name] || (this.parent && this.parent.lookup(name)) || undefined);
     };
-    FEp.add = function (f, name) {
-        var fname = name || f.name || reportBug("unnamed functions cannot be added to environment");
-        if (this.bindings[fname] !== undefined) reportError("functions need to be uniquely defined within a scope", f);
-        this.bindings[fname] = f;
+    FEp.add = function (f, name, global) {
+        if (global && this.parent) {
+            this.parent.add(f, name, global);
+        } else {
+            var fname = name || f.name || reportBug("unnamed functions cannot be added to environment");
+            if (this.bindings[fname] !== undefined) reportError("functions need to be uniquely defined within a scope", f);
+            this.bindings[fname] = f;
+        }
     };
     FEp.toFunDecls = function () {
         var result = [];
@@ -756,8 +905,8 @@ RiverTrail.Typeinference = function () {
 
         var left, right;
 
-        if (ast === null) {
-            throw "Oppsie";
+        if ((ast === null) || (ast === undefined)) {
+            reportBug("malformed syntax tree", ast);
         }
 
         switch (ast.type) {
@@ -782,10 +931,9 @@ RiverTrail.Typeinference = function () {
                         tEnv.bind(f.name);
                         });
                 // add all locally declared functions to the function store. Other than the variable environment, this
-                // is about storing their code in case we find a call. Furhtermore, we have to memoize the functions visible
-                // from this function. We do this by glueing the function store to the function instance. 
+                // is about storing their code in case we find a call. 
                 fEnv = new FEnv(fEnv);
-                ast.funDecls.forEach(function (f) {fEnv.add(f); f.fEnv = fEnv});
+                ast.funDecls.forEach(function (f) {fEnv.add(f);});
                 ast.children.map(function (ast) { return drive(ast, tEnv, fEnv); });
                 tEnv.resetAccu();
                 // remember symbol table for later phases
@@ -808,6 +956,7 @@ RiverTrail.Typeinference = function () {
                 // this is not an applied occurence but the declaration, so we do not do anything here
                 break;
             case RETURN:
+                ast.value || reportError("functions need to return a value", ast);
                 ast.value = drive(ast.value, tEnv, fEnv);
                 tEnv.functionResult = tEnv.accu;
                 break;
@@ -839,7 +988,9 @@ RiverTrail.Typeinference = function () {
                 tEnv.merge(thenEnv);
                 break;
             case SEMICOLON:
-                ast.expression = drive(ast.expression, tEnv, fEnv);
+                if (ast.expression) {
+                    ast.expression = drive(ast.expression, tEnv, fEnv);
+                }
                 tEnv.resetAccu();
                 break;
             case VAR:
@@ -937,9 +1088,9 @@ RiverTrail.Typeinference = function () {
             case DIV:
             case MOD:    
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
-                tEnv.accu.isArithType() || reportError("first argument not a number", ast);
+                tEnv.accu.isArithType() || reportError("first argument not a number (found " + tEnv.accu.toString() + ")", ast);
                 ast.children[1] = drive(ast.children[1], tEnv, fEnv);
-                tEnv.accu.isArithType() || reportError("second argument not a number", ast);
+                tEnv.accu.isArithType() || reportError("second argument not a number (found " + tEnv.accu.toString() + ")", ast);
                 // result always is a number
                 tEnv.accu = new TLiteral(TLiteral.NUMBER);
                 break;
@@ -949,10 +1100,10 @@ RiverTrail.Typeinference = function () {
             case AND:
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
                 // XXX what do we allow as legal argument types to OR and AND? For now, numbers should do.
-                tEnv.accu.isArithType() || reportError("first argument not a number", ast);
+                tEnv.accu.isArithType() || reportError("first argument not a number (found " + tEnv.accu.toString() + ")", ast);
                 ast.children[1] = drive(ast.children[1], tEnv, fEnv);
                 // XXX same here
-                tEnv.accu.isArithType() || reportError("second argument not a number", ast);
+                tEnv.accu.isArithType() || reportError("second argument not a number (found " + tEnv.accu.toString() + ")", ast);
                 // result always is a bool
                 tEnv.accu = new TLiteral( TLiteral.BOOL);
                 break;
@@ -969,7 +1120,7 @@ RiverTrail.Typeinference = function () {
             case INCREMENT:
             case DECREMENT:
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
-                tEnv.accu.isArithType() || reportError("argument not a number", ast);
+                tEnv.accu.isArithType() || reportError("argument not a number (found " + tEnv.accu.toString() + ")", ast);
                 if (ast.type === NOT) {
                     // result is bool
                     tEnv.accu = new TLiteral(TLiteral.BOOL);
@@ -1006,9 +1157,9 @@ RiverTrail.Typeinference = function () {
             // array operations
             case INDEX:
                 ast.children[1] = drive(ast.children[1], tEnv, fEnv);
-                tEnv.accu.isArithType() || reportError("index not a number", ast);
+                tEnv.accu.isArithType() || reportError("index not a number (found " + tEnv.accu.toString() + ")", ast);
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
-                if (tEnv.accu.isObjectType("Array")) {
+                if (tEnv.accu.isObjectType("Array") || tEnv.accu.isObjectType("JSArray")) {
                     left = tEnv.accu.properties.elements.clone();
                     left.registerFlow(tEnv.accu);
                     tEnv.accu = left;
@@ -1020,14 +1171,15 @@ RiverTrail.Typeinference = function () {
                     } else {
                         // result is a ParallelArray again
                         left = new TObject(TObject.PARALLELARRAY);
-                        left.properties.shape = tEnv.accu.properties.shape.slice(idxLen);
+                        left.properties.shape = tEnv.accu.properties.shape.slice(1);
                         left.properties.addressSpace = tEnv.accu.properties.addressSpace;
                         left.properties.elements = tEnv.accu.properties.elements.clone();
                         left.updateOpenCLType();
+                        left.registerFlow(tEnv.accu);
                     }
                     tEnv.accu = left;
                 } else {
-                    reportError("Index operator applied to non array value", ast);
+                    reportError("Index operator applied to non array value. Type found: " + tEnv.accu.toString(), ast);
                 }
                 break;
 
@@ -1037,13 +1189,20 @@ RiverTrail.Typeinference = function () {
                     ast.children[idx] = drive(ast.children[idx], tEnv, fEnv);
                     left.push(tEnv.accu);
                 }
+                (left.length > 0) || reportError("empty arrays are not supported", ast);
                 left.reduce(function(a,b) { a.equals(b) || reportError("inhomogeneous element types in array initialiser", ast); return a;});
                 tEnv.accu = new TObject("Array");
                 tEnv.accu.properties.elements = left[0].clone();
                 tEnv.accu.properties.shape = [ast.children.length];
-                tEnv.accu.properties.addressSpace = "__private";
                 tEnv.accu.updateOpenCLType();
                 tEnv.addRoot(tEnv.accu);
+                // Store flow information for local array. If the elements are scalars, there is no flow information, so this is save.
+                // If the elements are arrays themselves, their address space will flow to the local array. As local arrays essentially are
+                // arrays of pointers to the elements, they can point to the global address space, although they are local. Also, the n:1
+                // flow will automatically demote mixed arrays to the private address space.
+                // left.forEach(function (v) { tEnv.accu.registerFlow(v); });
+                // this needs a more sophisticated type representation, so we leave it at local for now.
+                tEnv.accu.setAddressSpace("__private");
                 break;
 
             // function application
@@ -1061,26 +1220,25 @@ RiverTrail.Typeinference = function () {
                     case IDENTIFIER: // function call
                         // grab argument types
                         ast.children[1] = drive(ast.children[1], tEnv, fEnv);
-                        // we clone the argument types here to ensure that later type
-                        // upgrades do not propagate to function signatures!
-                        var argT = tEnv.accu.map(function (t) { return t.clone();});
+                        var argT = tEnv.accu;
                         tEnv.resetAccu();
                         // grab function
-                        var fun = fEnv.lookup(ast.children[0].value);
+                        var fname = ast.children[0].value;
+                        var fun = fEnv.lookup(fname);
                         if (!fun) {
                            if (allowGlobalFuns) {
                                // so this is not a local function. first make sure it is not a local variable
-                               !tEnv.lookup(ast.children[0].value) || reportError("not a function `" + ast.children[0].value + "`", ast);
+                               !tEnv.lookup(fname) || reportError("not a function `" + fname + "`", ast);
                                // CHEAT: we would have to inspect the current functions closure here but we cannot. So we just
                                //        take whatever the name is bound to in the current scope. 
                                //        This should at least be the global scope, really...
-                               var obj = eval(ast.children[0].value) || reportError("unknown function `" + ast.children[0].value + "`", ast);
-                               (typeof(obj) === 'function') || reportError("not a function `" + ast.children[0].value + "`", ast);
+                               var obj = eval(fname) || reportError("unknown function `" + fname + "`", ast);
+                               (typeof(obj) === 'function') || reportError("not a function `" + fname + "`", ast);
                                fun = RiverTrail.Helper.parseFunction(obj.toString());
                                // if we get here, we can just add the function to the function environment for future use
-                               fEnv.add(fun, ast.children[0].value);
+                               fEnv.add(fun, ast.children[0].value, true);
                            } else {
-                               reportError("unknown function `" + ast.children[0].value + "`", ast);
+                               reportError("unknown function `" + fname + "`", ast);
                            }
                         }
                         var resType = undefined;
@@ -1090,38 +1248,55 @@ RiverTrail.Typeinference = function () {
                             var found;
                             for (var cnt = 0; cnt < fun.specStore.length; cnt++) {
                                 if (argT.every(function(t, idx) { return t.equals(fun.specStore[cnt].typeInfo.parameters[idx]);})) {
-                                    found = fun.specStore[idx].fun;
+                                    found = fun.specStore[cnt];
                                     break;
                                 }
                             }
-                            if (found) {
+                            if (true && found) {
                                 resType = found.typeInfo.result;
                                 fun = found;
                             } else {
                                 // specialize
-                                fun = RiverTrail.Helper.cloneAST(fun);
+                                fun = cloneFunctionNoTypes(fun);
                             }
                         } 
                         
                         if (!resType) {
                             // create a new function frame
                             var innerTEnv = new TEnv(tEnv, true);
+                            // put this call on the stack for tracing
+                            stackTrace.push({ast: ast, fun: fun});
                             // add parameter / value type mapping
                             fun.params.length === argT.length || reportError("number of parameters and arguments in call does not match", ast);
-                            fun.params.forEach(function(arg, idx) { innerTEnv.bind(arg); innerTEnv.update(arg, argT[idx]); });
+                            // we clone the argument types here to ensure that later type
+                            // upgrades do not propagate to function signatures!
+                            fun.params.forEach(function(arg, idx) { innerTEnv.bind(arg); innerTEnv.update(arg, argT[idx].clone()); });
                             // go derive
                             fun.body = drive(fun.body, innerTEnv, fEnv);
-                            fun.typeInfo = new TFunction(argT, innerTEnv.functionResult);
                             // initialize specialisation store
                             if (rootFun.specStore === undefined) {
                                 rootFun.specStore = [];
                             }
                             rootFun.specStore.push(fun);
-                            debug && console.log(fun.name + " has type " + fun.typeInfo.toString());
                             resType = innerTEnv.functionResult;
+                            // drop call from tracing stack
+                            stackTrace.pop();
+                            // create a new flow frame around this function
+                            var innerArgT = fun.params.map(function (v) { return innerTEnv.lookup(v).type; });
+                            innerArgT.forEach(function (v) { innerTEnv.addRoot(v); });
+                            fun.flowFrame = new FFunction(innerArgT, resType, fun);
+                            fun.typeInfo = new TFunction(innerArgT, resType);
+                            fun.flowRoots = innerTEnv.getRoots();
+                            debug && console.log(fun.name + " has type " + fun.typeInfo.toString());
                         }
-                        tEnv.accu = resType;
-                        ast.children[0].value = fun.name;
+                        // tie the arguments to the function call
+                        ast.callFrame = new FCall(argT, fun.flowFrame, resType.clone(), ast);
+                        argT.forEach(function(arg, idx) {arg.registerParamFlow(new FParam(idx, ast.callFrame))});
+                        // remember how often this instance is used
+                        fun.flowFrame.uses++;
+                        // store the name of the instance
+                        ast.children[0].dispatch = fun.dispatch;
+                        tEnv.accu = ast.callFrame.result;
                         break;
 
                     default:
@@ -1134,7 +1309,9 @@ RiverTrail.Typeinference = function () {
                 left = [];
                 for (var idx in ast.children) {
                     ast.children[idx] = drive(ast.children[idx], tEnv, fEnv);
-                    left.push(tEnv.accu.clone());
+                    var inner = tEnv.accu.clone();
+                    inner.registerFlow(tEnv.accu);
+                    left.push(inner);
                 }
                 tEnv.accu = left;
                 break;
@@ -1267,7 +1444,7 @@ RiverTrail.Typeinference = function () {
             case "object":
                 var name = TObject.deriveObjectType(val) || reportError("unsupported object as argument encountered");
                 var type = TObject.makeType(name, val);
-                type.properties.addressSpace = "__global";
+                type.setAddressSpace("__global");
                 break;
             default:
                 reportError("unsupported argument kind encountered");
@@ -1276,45 +1453,234 @@ RiverTrail.Typeinference = function () {
         return type;
     }
 
-    function flow(roots, flowInit, flowPass, flowJoin) {
-        var workset = roots.map(function (val) { 
-                !val._flow || reportBug ("leftover flow information!");
-                val._flow = flowInit(val);
-                debug && console.log("FLOW: adding root " + val.toString() + " with _flow " + val._flow);
+    // 
+    // data flow graph for address space forwarding
+    //
+    // The graph is double linked, directed. It consits of three kinds of nodes:
+    //
+    // Type objects: these are data objects in the DFG.
+    // FFunction objects: these keep the ins and outs of the DFG of a function in one place.
+    // FCall objects: encode a call site
+    // FParam objects: these are pointers into a FFunction object, encoding arguments that flow in.
+    //
+    var FlowNode = function () {
+        return this;
+    };
+    var FFunction = function (params, result, root, ast) {
+        this.params = params;
+        this.result = result;
+        this.root = root;
+        this.ast = ast || root;
+        this.uses = 0;
+        this.label = labelGen();
+    };
+    FFunction.prototype = new FlowNode();
+    var FCall = function (params, frame, result, ast) {
+        this.params = params;
+        this.frame = frame;
+        this.result = result;
+        this.ast = ast;
+        this.label = labelGen();
+    };
+    FCall.prototype = new FlowNode();
+    var FParam = function (number, call) {
+        this.number = number;
+        this.call = call;
+        this.label = labelGen();
+    };
+    var FPp = FParam.prototype = new FlowNode();
+    FPp.getTarget = function () {
+        return this.call.frame.params[this.number];
+    };
+    FPp.getFrame = function () {
+        return this.call.frame;
+    };
+    FPp.redispatch = function (frame) {
+        this.call.frame.uses--;
+        this.call.frame = frame;
+        this.call.frame.uses++;
+        this.call.ast.children[0].dispatch = this.call.frame.ast.dispatch;
+    };
+    FPp.getCall = function () {
+        return this.call;
+    };
+
+    function resetAddressSpaces(roots) {
+        var seen = [];
+        var workset = roots.map(function (val) {
+                !val._reset || reportBug ("leftover reset flow information!");
+                val._reset = true;
+                debug && console.log("RESET: adding root " + val.toString());
                 return val;
             });
-                   
         while (workset.length > 0) {
             var current = workset.pop();
-            debug && console.log("FLOW: processing " + current.toString() + " with _flow " + current._flow);
-            var flowInfo = current._flow;
-            delete current._flow;
-            current._flowVisited = true;
-            if (current.flowTo !== undefined) {
-                current.flowTo.forEach(function (val) {
-                    var flowIn = (val._flow) ? flowJoin(flowInfo, val._flow) : flowInfo;
-                    var flowOut = flowPass(val, flowIn);
-                    if (flowOut || !val._flowVisited) {
-                        if (!val._flow) {
-                            workset.push(val);
-                            debug && console.log("FLOW: enqueued " + val.toString() + " with flowOut " + flowOut);
-                        }
-                        val._flow = flowOut;
-                    }});
+            seen.push(current);
+            if (current.flowTo) {
+                current.flowTo.forEach( function (v) {
+                    if (!v._reset) {
+                        v._reset = true;
+                        v.setAddressSpace && v.setAddressSpace(undefined);
+                        workset.push(v);
+                    }
+                });
+            } else if (current instanceof FParam) {
+                if (!current.call._reset) {
+                    current.call._reset = true;
+                    workset.push(current.call);
+                }
+            } else if (current instanceof FCall) {
+                if (!current.result._reset) {
+                    current.result._reset = true;
+                    workset.push(current.result);
+                }
             }
         }
-        roots.forEach(function erase(x) {
-            if (x._flowVisited) {
-                delete x._flowVisited;
-                x.flowTo !== undefined && x.flowTo.forEach(erase);
+        seen.forEach( function (v) { delete v._reset; });
+    };
+
+    function propagateAddressSpaces(roots) {
+        var workset = roots.map(function (val) { 
+                !val._flow || reportBug ("leftover flow information!");
+                val._flow = true;
+                debug && console.log("FLOW: adding root " + val.toString());
+                return val;
+            });
+        var mergeFlow = function (val, currentAS) {
+            if (!val._flowVisited && !val._flow) {
+                // every node is visited once no matter what
+                workset.push(val);
+                val._flow = true;
             }
-        });
+            if (!val.hasAddressSpace()) {
+                val.setAddressSpace(currentAS);
+                if (!val._flow) {
+                    workset.push(val);
+                    val._flow = true;
+                }
+                debug && console.log("propagated address space " + currentAS);
+            } else if (val.getAddressSpace() !== currentAS) {
+                if (val.getAddressSpace() !== "__private") {
+                    val.setAddressSpace("__private");
+                    if (!val._flow) {
+                        workset.push(val);
+                        val._flow = true;
+                    }
+                    debug && console.log("privatized address space due to conflict");
+                }
+            } else {
+                debug && console.log("address space remains " + val.properties.addressSpace);
+            }
+        };
+
+        while (workset.length > 0) {
+            var current = workset.pop();
+            delete current._flow;
+            current._flowVisited = true;
+            var currentAS = current.getAddressSpace();
+            debug && console.log("FLOW: processing " + current.toString() + " with addressspace " + currentAS);
+            if (current.flowTo !== undefined) {
+                current.flowTo.forEach(function (val) {
+                    if (val instanceof FParam) {
+                        // we have a function call, which might need specialisation
+                        var target = val.getTarget();
+                        var frame = val.getFrame();
+                        debug && console.log("inspecting call " + RiverTrail.Helper.wrappedPP(val.getCall().ast) + " currently at " + frame.ast.dispatch);
+                        debug && console.log("signature is " + frame.params.reduce(function (p,v) { return p + " " + v.getAddressSpace(); }, "") + ", propagating " + val.number + " as " + currentAS);
+                        // we do not propagate undefined address spaces (like scalar arguments)
+                        if ((currentAS !== undefined) && (!target.hasAddressSpace() || (target.getAddressSpace() !== currentAS))) {
+                            // first, we try to find a matching specialization
+                            var specs = frame.root.adrSpecStore;
+                            var match = undefined;
+                            if (specs) {
+                                specs.some(function (v) { 
+                                        if (v.typeInfo.parameters.every(function (v,idx) {
+                                                if (idx === val.number) {
+                                                    // current arg
+                                                    return (v.getAddressSpace() === currentAS);
+                                                } else {
+                                                    return (v.getAddressSpace() === frame.params[idx].getAddressSpace());
+                                                }
+                                            })) {
+                                            match = v;
+                                            return true;
+                                        } else {
+                                            return false;
+                                        }
+                                    });
+                            }
+                            if (match) {
+                                // redispatch things
+                                debug && console.log("redispatching call " + RiverTrail.Helper.wrappedPP(val.getCall().ast) + " to " + match.dispatch);
+                                val.redispatch(match.flowFrame);
+                                target = val.getTarget();
+                                frame = val.getFrame();
+                            } else {
+                                // we need to create a new version
+                                if (frame.uses !== 1) {
+                                    // we share this call site, so create a new specialisation
+                                    var newfun = cloneFunction(frame.ast);
+                                    debug && console.log("specializing call " + RiverTrail.Helper.wrappedPP(val.getCall().ast) + " to " + newfun.dispatch);
+                                    // store this specialisation
+                                    if (!frame.root.adrSpecStore) {
+                                        // setup store for specialisations
+                                        frame.root.adrSpecStore = [frame.root];
+                                    }
+                                    frame.root.adrSpecStore.push(newfun);
+                                    val.redispatch(newfun.flowFrame);
+                                    // update local state
+                                    target = val.getTarget();
+                                    frame = val.getFrame();
+                                } else {
+                                    debug && console.log("re-specializing call " + RiverTrail.Helper.wrappedPP(val.getCall().ast) + " instance " + frame.ast.dispatch);
+                                }
+                                // propagate new information into function
+                                target.setAddressSpace(currentAS);
+                                frame._flowVisited = true;
+                                debug && console.log("looking into function " + frame.ast.dispatch);
+                                debug && console.log("signature is " + frame.params.reduce(function (p,v) { return p + " " + v.getAddressSpace(); }, ""));
+                                resetAddressSpaces(frame.ast.flowRoots);
+                                propagateAddressSpaces(frame.ast.flowRoots);
+                                debug && console.log("done with function " + frame.ast.dispatch);
+                            }
+                        } else if (!frame._flowVisited) {
+                            // we have to look at each function at least once
+                            debug && console.log("looking into function " + frame.ast.dispatch);
+                            frame._flowVisited = true;
+                            propagateAddressSpaces(frame.ast.flowRoots);
+                            debug && console.log("done with function " + frame.ast.dispatch);
+                        }
+                        // apply the new result address space to the return node
+                        if (frame.result.hasAddressSpace()) {
+                            mergeFlow(val.getCall().result, frame.result.getAddressSpace());
+                        }
+                        debug && console.log("signature of " + RiverTrail.Helper.wrappedPP(val.getCall().ast) + " now is " + frame.params.reduce(function (p,v) { return p + " " + v.getAddressSpace(); }, ""));
+                    } else {
+                        // merge flow information
+                        mergeFlow(val, currentAS);
+                    }
+                });
+            }
+        }
+    }
+
+    function insertSpecialisations(ast, where) {
+        (ast.type === FUNCTION) || reportBug("unexpected node found");
+        if (ast.adrSpecStore) {
+            where || reportBug("fun specs found but no target to insert into");
+            ast.adrSpecStore.forEach(function (v,idx) { if ((idx>0) && (v.flowFrame.uses > 0)) { where.push(v); } });
+        }
+        ast.body.funDecls.forEach(function (v) {insertSpecialisations(v, ast.body.funDecls);});
     }
 
     function analyze(ast, pa, construct, rank, extraArgs, lowPrecision) {
-        var tEnv = new TEnv(rootEnvironment, true, true); // create a new top-level function frame
+        var tEnv = new TEnv(rootEnvironment, true); // create a new top-level function frame
         var params = ast.params;
         var argT = [];
+
+        // clear away old stack traces
+        (stackTrace.length === 0) || (stackTrace = []);
+
         // set default precision for numbers
         openCLUseLowPrecision = (lowPrecision === true);
         tEnv.openCLFloatType = (openCLUseLowPrecision ? "float" : "double");
@@ -1380,6 +1746,9 @@ RiverTrail.Typeinference = function () {
             argT.push(elemT);
         }
 
+        // ensure we have enough arguments
+        params.length === extraArgs.length || reportError("number of arguments does not match number of parameters: " + extraArgs.length + " vs. " + params.length);
+
         // create type info for all arguments
         params.forEach(function (name) { tEnv.bind(name); });
         params.forEach(function (name, idx) { var type = typeOracle(extraArgs[idx]); 
@@ -1387,45 +1756,14 @@ RiverTrail.Typeinference = function () {
                                               type.isObjectType() && tEnv.addRoot(type);
                                               argT.push(type);});
 
-        var fEnv = new FEnv();
-
-        ast.body = drive(ast.body, tEnv, fEnv);
+        ast.body = drive(ast.body, tEnv, undefined);
 
         var type = new TFunction(argT, tEnv.functionResult);
         ast.typeInfo = type;
 
         // propagate address space qualifiers
-        flow(tEnv._roots, 
-             function (val) {
-                 return val.properties.addressSpace;
-             },
-             function (val, addressspace) {
-                debug && console.log("flowing address space " + addressspace);
-                 if (val.isObjectType()) { // address space qualifiers are only 
-                                           // a property of object types (as they 
-                                           // are pointers in OpenCL)
-                    if (!val.properties.addressSpace) {
-                        val.properties.addressSpace = addressspace;
-                        debug && console.log("propagated address space " + addressspace);
-                        return addressspace;
-                    } else if (val.properties.addressSpace !== addressspace) {
-                        val.properties.addressSpace = "__private";
-                        debug && console.log("privatized address space due to conflict");
-                        return "__private";
-                    } else {
-                        debug && console.log("address space remains " + val.properties.addressSpace);
-                        return false;
-                    }
-                }
-                return false;
-             },
-             function (a,b) {
-                 if (a===b) {
-                     return a;
-                 } else {
-                     return "__private";
-                 }
-             });
+        propagateAddressSpaces(tEnv.getRoots());
+        insertSpecialisations(ast);
                     
         debug && console.log("Overall function has type (first arg. is this) " + type.toString());
         debug && console.log(RiverTrail.dotviz.plotTypes(tEnv._roots));
@@ -1439,6 +1777,10 @@ RiverTrail.Typeinference = function () {
         "TLiteral" : TLiteral,
         "TObject" : TObject,
         "TFunction" : TFunction,
+        "FlowNode" : FlowNode,
+        "FFunction" : FFunction,
+        "FParam" : FParam,
+        "FCall" : FCall,
         "typeOracle" : typeOracle
     };
 }();

@@ -316,16 +316,28 @@ var ParallelArray = function () {
 
     // Flatten a multidimensional array to a single dimension.
     var createFlatArray = function createFlatArray (arr) {
-        var localShape = arrShape(arr);
-        var resultLength = shapeToLength(localShape);
-        var flatArray = new Array(resultLength);
+        // we build localShape and localRank as we go
+        var localShape = [];
+        var localRank = undefined;
+        var flatArray = new Array();
         var flatIndex = 0;
 
         var flattenFlatParallelArray = function flattenFlatParallelArray (level, pa) {
             // We know we have a parallel array, we know it is flat.
             // Flat arrays are flat all the way down.
-            if (!localShape.slice(level).every(function (v, idx) {return v === pa.shape[idx];})) {
-                throw "wrong shape of nested PA " + localShape.slice(level) + " and " + pa.shape;
+            // update/check localShape and localRank
+            pa.shape.forEach( function (v, idx) { 
+                    if (localShape[level+idx] === undefined) {
+                        localShape[level+idx] = v;
+                    } else if (localShape[level+idx] !== v) {
+                        //throw "wrong shape of nested PA at " + idx + " local " + v + "/global " + localShape[level+idx];
+                        throw "shape mismatch: level " + (level+idx) + " expected " + localShape[level+idx] + " found " + v;
+                    }
+                });
+            if (localRank === undefined) {
+                localRank = level + pa.shape.length;
+            } else if (localRank !== level + pa.shape.length) {
+                throw "dimensionality mismatch; expected " + localRank + " found " + (level + pa.shape.length);
             }
             var i;       
             var size = shapeToLength(pa.shape);
@@ -344,30 +356,32 @@ var ParallelArray = function () {
                     return;
                 }
             }
-            if (localShape[level] != arr.length) {
+            if (localShape[level] === undefined) {
+                localShape[level] = arr.length;
+            } else if (localShape[level] !== arr.length) {
                 // We do not have a regular array.
-                console.log("createFlatArray: array is not regular - shape[level] != arr.length");
-                console.log(" shape: ", localShape, " level: ", level, " arr.length: ". arr.length);
-                throw ("Array is not regular.");
+                throw "shape mismatch: level " + (level) + " expected " + localShape[level] + " found " + arr.length;
             }
             for (thisLevelIndex=0;thisLevelIndex<arr.length;thisLevelIndex++) {
                 if (arr[thisLevelIndex] instanceof Array) { // need to add regular array check...
                     flattenInner(level+1, arr[thisLevelIndex]);
                 } else if (arr[thisLevelIndex] instanceof ParallelArray) {
-                
                     if (arr[thisLevelIndex].flat) {
                         // Flat arrays are flat all the way down.
                         flattenFlatParallelArray(level+1, arr[thisLevelIndex]);
                     } else {
-                        if (localShape.length > level) {
-                            throw "irregular array -- too few dimensions";
-                        }
                         flattenInner(level+1, arr[thisLevelIndex].get(i));
                     }
                 } else {
                     // it's not an array or ParallelArray so it is just an element.
                     flatArray[flatIndex] = arr[thisLevelIndex];
                     flatIndex++;
+                    // check for rank uniformity
+                    if (localRank === undefined) {
+                        localRank = level;
+                    } else if (localRank !== level) {
+                        throw "dimensionality mismatch; expected " + localRank + " found " + level;
+                    }
                 }
             }
         };  // flattenInner
@@ -375,12 +389,8 @@ var ParallelArray = function () {
             flattenInner(0, arr);
         } catch (err) {
             console.log("flattenArray:", err);
-            console.log("returning null instead of a vector.");
             return null;
         };
-        if (flatArray.length != resultLength) {
-            console.log ("bummer .. (flatArray.length (", flatArray.length, ") != resultLength(", resultLength, ")");
-        }
         return flatArray;
     };
 
@@ -871,7 +881,7 @@ var ParallelArray = function () {
         var paResult;
         var extraArgs; 
         var extraArgOffset = 2;
-        if (typeof(depth) === 'function') {
+        if ((typeof(depth) === 'function') || (depth instanceof low_precision.wrapper)) {
             f = depth;
             depth = 1;
             extraArgOffset = 1;
@@ -1920,7 +1930,7 @@ var ParallelArray = function () {
             result = createSimpleParallelArray.call(this, arguments[1], arguments[0]);
         } else if (useFF4Interface && (arguments[0] instanceof Components.interfaces.dpoIData)) {
             result = createOpenCLMemParallelArray.apply(this, arguments);
-        } else if (arguments[1] instanceof Function) {    
+        } else if (typeof(arguments[1]) === 'function') {    
             var extraArgs;
             if (arguments.length > 2) {
                 extraArgs = new Array(arguments.length -2); // skip the size vector and the function

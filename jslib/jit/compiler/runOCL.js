@@ -64,7 +64,7 @@ RiverTrail.compiler.runOCL = function () {
         var resSize;
         var kernelName = ast.name;
         if (!kernelName) {
-            throw new CompilerBug("Invalid ast: Function expected at top level");
+            throw new Error("Invalid ast: Function expected at top level");
         }
         if ((construct === "comprehension") || (construct === "comprehensionScalar")) {
             // comprehensions do not have a source, so we derive the required information
@@ -80,11 +80,10 @@ RiverTrail.compiler.runOCL = function () {
         resultElemType = RiverTrail.Helper.stripToBaseType(ast.typeInfo.result.OpenCLType);
 
         if (ast.typeInfo.result.properties) {
-            resShape = iterSpace.concat(ast.typeInfo.result.properties.shape);
+            resShape = iterSpace.concat(ast.typeInfo.result.getOpenCLShape());
         } else {
             resShape = iterSpace;
         }
-
         resSize = shapeToLength(resShape);
         // construct kernel arguments
         var jsObjectToKernelArg = function (args, object) {
@@ -104,15 +103,16 @@ RiverTrail.compiler.runOCL = function () {
                 } else {
                     // We have a regular array as data container. There is no point trying
                     // to convert it, as the constructor would already have tried.
-                    throw new CompilerError("Cannot transform regular array to OpenCL kernel arguments");
+                    throw new Error("Cannot transform regular array to OpenCL kernel arguments");
                 }
-                // Add the offset as an additional integer argument. We do this for 
-                // Parallel Array arguments, only! The kernel will have been created 
-                // accordingly.
-                // Use the Integer Object here.
-                if (!object._wasArray) {
-                    args.push(new RiverTrail.Helper.Integer(object.offset));
-                }
+                // Add the offset as an additional integer argument. Use the Integer Object here.
+                args.push(new RiverTrail.Helper.Integer(object.offset));
+            } else if (object instanceof RiverTrail.Helper.FlatArray) {
+                // these are based on a flat array, so we can just push the data over
+                args.push(RiverTrail.compiler.openCLContext.mapData(object.data));
+            } else if (object instanceof Array) {
+                // we have an ordinary JS array, which has passed the uniformity checks and thus can be mapped
+                args.push(RiverTrail.compiler.openCLContext.mapData(object));
             } else if (typeof (object) === "number") {
                 // Scalar numbers are passed directly, as doubles.
                 args.push(object);
@@ -128,7 +128,7 @@ RiverTrail.compiler.runOCL = function () {
                 // map the typed array
                 args.push(RiverTrail.compiler.openCLContext.mapData(object));
             } else {
-                throw new CompilerError("only typed arrays and scalars are currently supported as OpenCL kernel arguments");
+                throw new Error("only typed arrays and scalars are currently supported as OpenCL kernel arguments");
             }
             return args;
         }
@@ -148,10 +148,10 @@ RiverTrail.compiler.runOCL = function () {
             // first we ensure that the shape of what we compute is the shape of what is expected
             if (!equalsShape(resShape, paSource.updateInPlaceShape)) {
                 // throwing this will revert the outer scan to non-destructive mode
-                throw new CompilerAbort("shape mismatch during update in place!");
+                throw new Error("shape mismatch during update in place!");
             }
             if (++paSource.updateInPlaceUses !== 1) {
-                throw new CompilerAbort("preallocated memory used more than once!");
+                throw new Error("preallocated memory used more than once!");
             }
             if (!(paSource.updateInPlacePA.data instanceof Components.interfaces.dpoIData)) {
                 paSource.updateInPlacePA.data = RiverTrail.compiler.openCLContext.mapData(paSource.updateInPlacePA.data);
@@ -162,7 +162,7 @@ RiverTrail.compiler.runOCL = function () {
             // We allocate whatever the result type says. To ensure portability of 
             // the extension, we need a template typed array. So lets just create one!
             var template = RiverTrail.Helper.elementalTypeToConstructor(resultElemType);
-            if (template == undefined) throw new CompilerBug("cannot map inferred type to constructor");
+            if (template == undefined) throw new Error("cannot map inferred type to constructor");
             resultMemObj = RiverTrail.compiler.openCLContext.allocateData(new template(1), resSize);
             resultOffset = 0;
         }
@@ -221,7 +221,7 @@ RiverTrail.compiler.runOCL = function () {
                 } else if (arg instanceof Components.interfaces.dpoIData) {
                     kernel.setArgument(index, arg);
                 } else {
-                    throw new CompilerBug("unexpected kernel argument type!");
+                    throw new Error("unexpected kernel argument type!");
                 }
                 return kernel;
             } catch (e) {
