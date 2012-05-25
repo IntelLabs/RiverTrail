@@ -243,7 +243,7 @@ RiverTrail.compiler.runOCL = function () {
             }
             if (kernelFailure) {
                 // a more helpful error message would be nice. However, we don't know why it failed. A better exception model is asked for...
-                throw new Error("kernel execution failed, probably due to an array out of bounds access.");
+                throw new Error("kernel execution failed: " + RiverTrail.compiler.codeGen.getError(kernelFailure));
             }
         } else {
             alert("runOCL only deals with comprehensions, map and combine (so far).");

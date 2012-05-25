@@ -135,7 +135,7 @@ RiverTrail.compiler = (function () {
                         
         try {
             ast = parse(paSource, construct, rankOrShape, f.toString(), args, lowPrecision); // parse, no code gen
-            kernelString = RiverTrail.compiler.codeGen(ast, paSource, rankOrShape, construct); // Creates an OpenCL kernel function
+            kernelString = RiverTrail.compiler.codeGen.compile(ast, paSource, rankOrShape, construct); // Creates an OpenCL kernel function
         } catch (e) {
             RiverTrail.Helper.debugThrow(e);
         }
