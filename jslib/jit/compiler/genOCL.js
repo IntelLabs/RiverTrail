@@ -1378,7 +1378,7 @@ RiverTrail.compiler.codeGen = (function() {
                 s += oclStatements(ast.body);
                 break;
             case DO:
-                s += "do ("+oclStatements(ast.body)+")" + oclStatements(ast.body)+" while ("+oclExpression(ast.condition)+");";
+                s += "do " + oclStatements(ast.body)+" while ("+oclExpression(ast.condition)+");";
                 break;
             case IF:
                 s += "if ("+oclExpression(ast.condition)+") {";
