@@ -347,8 +347,9 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
   } else if (JSVAL_IS_OBJECT(source)) {
     // maybe it is a regular array. 
     //
-    // WARNING: We map the array here with a bogus size. All this works on CPU only
-    //          and only of the compiler knows what to do!
+    // WARNING: We map a pointer to the actual array here. All this works on CPU only
+    //          and only of the OpenCL compiler knows what to do! For the current Intel OpenCL SDK
+    //          this works but your milage may vary.
     const jsval *elems = UnsafeDenseArrayElements(cx, JSVAL_TO_OBJECT(source));
     if (elems != NULL) {
       data = new dpoCData( this);
@@ -356,13 +357,12 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
         DEBUG_LOG_STATUS("MapData", "Cannot create new dpoCData object");
         return NS_ERROR_OUT_OF_MEMORY;
       }
-      cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, 256, (void *) elems, &err_code);
+	  cl_mem memObj = clCreateBuffer(context, CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY, sizeof(double *), &elems, &err_code);
       if (err_code != CL_SUCCESS) {
         DEBUG_LOG_ERROR("MapData", err_code);
         return NS_ERROR_NOT_AVAILABLE;
       }
-      result = data->InitCData(cx, cmdQueue, memObj, 0 /* bogus type */, 256 /* bogus length */, 
-          sizeof(double) * 256 /* bogus byte length */, JSVAL_TO_OBJECT(source));
+      result = data->InitCData(cx, cmdQueue, memObj, 0 /* bogus type */, 1, sizeof(double *), JSVAL_TO_OBJECT(source));
 #ifndef DEBUG_OFF
     } else {
         DEBUG_LOG_STATUS("MapData", "No elements returned!");
@@ -456,7 +456,9 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, PRUint32 length, JSCon
 	nsresult result;
 	size_t bytePerElements;
 	nsCOMPtr<dpoCData> data;
+#ifdef PREALLOCATE_IN_JS_HEAP
 	jsval jsBuffer;
+#endif /* PREALLOCATE_IN_JS_HEAP */
 
 	if (!JS_EnterLocalRootScope(cx)) {
 		DEBUG_LOG_STATUS("AllocateData2", "Cannot root local scope");
@@ -488,7 +490,7 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, PRUint32 length, JSCon
 	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, 
                                                 JS_GetTypedArrayByteLength(jsArray), JS_GetTypedArrayData(jsArray), &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
-	JSObject *jsArray;
+	JSObject *jsArray = NULL;
 	cl_mem memObj = clCreateBuffer(context, CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
 #endif /* PREALLOCATE_IN_JS_HEAP */
 	if (err_code != CL_SUCCESS) {

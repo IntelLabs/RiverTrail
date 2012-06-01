@@ -50,9 +50,11 @@ if (RiverTrail === undefined) {
 RiverTrail.compiler.codeGen = (function() {
     const verboseDebug = false;
     const checkBounds = true;
+    const verboseErrors = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
     const tokens = RiverTrail.definitions.tokens;
+
 
     // Set constants in the local scope.
     eval(definitions.consts);
@@ -64,14 +66,28 @@ RiverTrail.compiler.codeGen = (function() {
 
     var findSelectionRoot = RiverTrail.Helper.findSelectionRoot;
 
+    // store to hold error messages
+    var errorMsgs = [];
+    
+    var newError = function newError(msg) {
+        if (verboseErrors) {
+            errorMsgs[errorMsgs.length] = "AT " + (calledScope.inCalledScope() || "<top level>") + ": " + msg;
+        }
+        return errorMsgs.length; // this is one after the index on purpose!
+    };
+
+    var getError = function getError(number) {
+        return errorMsgs[number-1] || "unknown error";
+    };
+
     // If you are working inside the top level of actual kernel function then scope is empty.
     // If you generating code for a called function then this will be true.
     var calledScope = function () {
         "use strict";
         // state is private.
         var state = false;
-        var enter = function enter() {
-            state = true;
+        var enter = function enter(name) {
+            state = name || true;
         };
         var exit = function exit(previous) {
             state = previous;
@@ -192,6 +208,9 @@ RiverTrail.compiler.codeGen = (function() {
             if (formalsTypes[i].isObjectType("ParallelArray")) {
                 //s = s + formalsNames[i-1] + " = &"+formalsNames[i-1]+"["+formalsNames[i-1]+"__offset];"; //offset
                 s = s + formalsNames[i] + " = &"+formalsNames[i]+"["+formalsNames[i]+"__offset];"; //offset
+            } else if (formalsTypes[i].isObjectType("JSArray")) {
+                // these are passed with one level of indirection, so we need to unwrap them here
+                s = s + formalsNames[i] + " = *((" + formalsTypes[i].getOpenCLAddressSpace() + " double **)" + formalsNames[i] + ");";
             }
         }
 
@@ -279,7 +298,7 @@ RiverTrail.compiler.codeGen = (function() {
             }
 
             var previousCalledScope = calledScope.inCalledScope();
-            calledScope.enter();
+            calledScope.enter(ast.name);
             // Need code here to deal with array values being returned.
             // NOTE: use dispatched function name here
             s = s + " " +ast.typeInfo.result.OpenCLType + " " + ast.dispatch;
@@ -309,7 +328,7 @@ RiverTrail.compiler.codeGen = (function() {
             var s = "";
 
             var previousCalledScope = calledScope.inCalledScope();
-            calledScope.enter();
+            calledScope.enter(ast.name);
             if (ast.value != "function") {
                 throw "expecting function found " + ast.value;
             }
@@ -336,7 +355,7 @@ RiverTrail.compiler.codeGen = (function() {
         // 
         // some helper functions used in compiled kernels are defined here
         //
-        var prelude = 
+        var prelude32 = 
             // a jsval on 32 bit platforms uses nun boxing
             //
             // http://evilpie.github.com/sayrer-fatval-backup/cache.aspx.htm
@@ -355,12 +374,12 @@ RiverTrail.compiler.codeGen = (function() {
             "            }" +
             "}" +
 
-            // Nested arrays essentially are chains of JSObjects, From the C shadow definition in
-            // jsfriendapi.h we know that the slots of an JSObject (which are the elements of an
-            // array in case of arrays) are the 9th pointer in the object. That leads to the magic
-            // offset of 8 below.
-            // The length of the array is stored in the private pointer, which is at offset 6. We
-            // check whether the length of what we selected corresponds to what we expected. This
+            // Nested arrays essentially are chains of JSObjects, From reverse engineering the object layout
+            // of Firefox 12, we know that the elements are stored in a pointer that is the 4th element
+            // of the JSObject structure.  This leads to the magic offset of 3 below.
+            // The length of the array is stored in the upper half of the 64 bit jsval preceeding the
+            // or elements of the array.
+            // We check whether the length of what we selected corresponds to what we expected. This
             // is required as we do not check for regularity when we pass the argument but only
             // when we access it.
             "__global double *__JS_array_sel_A(__global double *src, int idx, int exp_len, int *_FAIL) {" +
@@ -370,15 +389,60 @@ RiverTrail.compiler.codeGen = (function() {
             "            }" +
             "            unsigned int *asInt = (unsigned int *) &(src[idx]);" +
             "            double **asPtr = (double **) asInt[0];" +
-            "            unsigned int len = ((unsigned int*) asPtr)[6];" +
+            "            unsigned int len = ((unsigned int*) (asPtr[3]-2))[2];" +
             "            if (exp_len != len) {" +
-            "                *_FAIL = 42;" +
+            "                *_FAIL = " + newError("JavaScript native array argument was not homogeneous") + "; " +
             "                return (__global double *) 0;" +
             "            } else {" +
-            "                return (__global double *) asPtr[8];" +
+            "                return (__global double *) asPtr[3];" +
             "            }" +
-            "}"
+            "}";
        
+        var prelude64 =
+            // a jsval on 64 bit platforms uses pun boxing
+            //
+            // <reverse engineered from jsval.h>
+            //
+            // which means that if the value is a NaN double with 0x1FFF1 as the higher part, 
+            // the lower part is actually an unsigned 32 bit integer. That is what the below code
+            // checks. 
+            "double __JS_array_sel_S(__global double *src, int idx) {" +
+            "            if (!src) {" +
+            "                /* previous selection failed */" +
+            "                return 0;" +
+            "            } else {" +
+            "                unsigned long asLong = ((unsigned long *) src)[idx];" +
+            "                if (((unsigned int) (asLong >> 47)) == 0x1FFF1) return (double) ((unsigned int) asLong); else return src[idx];" +
+            "            }" +
+            "} /* end prelude */" +
+
+            // Nested arrays essentially are chains of JSObjects, From reverse engineering the object layout
+            // of Firefox 12, we know that the elements are stored in a pointer that is the 4th element
+            // of the JSObject structure.  This leads to the magic offset of 3 below.
+            // The length of the array is stored in the upper half of the 64 bit jsval preceeding the
+            // or elements of the array.
+            // We check whether the length of what we selected corresponds to what we expected. This
+            // is required as we do not check for regularity when we pass the argument but only
+            // when we access it.
+            "__global double *__JS_array_sel_A(__global double *src, int idx, int exp_len, bool *_FAIL) {" +
+            "            if (!src) {" +
+            "                /* previous selection failed */" +
+            "                return src;" +
+            "            }" +
+            "            unsigned long asLong = ((unsigned long *) src)[idx];" +
+            "            double **asPtr = (double **) (asLong & 0x00007FFFFFFFFFFFLL);" +
+            "            unsigned int len = ((unsigned int*) (asPtr[3]-2))[2];" +
+            "            if (exp_len != len) {" +
+            "                *_FAIL = " + newError("JavaScript native array argument was not homogeneous") + "; " +
+            "                return (__global double *) 0;" +
+            "            } else {" +
+            "                return (__global double *) asPtr[3];" +
+            "            }" +
+            "} /* end prelude */";
+
+        // I have not found a portable way to detect whether we are on a 64 or 32 bit platform. I default
+        // to 32 bit, as we only use direct argument passing on windows for now.
+        var prelude = prelude32;
 
         // boilerplate holds the various strings used for the signature of opneCL kernel function,
         // the declaration of some locals and the postfix (used by return). 
@@ -930,9 +994,9 @@ RiverTrail.compiler.codeGen = (function() {
     // This variable should be declared at the top-level of the
     // function.
     //
-    // As a side effect, the global variable _FAIL is set to 1
+    // As a side effect, the global variable _FAIL is set to > 0
     // if a bounds check failed.
-    function wrapIntoCheck(range, bound, expr) {
+    function wrapIntoCheck(range, bound, expr, ast) {
         var postfix = "";
         var result = "";
         var dynCheck = false;
@@ -947,7 +1011,7 @@ RiverTrail.compiler.codeGen = (function() {
                 ((range.lb === undefined) ||
                  (range.lb < 0))) {
             // emit lower bound check
-            result += "(_sel_idx_tmp < 0 ? (_FAIL = 2, 0) : ";
+            result += "(_sel_idx_tmp < 0 ? (_FAIL ? 0 : (_FAIL = " + newError("index " + expr + " smaller than zero in " + RiverTrail.Helper.wrappedPP(ast)) + ", 0)) : ";
             postfix = ")" + postfix;
             dynCheck = true;
         }
@@ -956,7 +1020,7 @@ RiverTrail.compiler.codeGen = (function() {
                 ((range.ub === undefined) ||
                  (range.ub >= bound))) {
             // emit upper bound check
-            result += "(_sel_idx_tmp >= " + bound + " ? (_FAIL = 3, 0) : ";
+            result += "(_sel_idx_tmp >= " + bound + " ? (_FAIL ? 0: (_FAIL = " + newError("index " + expr + " greater than upper bound " + bound + " in " + RiverTrail.Helper.wrappedPP(ast)) + ", 0)) : ";
             postfix = ")" + postfix;
             dynCheck = true;
         }
@@ -997,9 +1061,9 @@ RiverTrail.compiler.codeGen = (function() {
             rangeInfo = arrayOfIndices.rangeInfo;
             if (elemRank === 0) {
                 // scalar case 
-                s = s + "__JS_array_sel_S(" + oclExpression(source) + ", " + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ")";
+                s = s + "__JS_array_sel_S(" + oclExpression(source) + ", " + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices), ast) + ")";
             } else {
-                s = s + "__JS_array_sel_A(" + oclExpression(source) + ", " + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ", " + sourceShape[1] + ", &_FAIL)";
+                s = s + "__JS_array_sel_A(" + oclExpression(source) + ", " + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices), ast) + ", " + sourceShape[1] + ", &_FAIL)";
             }
         } else {
             // C style arrays
@@ -1028,10 +1092,10 @@ RiverTrail.compiler.codeGen = (function() {
                 // we have a single scalar index from an INDEX op
                 rangeInfo = arrayOfIndices.rangeInfo;
                 if(isParallelArray || isGlobal) {
-                    s = s + " + " + stride + " * ("+wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + ")";
+                    s = s + " + " + stride + " * ("+wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices), ast) + ")";
                 }
                 else {
-                    s = s + "[" + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices)) + "]";
+                    s = s + "[" + wrapIntoCheck(rangeInfo, sourceShape[0], oclExpression(arrayOfIndices), ast) + "]";
                 }
             } else {
                 // this is a get
@@ -1046,9 +1110,9 @@ RiverTrail.compiler.codeGen = (function() {
                 for (i = sourceRank - elemRank - 1; i >= 0; i--) { // Ususally only 2 or 3 dimensions so ignore complexity
                     s = s + " + " + stride + " * ("
                         if (dynamicSel) {
-                            s = s + wrapIntoCheck(rangeInfo.get(0).get(i), sourceShape[i], oclExpression(arrayOfIndices.children[0]) + "[" + i + "]") + ")";
+                            s = s + wrapIntoCheck(rangeInfo.get(0).get(i), sourceShape[i], oclExpression(arrayOfIndices.children[0], ast) + "[" + i + "]") + ")";
                         } else {
-                            s = s + wrapIntoCheck(rangeInfo.get(i), sourceShape[i], oclExpression(arrayOfIndices.children[i])) + ")";
+                            s = s + wrapIntoCheck(rangeInfo.get(i), sourceShape[i], oclExpression(arrayOfIndices.children[i]), ast) + ")";
                         }
                     stride = stride * sourceType.getOpenCLShape()[i];
                 }
@@ -1431,7 +1495,7 @@ RiverTrail.compiler.codeGen = (function() {
                 s += oclStatements(ast.body);
                 break;
             case DO:
-                s += "do ("+oclStatements(ast.body)+")" + oclStatements(ast.body)+" while ("+oclExpression(ast.condition)+");";
+                s += "do " + oclStatements(ast.body)+" while ("+oclExpression(ast.condition)+");";
                 break;
             case IF:
                 s += "if ("+oclExpression(ast.condition)+") {";
@@ -1789,6 +1853,5 @@ RiverTrail.compiler.codeGen = (function() {
     return s;
     }
 
-    return genKernel;
-
+    return {"compile" : genKernel, "getError" : getError};
 }());

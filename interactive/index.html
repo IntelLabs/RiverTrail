@@ -74,9 +74,9 @@ Or you can create the same array using a comprehension:<br/>
 <br/>
 Some more idioms to play with: <br/>
 <br />
-<i>increment: </i><b>var result = first.map(function f() {return this+1;})</b><br/>
+<i>increment: </i><b>var result = first.map(function f(val) {return val+1;})</b><br/>
 <i>add: </i><b>var result = first.combine(function f(idx,snd) {return this.get(idx)+snd.get(idx);}, second)</b><br/>
-<i>sum: </i><b>var result = first.reduce(function f(acc) {return this+acc;})</b><br/>
+<i>sum: </i><b>var result = first.reduce(function f(a, b) {return a + b;})</b><br/>
 <br/>
 Enjoy!<br/>
 <br/>
