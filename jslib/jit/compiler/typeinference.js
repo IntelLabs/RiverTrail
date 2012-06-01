@@ -1907,6 +1907,6 @@ RiverTrail.Typeinference = function () {
         "FFunction" : FFunction,
         "FParam" : FParam,
         "FCall" : FCall,
-        "typeOracle" : typeOracle,
+        "typeOracle" : typeOracle
     };
 }();

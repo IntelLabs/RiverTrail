@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = true;
+    const verboseDebug = false;
     const checkBounds = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -855,7 +855,6 @@ RiverTrail.compiler.codeGen = (function() {
                     var source = rhs;
                     var sourceType = source.typeInfo;
                     var sourceShape = sourceType.getOpenCLShape();
-                    //console.log(sourceShape);
                     s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                     var maxDepth = sourceShape.length;
                     var i; var idx; var indexString = ""; var post_parens = "";

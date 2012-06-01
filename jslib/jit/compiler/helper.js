@@ -283,13 +283,12 @@ RiverTrail.Helper = function () {
     };
 
     var compareObjectFields = function(f1, f2) {
-            if(!(f2.hasOwnProperty(idx) && f1[idx].equals(f2[idx]))) {
-                return false;
-            }
+        if((f2.hasOwnProperty(idx) && f1[idx].equals(f2[idx]))) {
+            return true;
         }
-        return true;
+        return false;
     };
-    
+
     // helper function that throws an exception and logs it if verboseDebug is on
     var debugThrow = function (e) {
         if (RiverTrail.compiler.verboseDebug) {
