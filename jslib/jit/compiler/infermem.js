@@ -304,7 +304,7 @@ RiverTrail.InferMem = function () {
                                     var type_size = RiverTrail.Helper.getOpenCLSize(ast.typeInfo.OpenCLType);
                                     var allocation_size = type_size*shape[i]*redu;
                                     debug && console.log("Allocating " + allocation_size + " bytes in " +  ast.children[0].value
-                                    //  + "_" + i + "  for i = " + i);
+                                      + "_" + i + "  for i = " + i);
                                     var memBufferName = memVars.allocate(allocation_size, ast.children[0].value + "_" + i);
                                     ast.memBuffers.size +=1;
                                     ast.memBuffers.list.push(memBufferName);
