@@ -1362,7 +1362,6 @@ RiverTrail.RangeAnalysis = function () {
                     for(var idx in ast.children) {
                         ast.children[idx] = push(ast.children[idx], tEnv, false);
                     }
-                    //ast.children = ast.children.map(function (child) { return push(child, tEnv, false);});
                     break;
                 case WITH:
                     reportError("general objects not yet implemented", ast);

@@ -81,13 +81,10 @@ RiverTrail.compiler.runOCL = function () {
 
         if (ast.typeInfo.result.properties) {
             resShape = iterSpace.concat(ast.typeInfo.result.getOpenCLShape());
-            //console.log(ast.typeInfo.result.getOpenCLShape());
-            //console.log("Result shape is", resShape);
         } else {
             resShape = iterSpace;
         }
         resSize = shapeToLength(resShape);
-        //console.log("Result size is", resSize);
         // construct kernel arguments
         var jsObjectToKernelArg = function (args, object) {
             if (object instanceof ParallelArray) {
@@ -240,14 +237,13 @@ RiverTrail.compiler.runOCL = function () {
                 // console.log("791:new:rank: "+rank+" iterSpace: "+iterSpace);
                 //console.log("driver:389 did not run.");
                 var kernelFailure = kernel.run(rank, iterSpace, iterSpace.map(function () { return 1; }));
-                //var kernelFailure = true;
             } catch (e) {
                 console.log("kernel.run fails: ", e);
                 throw e;
             }
             if (kernelFailure) {
                 // a more helpful error message would be nice. However, we don't know why it failed. A better exception model is asked for...
-                throw new Error("kernel execution failed, probably due to an array out of bounds access.");
+                throw new Error(kernelName, ": kernel execution failed, probably due to an array out of bounds access.", kernelFailure);
             }
         } else {
             alert("runOCL only deals with comprehensions, map and combine (so far).");
