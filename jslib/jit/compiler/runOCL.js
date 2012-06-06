@@ -53,15 +53,11 @@ RiverTrail.compiler.runOCL = function () {
                                  argumentTypes, lowPrecision, enable64BitFloatingPoint, useBufferCaching, useKernelCaching) {
         var paResult;
         var kernelArgs = [];
-        var resultMemObj;
-        var resultOffset;
+        var resultMem;
         var sourceType;
         var iterSpace;
-        var resultElemType;
         var kernel;
         var rank;
-        var resShape;
-        var resSize;
         var kernelName = ast.name;
         if (!kernelName) {
             throw new Error("Invalid ast: Function expected at top level");
@@ -77,14 +73,6 @@ RiverTrail.compiler.runOCL = function () {
             rank = rankOrShape;
             iterSpace = sourceType.dimSize.slice(0, rank);
         }
-        resultElemType = RiverTrail.Helper.stripToBaseType(ast.typeInfo.result.OpenCLType);
-
-        if (ast.typeInfo.result.properties) {
-            resShape = iterSpace.concat(ast.typeInfo.result.getOpenCLShape());
-        } else {
-            resShape = iterSpace;
-        }
-        resSize = shapeToLength(resShape);
         // construct kernel arguments
         var jsObjectToKernelArg = function (args, object) {
             if (object instanceof ParallelArray) {
@@ -143,9 +131,19 @@ RiverTrail.compiler.runOCL = function () {
         // SAH: We have agreed that operations are elemental type preserving, thus I reuse the type
         //      of the argument here.
         if (paSource.updateInPlacePA !== undefined) {
+            if (ast.typeInfo.result.isObjectType("InlineObject")) {
+                // we do not support a scan over multiple results
+                throw new Error("the impossible happened: in place scan operation with multiple returns!");
+            }
             // the result space has been preallocated for us! So just use/map what is there.
             // See scan for how this is supposed to work
             // first we ensure that the shape of what we compute is the shape of what is expected
+            var resShape;
+            if (type.properties) {
+                resShape = iterSpace.concat(ast.typeInfo.result.getOpenCLShape());
+            } else {
+                resShape = iterSpace;
+            }
             if (!equalsShape(resShape, paSource.updateInPlaceShape)) {
                 // throwing this will revert the outer scan to non-destructive mode
                 throw new Error("shape mismatch during update in place!");
@@ -156,18 +154,39 @@ RiverTrail.compiler.runOCL = function () {
             if (!(paSource.updateInPlacePA.data instanceof Components.interfaces.dpoIData)) {
                 paSource.updateInPlacePA.data = RiverTrail.compiler.openCLContext.mapData(paSource.updateInPlacePA.data);
             }
-            resultMemObj = paSource.updateInPlacePA.data;
-            resultOffset = paSource.updateInPlaceOffset;
+            resultMem = {mem: paSource.updateInPlacePA.data, shape: resShape, type: RiverTrail.Helper.stripToBaseType(type.OpenCLType)};
+            kernelArgs.push(resultMem);
+            kernelArgs.push(new RiverTrail.Helper.Integer(paSource.updateInPlaceOffset));
         } else {
+            var allocateAndMapResult = function (type) {
+                var resultElemType = RiverTrail.Helper.stripToBaseType(type.OpenCLType);
+                var resShape;
+                if (type.properties) {
+                    resShape = iterSpace.concat(type.getOpenCLShape());
+                } else {
+                    resShape = iterSpace;
+                }
+                var template = RiverTrail.Helper.elementalTypeToConstructor(resultElemType);
+                if (template == undefined) throw new Error("cannot map inferred type to constructor");
+                var memObj = RiverTrail.compiler.openCLContext.allocateData(new template(1), shapeToLength(resShape));
+                kernelArgs.push(memObj);
+                kernelArgs.push(new RiverTrail.Helper.Integer(0));
+                return {mem: memObj, shape: resShape, type: resultElemType};
+            };
+
             // We allocate whatever the result type says. To ensure portability of 
             // the extension, we need a template typed array. So lets just create one!
-            var template = RiverTrail.Helper.elementalTypeToConstructor(resultElemType);
-            if (template == undefined) throw new Error("cannot map inferred type to constructor");
-            resultMemObj = RiverTrail.compiler.openCLContext.allocateData(new template(1), resSize);
-            resultOffset = 0;
+            if (ast.typeInfo.result.isObjectType("InlineObject")) {
+                // we have multiple return values
+                resultMem = {};
+                for (var name in ast.typeInfo.result.properties.fields) {
+                    resultMem[name] = allocateAndMapResult(ast.typeInfo.result.properties.fields[name]);
+                }
+            } else {
+                // allocate and map the single result
+                resultMem = allocateAndMapResult(ast.typeInfo.result);
+            }
         }
-        kernelArgs.push(resultMemObj);
-        kernelArgs.push(new RiverTrail.Helper.Integer(resultOffset));
         // build kernel
         if (kernelString instanceof Components.interfaces.dpoIKernel) {
             kernel = kernelString;
@@ -248,12 +267,51 @@ RiverTrail.compiler.runOCL = function () {
         } else {
             alert("runOCL only deals with comprehensions, map and combine (so far).");
         }
-        paResult = new ParallelArray(resultMemObj, resShape, resultElemType);
+        if (resultMem.mem && (resultMem.mem instanceof Components.interfaces.dpoIData)) {
+            // single result
+            paResult = new ParallelArray(resultMem.mem, resultMem.shape, resultMem.type);
+        } else {
+            // multiple results
+            var multiPA = {};
+            for (var name in resultMem) {
+                multiPA[name] = new ParallelArray(resultMem[name].mem, resultMem[name].shape, resultMem[name].type);
+            }
+            paResult = new IBarfAtYouUnlessYouUnzipMe(multiPA);
+        }
+
         return paResult;
     };
 
-    // Finally a bunch of helper functions that know how to walk the ast.
-    
+    // unsophisticated wrapper around multiple ParallelArray objects. This wrapper will block
+    // all calls the ParallelArray API except for unzip, which returns the contained
+    // data object.
+    var IBarfAtYouUnlessYouUnzipMe = function IBarfAtYouUnlessYouUnzipMe(data) {
+        this.unzip = function () {
+            return data;
+        };
+
+        return this;
+    };
+    var barf = function barf(name) {
+        return function () {
+            throw "`" + name + "' not implemented for ParallelArray of objects. Please call `unzip' first!";
+        }
+    };
+    IBarfAtYouUnlessYouUnzipMe.prototype = {};
+    IBarfAtYouUnlessYouUnzipMe.prototype.map = barf("map");
+    IBarfAtYouUnlessYouUnzipMe.prototype.combine = barf("combine");
+    IBarfAtYouUnlessYouUnzipMe.prototype.scan = barf("scan");
+    IBarfAtYouUnlessYouUnzipMe.prototype.filter = barf("filter");
+    IBarfAtYouUnlessYouUnzipMe.prototype.scatter = barf("scatter");
+    IBarfAtYouUnlessYouUnzipMe.prototype.reduce = barf("reduce");
+    IBarfAtYouUnlessYouUnzipMe.prototype.get = barf("get");
+    IBarfAtYouUnlessYouUnzipMe.prototype.partition = barf("partition");
+    IBarfAtYouUnlessYouUnzipMe.prototype.flatten = barf("flatten");
+    IBarfAtYouUnlessYouUnzipMe.prototype.toString = barf("toString");
+    IBarfAtYouUnlessYouUnzipMe.prototype.getShape = barf("getShape");
+    IBarfAtYouUnlessYouUnzipMe.prototype.getData = barf("getData");
+    IBarfAtYouUnlessYouUnzipMe.prototype.getArray = barf("getArray");
+
     // Given the shape of an array return the number of elements. Duplicate from ParallelArray.js 
     var shapeToLength = function shapeToLength(shape) {
         var i;
