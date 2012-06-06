@@ -623,12 +623,24 @@ RiverTrail.compiler.codeGen = (function() {
             // Dump the standard output parameters.
             // Note that result.openCLType is the type of the result of a single iteration!
             if ((construct === "combine") || (construct === "map") || (construct === "comprehension") || (construct === "comprehensionScalar")) {      
-                s = s + "__global " + getReturnFormalType(funDecl.typeInfo.result) + " retVal";
-                //s = s + "__global " + funDecl.typeInfo.result.OpenCLType + (funDecl.typeInfo.result.isScalarType() ? "*" : "") + " retVal"; 
+                if(funDecl.typeInfo.result.isScalarType() || funDecl.typeInfo.result.isArrayishType()) {
+                    s = s + "__global " + getReturnFormalType(funDecl.typeInfo.result) + " retVal, ";
+                    //s = s + "__global " + funDecl.typeInfo.result.OpenCLType + (funDecl.typeInfo.result.isScalarType() ? "*" : "") + " retVal"; 
+                    s = s + "int retVal__offset";
+                }
+                else if(funDecl.typeInfo.result.isObjectType("InlineObject")) {
+                    var fields = funDecl.typeInfo.result.properties.fields;
+                    for(var idx in fields) {
+                        s = s + " __global " + getReturnFormalType(fields[idx]) + " retVal_" + idx + ", int retVal_" + idx + "_offset,";
+                    }
+                    s = s.slice(0, -1);
+                }
+                else {
+                    reportError("Unknown return type in kernel");
+                }
             } else {
                 throw "unimplemented construct " + construct;
             }
-            s = s + ", int retVal__offset";
             // Close the param list
             s = s + ")";
             s = s + " {";
@@ -642,31 +654,56 @@ RiverTrail.compiler.codeGen = (function() {
             }
 
             // add code to compute the offset 'writeoffset' into flat result vector
-            s = s + "int _writeoffset = 0";
-            stride = ast.typeInfo.result.getOpenCLShape().reduce(function(a,b) { return (a*b);}, 1);
-            for (i = rank-1; i>=0; i--) {
-                s = s + "+" + stride + " * " + "_id_" + i;
-                stride = stride * iterSpace[i];
+            if (ast.typeInfo.result.isArrayishType() || ast.typeInfo.result.isScalarType()) {
+                s = s + "int _writeoffset = 0";
+                stride = ast.typeInfo.result.getOpenCLShape().reduce(function(a,b) { return (a*b);}, 1);
+                for (i = rank-1; i>=0; i--) {
+                    s = s + "+" + stride + " * " + "_id_" + i;
+                    stride = stride * iterSpace[i];
+                }
+                s = s + ";";
             }
-            s = s + ";";
+            else if (ast.typeInfo.result.isObjectType("InlineObject")) {
+                stride = 0;
+                var fields = ast.typeInfo.result.properties.fields;
+                if(!fields)  reportError("Invalid type definition for returned object");
+                for(var idx in fields) {
+                    s = s + "int _writeoffset_" + idx + " = 0";
+                    stride = fields[idx].getOpenCLShape().reduce(function(a,b) { return (a*b);}, 1);
+                    //stride += fields[idx].getOpenCLShape().reduce(function(a,b) {return (a*b);}, 1);
+                    for (i = rank-1; i>=0; i--) {
+                        s = s + "+" + stride + " * " + "_id_" + i;
+                        stride = stride * iterSpace[i];
+                    }
+                    s = s + ";";
+                }
+            }
+
             // add code to compute offset 'readoffset' into flat vector when using map
             if (construct === "map") {
-                s = s + "int _readoffset = " + pa.offset;
-                var resShape = ast.typeInfo.result.getOpenCLShape();
-                if ((paShape.length === rank + resShape.length) &&
+                if(ast.typeInfo.result.isObjectType("InlineObject")) {
+                    reportError("Not supported");
+                }
+                else {
+                    s = s + "int _readoffset = " + pa.offset;
+                    var resShape = ast.typeInfo.result.getOpenCLShape();
+                    if ((paShape.length === rank + resShape.length) &&
                         (resShape.every(function(e,idx) { return (e === paShape[idx+rank]);}))) {
-                    // result has same shape as input, so the offsets are the same
-                    s = s + " + _writeoffset"
-                } else {
-                    strides = pa.strides.slice(0,rank);
-                    for (i=0; i<rank; i++) {
-                        s = s + "+ _id_" + i + " * " + strides[i];
+                        // result has same shape as input, so the offsets are the same
+                        s = s + " + _writeoffset"
+                    } else {
+                        strides = pa.strides.slice(0,rank);
+                        for (i=0; i<rank; i++) {
+                            s = s + "+ _id_" + i + " * " + strides[i];
+                        }
                     }
                 }
                 s = s + ";";
             }
             // add retval offset to writeoffset
-            s = s + "_writeoffset += retVal__offset;";
+            if (ast.typeInfo.result.isArrayishType() || ast.typeInfo.result.isScalarType()) {
+                s = s + "_writeoffset += retVal__offset;";
+            }
 
             // Add code to declare tempThis
             if (boilerplate.hasThis) {
@@ -914,8 +951,38 @@ RiverTrail.compiler.codeGen = (function() {
                     s += "for (_writeback_idx = 0; _writeback_idx < " + elements + "; " + "_writeback_idx++) {"; 
                     s += " retVal[_writeoffset + _writeback_idx]  = " + boilerplate.localResultName + "[_writeback_idx] ; } }";
                 }
+                else if(rhs.typeInfo.isObjectType("InlineObject")) {
+                    var fields = rhs.typeInfo.properties.fields;
+                    s = ""; var field_offset = 0;
+                    for(var f in fields) {
+                        field_offset++;
+                        var sourceType = fields[f];
+                        if(fields[f].isScalarType()) {
+                            s += "{ int _writeback_idx_" + f + " = 0;" ;
+                            s += " retVal_" + f + "[_writeoffset_" + f + " + _writeback_idx_" + f + "] = "
+                                + oclExpression(rhs.children[field_offset-1].children[1]) + "; }";
+                            continue;
+                        }
+                        var sourceShape = sourceType.getOpenCLShape();
+                        s += "{" + sourceType.OpenCLType + " tempResult_" + f + " = (" + oclExpression(rhs.children[field_offset-1].children[1]) + ");";
+                        var maxDepth = sourceShape.length;
+                        var i; var idx; var indexString = ""; var post_parens = "";
+                        s += "{ int _writeback_idx_" + f + " = 0 ;";
+                        for(i =0 ;i<maxDepth;i++) {
+                            idx = "_idx" + i;
+                            s += " { int " + idx + ";";
+                            s += "for (" + idx + "= 0; " + idx + " < " + sourceShape[i] + "; " + idx + "++) {"; 
+                            indexString += "[" + idx + "]";
+                            post_parens += "}}";
+                        }
+                        s += " retVal_" + f + "[_writeoffset_" + f + " + _writeback_idx_" + f + "++]  = " + "((" +
+                            sourceType.OpenCLType + ")" + "tempResult_" + f +
+                            ")" + indexString + ";" + post_parens + "} }";
+                    }
+                    //console.log(s);
+                }
                 else {
-                    // arbitrary expression, possibly a nested array identifier
+                    // a (possibly nested) array
                     var source = rhs;
                     var sourceType = source.typeInfo;
                     var sourceShape = sourceType.getOpenCLShape();
@@ -1597,7 +1664,9 @@ RiverTrail.compiler.codeGen = (function() {
                         break;
                     case DOT:
                         // object property update.
-                        reportError("objects not implemented yet");
+                        // a.b = c;
+                        // make sure that address spaces are right!
+                        s = s + "((" + ast.children[0].children[0].value + "->" + ast.children[0].children[1].value + ")" + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")" ;
                         break;
                     default:
                         reportBug("unhandled lhs in assignment");

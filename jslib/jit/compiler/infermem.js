@@ -322,8 +322,10 @@ RiverTrail.InferMem = function () {
                         // case of a[iv] = expr. 
                         break;
                     case DOT:
-                        // we do not support this yet
-                        // fallthrough;
+                        // Support for updates on object properties.
+                        infer(ast.children[0], memVars, ins, outs);
+                        infer(ast.children[1], memVars, ins, outs);
+                        break;
                     default:
                         reportBug("unhandled lhs in assignment");
                         break;

@@ -255,7 +255,9 @@ RiverTrail.InferBlockFlow = function () {
                     case DOT:
                         // not allowed for now as object cannot be mutated :-)
                         // we should never get here.
-                        reportBug("objects may not be mutated!");
+                        //reportBug("objects may not be mutated!");
+                        infer(ast.children[0], ins, outs, locals);
+                        infer(ast.children[1], ins, outs, locals);
                         break;
                     default:
                         reportBug("unhandled lhs in assignment");

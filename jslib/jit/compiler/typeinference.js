@@ -748,6 +748,8 @@ RiverTrail.Typeinference = function () {
                 // JS : Generate right type for nested local arrays (JS Arrays and ParallelArrays)
                 this.OpenCLType = elemType.OpenCLType + "*";
             } else if (elemType.isObjectType("Array") || elemType.isObjectType("ParallelArray")) {
+                // TODO: Global arrays of element type T should have type T* here
+                //
                 this.OpenCLType = elemType.OpenCLType;
             } else if (elemType.isObjectType("InlineObject")) {
                 this.OpenCLType = elemType.OpenCLType + "*";
@@ -1102,8 +1104,16 @@ RiverTrail.Typeinference = function () {
                         tEnv.accu = ast.children[0].typeInfo.clone();
                         break;
                     case DOT:
-                        // object property update.
-                        reportError("objects not implemented yet");
+                        // Property update on an InlineObject
+                        // We have a.b = <expr>
+                        // 1) Infer type for lhs's child 0 - should be an inline object
+                        // 2) Check if the field (lhs's child 1) is valid
+                        // 3) Check if the update is monomorphic
+                        left = drive(left, tEnv, fEnv);
+                        if(!left.children[0].typeInfo.isObjectType("InlineObject") || 
+                                !left.children[0].typeInfo.properties.fields.hasOwnProperty(left.children[1].value))
+                            reportError("Invalid field " + left.children[1].value + " referenced on object " + left.children[0].value);
+                        tEnv.accu = ast.children[0].typeInfo.clone();
                         break;
                     case ARRAY_INIT:
                         // Destructuring assignment
