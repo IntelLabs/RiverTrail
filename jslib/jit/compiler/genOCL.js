@@ -262,8 +262,11 @@ RiverTrail.compiler.codeGen = (function() {
                 // The relative argumment is a value found in the ParallelArray.
                 indexName = funDecl.params[0];
                 indexType = funDecl.typeInfo.parameters[1];
-                s = s + " const "+indexType.OpenCLType+" "+ indexName+" = tempThis[_readoffset];"
-
+                if (indexType.isScalarType()) {
+                    s = s + "const " + indexType.OpenCLType+" "+ indexName+" = tempThis[_readoffset];"
+                } else {
+                    s = s + indexType.getOpenCLAddressSpace() + " " + indexType.OpenCLType+" "+ indexName+" = &(tempThis[_readoffset]);"
+                }
             }
             return s;
         };
