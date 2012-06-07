@@ -1828,21 +1828,6 @@ RiverTrail.Typeinference = function () {
             tEnv.update("this", thisT);
             tEnv.addRoot(thisT);
             argT.push(thisT);
-        } else if (construct === "map") {
-            var thisT;
-            thisT = TObject.makeType("ParallelArray", pa);
-            if (pa.getShape().length > rank) {
-                thisT.properties.addressSpace = "__global";
-                thisT.properties.shape.splice(0,rank);
-            } else {
-                thisT = thisT.properties.elements;
-            }
-            tEnv.bind("this");
-            tEnv.update("this", thisT);
-            if (thisT.isObjectType()) {
-                tEnv.addRoot(thisT);
-            }
-            argT.push(thisT);
         }
 
         // create type information for generated arguments
@@ -1871,7 +1856,7 @@ RiverTrail.Typeinference = function () {
             // create type info for current element argument
             var elemT = tEnv.getType("this").clone();
             if (pa.getShape().length > rank) {
-                elemT.properties.shape.splice(0,rank);
+                elemT.properties.shape = elemT.properties.shape.slice(0,rank);
             } else {
                 elemT = elemT.properties.elements;
             }
