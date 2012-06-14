@@ -191,10 +191,10 @@ RiverTrail.Helper = function () {
         var data = this.data = new constructor(len);
         if(shape.length === 1) {
             for(var k = 0; k < shape[0]; k++) {
-                this.data[pos++] = src[k];
-                if(src[k] !== this.data[pos-1]) {
-                    throw "Error: Conversion to flat array failed!";
+                if (typeof(src[k]) !== 'number') {
+                    throw "Error: Conversion to flat array failed: not a number!";
                 }
+                this.data[pos++] = src[k];
             }
             return this;
         }
@@ -222,10 +222,10 @@ RiverTrail.Helper = function () {
                     throw "Error: Leaf length and shape are different! Flattening kernel argument failed";
                 }
                 for(var j = 0; j < node.length; j++) {
-                    this.data[pos++] = node[j];
-                    if(this.data[pos-1] !== node[j]) {
-                        throw "Error: Conversion to flat array failed!";
+                    if (typeof(node[j]) !== 'number') {
+                        throw "Error: Conversion to flat array failed: not a number!";
                     }
+                    this.data[pos++] = node[j];
                 }
             }
         }

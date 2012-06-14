@@ -443,9 +443,9 @@ RiverTrail.compiler.codeGen = (function() {
             "            }" +
             "} /* end prelude */";
 
-        // I have not found a portable way to detect whether we are on a 64 or 32 bit platform. I default
-        // to 32 bit, as we only use direct argument passing on windows for now.
-        var prelude = prelude32;
+        // I have not found a portable way to detect whether we are on a 64 or 32 bit platform. 
+        // For now, I disable it by default.
+        var prelude = "";
 
         // boilerplate holds the various strings used for the signature of opneCL kernel function,
         // the declaration of some locals and the postfix (used by return). 
