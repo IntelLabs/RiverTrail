@@ -24,6 +24,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+ENVP= MACOSX_DEPLOYMENT_TARGET=10.6
 OUTPUTDIR = Release/MacOS
 OUTPUTNAME = extension.bundle
 OUTPUTNAME32 = extension.32.bundle
@@ -31,6 +32,7 @@ EXTENSIONDIR = xpi-contents
 GECKODIR = gecko-sdk
 GECKODIR32 = $(wildcard gecko-sdk-32)
 EXCLUDEFILES = src/dllmain.cpp
+CCFLAGS = 
 
 #
 # nothing to configure below this line
@@ -79,10 +81,10 @@ $(OUTPUTDIR):
 	mkdir -p $(OUTPUTDIR)
 
 $(OUTPUTDIR)/$(OUTPUTNAME): $(OUTPUTDIR) $(OBJFILES)
-	$(CXX) $(OBJFILES) -bundle -framework OpenCL -L$(GECKODIR)/$(GECKOLIB) -I$(GECKODIR)/$(GECKOINC) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR)/$(GECKOLIB)/XUL -o $@
+	$(CXX) $(CCFLAGS) $(OBJFILES) -bundle -framework OpenCL -L$(GECKODIR)/$(GECKOLIB) -I$(GECKODIR)/$(GECKOINC) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR)/$(GECKOLIB)/XUL -o $@
 
 $(OUTPUTDIR)/$(OUTPUTNAME32): $(OUTPUTDIR) $(OBJFILES32)
-	$(CXX) $(OBJFILES32) -bundle -framework OpenCL -L$(GECKODIR32)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR32)/$(GECKOLIB)/XUL -arch i386 -o $@ 
+	$(CXX) $(CCFLAGS) $(OBJFILES32) -bundle -framework OpenCL -L$(GECKODIR32)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR32)/$(GECKOLIB)/XUL -arch i386 -o $@ 
 
 %.xpt: %.idl
 	$(GENTYPELIB) -o $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 
@@ -92,11 +94,11 @@ $(OUTPUTDIR)/$(OUTPUTNAME32): $(OUTPUTDIR) $(OBJFILES32)
 
 %.o: %.cpp 
 	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR)/$(GECKOINC) $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.o:|' > $*.d
-	$(CXX) -c $< -o $@ -I $(dir $<) -I $(GECKODIR)/$(GECKOINC) $(GECKOFLAGS) $(GECKODEF)
+	$(CXX) $(CCFLAGS) -c $< -o $@ -I $(dir $<) -I $(GECKODIR)/$(GECKOINC) $(GECKOFLAGS) $(GECKODEF)
 
 %.32.o: %.cpp 
 	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR32)/$(GECKOINC) $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.32.o:|' > $*.32.d
-	$(CXX) -c $< -o $@ -I $(dir $<) -I $(GECKODIR32)/$(GECKOINC) $(GECKOFLAGS) $(GECKODEF) -arch i386
+	$(CXX) $(CCFLAGS) -c $< -o $@ -I $(dir $<) -I $(GECKODIR32)/$(GECKOINC) $(GECKOFLAGS) $(GECKODEF) -arch i386
 
 
 
