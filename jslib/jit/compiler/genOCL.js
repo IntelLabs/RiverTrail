@@ -1778,9 +1778,15 @@ RiverTrail.compiler.codeGen = (function() {
                 s = s + " tempThis "; // This should come from the boilerplate but that cannot be passed around easily
                 break;
             case DOT:
-                // TypeInference would have checked if this property selection
-                // is valid
-                s = s + " " + ast.children[0].value + "->" + ast.children[1].value;
+                if (ast.children[0].typeInfo.isObjectType("InlineObject")) {
+                    // TypeInference would have checked if this property selection
+                    // is valid
+                    s = s + " " + ast.children[0].value + "->" + ast.children[1].value;
+                } else if ((ast.children[0].typeInfo.isArrayishType()) &&
+                           (ast.children[1].value === "length")) {
+                    // length property -> substitute the value
+                    s = s + ast.children[0].typeInfo.getOpenCLShape()[0];
+                }
                 break;
 
             case CAST:

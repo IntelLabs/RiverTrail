@@ -1230,8 +1230,8 @@ RiverTrail.Typeinference = function () {
                 obj.initialized || reportError("variable " + ast.children[0].value + " might be uninitialized", ast);
                 ast.children[0].typeInfo = obj.type;
                 if(obj.type.name != "InlineObject") {
-                    obj.isObjectType() || reportError("dot applied to non-object value", ast);
-                    tEnv.accu = obj.getHandler().propertySelection(ast.children[1].value, tEnv, fEnv, ast);
+                    obj.type.isObjectType() || reportError("dot applied to non-object value", ast);
+                    tEnv.accu = obj.type.getHandler().propertySelection(ast.children[1].value, tEnv, fEnv, ast);
                 }
                 else {
                     tEnv.accu = obj.type.getHandler().propertySelection(ast.children[1].value, tEnv, fEnv, ast);
