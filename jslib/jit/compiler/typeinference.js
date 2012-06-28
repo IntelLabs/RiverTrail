@@ -505,13 +505,13 @@ RiverTrail.Typeinference = function () {
         }
     };
 
-    TEp.emitDeclarations = function () {
+    TEp.emitDeclarations = function (renamer) {
         s = "";
         for (var name in this.bindings) {
             var type = this.bindings[name].type;
             // only declare variables that are actually used (and thus have a type) 
             if (type) {
-                s = s + " " + type.getOpenCLAddressSpace() + " " + type.OpenCLType + " " + name + "; ";
+                s = s + " " + type.getOpenCLAddressSpace() + " " + type.OpenCLType + " " + (renamer ? renamer(name) : name) + "; ";
             } 
         }
         return s;

@@ -196,7 +196,7 @@ RiverTrail.compiler.runOCL = function () {
                     // enable 64 bit extensions
                     kernelString = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n" + kernelString;
                 }
-                kernel = RiverTrail.compiler.openCLContext.compileKernel(kernelString, kernelName);
+                kernel = RiverTrail.compiler.openCLContext.compileKernel(kernelString, "RT_" + kernelName);
             } catch (e) {
                 try {
                     RiverTrail.Helper.debugThrow(e + RiverTrail.compiler.openCLContext.buildLog);
