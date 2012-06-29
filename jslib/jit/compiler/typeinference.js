@@ -1223,19 +1223,10 @@ RiverTrail.Typeinference = function () {
                 tEnv.accu = idType.type;
                 break;
             case DOT:
-                if(ast.children[0].type !== IDENTIFIER) {
-                    reportError("unsupported lhs in dot selection", ast);
-                }
-                var obj = tEnv.lookup(ast.children[0].value) || reportError("unknown object `" + ast.children[0].value + "`", ast);
-                obj.initialized || reportError("variable " + ast.children[0].value + " might be uninitialized", ast);
-                ast.children[0].typeInfo = obj.type;
-                if(obj.type.name != "InlineObject") {
-                    obj.type.isObjectType() || reportError("dot applied to non-object value", ast);
-                    tEnv.accu = obj.type.getHandler().propertySelection(ast.children[1].value, tEnv, fEnv, ast);
-                }
-                else {
-                    tEnv.accu = obj.type.getHandler().propertySelection(ast.children[1].value, tEnv, fEnv, ast);
-                }
+                ast.children[0] = drive(ast.children[0], tEnv, fEnv);
+                var obj = tEnv.accu;
+                obj.isObjectType() || reportError("dot applied to non-object value", ast);
+                tEnv.accu = obj.getHandler().propertySelection(ast.children[1].value, tEnv, fEnv, ast);
                 break;
 
             case NUMBER:

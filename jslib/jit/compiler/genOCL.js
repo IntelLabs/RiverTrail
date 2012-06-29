@@ -1654,7 +1654,7 @@ RiverTrail.compiler.codeGen = (function() {
                         // object property update.
                         // a.b = c;
                         // make sure that address spaces are right!
-                        s = s + "((" + RENAME(ast.children[0].children[0].value) + "->" + ast.children[0].children[1].value + ")" + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")" ;
+                        s = s + "((" + oclExpression(ast.children[0].children[0]) + "->" + ast.children[0].children[1].value + ")" + (ast.assignOp ? tokens[ast.assignOp] : "") + "= " + oclExpression(ast.children[1]) + ")" ;
                         break;
                     default:
                         reportBug("unhandled lhs in assignment");
@@ -1771,6 +1771,8 @@ RiverTrail.compiler.codeGen = (function() {
                            (ast.children[1].value === "length")) {
                     // length property -> substitute the value
                     s = s + ast.children[0].typeInfo.getOpenCLShape()[0];
+                } else {
+                    reportBug("unsupported property selection in back end", ast);
                 }
                 break;
 
