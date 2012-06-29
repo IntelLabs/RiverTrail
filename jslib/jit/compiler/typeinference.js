@@ -873,6 +873,8 @@ RiverTrail.Typeinference = function () {
                     type.properties.elements = new TLiteral(TLiteral.NUMBER);
                     type.properties.addressSpace = "__private"
                     type.updateOpenCLType();
+                    // tell the allocator that we won't need space for this (it is a constant!)
+                    type.properties.isShared = true;
                     tEnv.addRoot(type);
                     break;
 

@@ -439,8 +439,6 @@ RiverTrail.compiler.codeGen = (function() {
                 "hasThis": true,
                 "localThisName": " tempThis",
                 "localThisDefinition": " opThisVect[opThisVect__offset]",
-                "thisShapeLength": "const int thisShapeLength = ",
-                "thisShapeDeclPre": "const int thisShapeDecl ",
                 "localResultName": " tempResult",
             },
             "combine": {
@@ -448,8 +446,6 @@ RiverTrail.compiler.codeGen = (function() {
                 // the type of this goes here.
                 "localThisName": " tempThis",
                 "localThisDefinition": " opThisVect[opThisVect__offset]",
-                "thisShapeLength": "const int thisShapeLength = ",
-                "thisShapeDeclPre": "const int thisShapeDecl ",
                 // the type of the result of the elemental function goes here
                 "localResultName": " tempResult",
             },
@@ -458,8 +454,6 @@ RiverTrail.compiler.codeGen = (function() {
                 // the type of this goes here.
                 "localThisName": undefined,
                 "localThisDefinition": " opThisVect[opThisVect__offset]",
-                "thisShapeLength": "const int thisShapeLength = ",
-                "thisShapeDeclPre": "const int thisShapeDecl ",
                 // the type of the result of the elemental function goes here
                 "localResultName": " tempResult",
             },
@@ -468,8 +462,6 @@ RiverTrail.compiler.codeGen = (function() {
                 // the type of this goes here.
                 "localThisName": undefined,
                 "localThisDefinition": " opThisVect[opThisVect__offset]",
-                "thisShapeLength": "const int thisShapeLength = ",
-                "thisShapeDeclPre": "const int thisShapeDecl ",
                 // the type of the result of the elemental function goes here
                 "localResultName": " tempResult",
             }
@@ -700,19 +692,6 @@ RiverTrail.compiler.codeGen = (function() {
 
                 // initialise tempThis
                 s = s + boilerplate.localThisName + " = " + (thisIsScalar ? "(" : "&(") + boilerplate.localThisDefinition + ");"; 
-
-                // declare shape;
-                s = s + boilerplate.thisShapeLength + thisShape.length + ";";
-                if (thisShape.length > 0) {
-                    s = s + boilerplate.thisShapeDeclPre + "[" + thisShape.length + "] = { ";
-
-                    s = s + thisShape[0];
-
-                    for (i = 1; i < thisShape.length; i++) {
-                        s = s + ", " + thisShape[i];
-                    }
-                    s = s + "};";
-                } 
             }
 
             // declare tempResult
@@ -1287,11 +1266,9 @@ RiverTrail.compiler.codeGen = (function() {
 
                 if (rhs.value === "get") {
                     s = s + compileSelectionOperation(ast, ast.children[0].children[0], ast.children[1]);
-                } else if ((rhs.value === "getShape") && (lhs.type === THIS)) {
-                    s = s + "thisShapeDecl";
-                } else if (rhs.value === "length") {
-                    // a this.length intrinsic.
-                    s = s + "TBD deal with length" +ast.first.inferredType.dimSize[0];
+                } else if ((rhs.value === "getShape") && (lhs.typeInfo.isObjectType("ParallelArray"))) {
+                    // create shape literal
+                    s = s + "((" + lhs.typeInfo.properties.elements.OpenCLType + "[]) {" + lhs.typeInfo.properties.shape.join(",") + "})";
                 } else if (lhs.value === "Math") {
                     s = s + mathOCLMethod(ast);
                 } else {
