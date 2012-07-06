@@ -104,13 +104,17 @@ RiverTrail.RangeAnalysis = function () {
             if (!other) {
                 delete this.bindings[name];
             } else {
-                mine.intersect(other);
+                if (mine instanceof Array) {
+                    this.bindings[name] = mine.map(function (val, idx) { return val.intersect(other[idx]); });
+                } else {
+                    this.bindings[name] = mine.intersect(other);
+                }
             }
         }
     };
     CTSp.merge = function (other) {
         for (name in other.bindings) {
-            this.add(other.bindings[name]);
+            this.add(name, other.bindings[name]);
         }
     };
     CTSp.addAccu = function (name, accu, index, size) {

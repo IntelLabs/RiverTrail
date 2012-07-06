@@ -814,7 +814,7 @@ var ParallelArray = function () {
         if (!this.isRegular()) {
             throw new TypeError("this is not a regular ParallelArray.");
         }
-        return (depth === undefined) ? this.shape : this.shape.slice(0, depth);
+        return (depth === undefined) ? this.shape.slice(0) : this.shape.slice(0, depth);
     };
    
     // When in the elemental function f "this" is the same as "this" in combine.
