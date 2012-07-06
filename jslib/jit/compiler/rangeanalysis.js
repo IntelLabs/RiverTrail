@@ -846,9 +846,14 @@ RiverTrail.RangeAnalysis = function () {
                 drive(ast.children[1], varEnv, doAnnotate);
                 switch (ast.children[0].type) {
                     case DOT:
-                        // we support getShape on Parallel Arrays, as it is a common bound for
-                        // loops
+                        // we support getShape on Parallel Arrays, as it is a common bound for loops
                         var dot = ast.children[0];
+                        if(dot.children[0].value === "RiverTrailUtils" &&
+                                dot.children[1].value === "createArray") {
+                            result = new Range(undefined, undefined, false);
+                            break;
+                        }
+
                         if (dot.children[0].typeInfo.isObjectType("ParallelArray") &&
                             (dot.children[1].value === "getShape")) {
                             result = new RangeArray(dot.children[0].typeInfo.properties.shape, function (val) { return new Range(val, val, true); });
@@ -1296,10 +1301,17 @@ RiverTrail.RangeAnalysis = function () {
                         case DOT:
                             // all method calls except "get" on PA expect floating point values.
                             var dot = ast.children[0];
+                            if(dot.children[0].value === "RiverTrailUtils" &&
+                                    dot.children[1].value === "createArray") {
+                                ast.children[1].children[1] = push(ast.children[1].children[1], tEnv, false);
+                                break;
+                            }
+
                             // traverse the lhs of the dot. Although the result 
                             // is an object, there might be some other calls in 
                             // there that have constraints. child 1 is a name, 
                             // so nothing to traverse there.
+
                             dot.children[0] = push(dot.children[0], tEnv, undefined);
                             if (dot.children[0].typeInfo.isObjectType("ParallelArray") &&
                                 (dot.children[1].value === "get")) {
@@ -1355,6 +1367,8 @@ RiverTrail.RangeAnalysis = function () {
                     break;
                 case NEW:
                 case NEW_WITH_ARGS:
+                    ast.children[1].children[1] = push(ast.children[1].children[1], tEnv, false);
+                    break;
                 case PROPERTY_INIT:
                     ast.children[1] = push(ast.children[1], tEnv, false);
                     break;

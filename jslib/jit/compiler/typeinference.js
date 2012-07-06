@@ -1294,6 +1294,10 @@ RiverTrail.Typeinference = function () {
             case CALL:
                 switch (ast.children[0].type) {
                     case DOT: // method invocation
+                        if(ast.children[0].children[0].value === "RiverTrailUtils") {
+                            RiverTrailUtils_Trap(ast, tEnv, fEnv);
+                            break;
+                        }
                         var dot = ast.children[0];
                         // figure out what type this object is
                         dot.children[0] = drive(dot.children[0], tEnv, fEnv);
@@ -1560,6 +1564,55 @@ RiverTrail.Typeinference = function () {
         }
 
         return ast;
+    }
+
+    // Handle RiverTrailUtils...() calls
+    function RiverTrailUtils_Trap(ast, tEnv, fEnv) {
+        if(! (ast.children[1].type === LIST) ||
+                !(ast.children[1].children.length === 2) ) {
+            reportError("Invalid method signature on RiverTrailUtils");
+        }
+        switch(ast.children[0].children[1].value) {
+            case "createArray":
+                var elementTypeInfo = drive(ast.children[1].children[1], tEnv, fEnv);
+                var objshape = [];
+                for(var idx in ast.children[1].children[0].children) {
+                    objshape.push(ast.children[1].children[0].children[idx].value);
+                }
+                tEnv.accu = new TObject("Array");
+                var elements = [];
+                var d;
+                var top_level_type = "";
+                for(d = 0; d < objshape.length; d++) {
+                    top_level_type += "*";
+                }
+                for(d = 0; d < objshape.length; d++) {
+                    if(d === objshape.length-1) {
+                        elements[d] = elementTypeInfo.typeInfo;
+                        elements[d].properties = {};
+                    }
+                    else {
+                        elements[d] = new TObject("Array");
+                        elements[d].OpenCLType = elementTypeInfo.typeInfo.OpenCLType +
+                            top_level_type.slice(0, top_level_type.length - d - 1);
+                        elements[d].properties = {};
+                        //elements[d].properties.shape = objshape.slice(d, objshape.length-1);
+                        elements[d].properties.shape = [objshape[d+1]];
+                        elements[d].properties.addressSpace = "__private";
+                    }
+                    if(d > 0) elements[d-1].properties.elements = elements[d];
+                }
+                tEnv.accu.properties.elements = elements[0];
+                // Given an n x m x p array, the shape in 'typeInfo' for this ast node
+                // is 'n'.
+                tEnv.accu.properties.shape = [objshape[0]];
+                tEnv.accu.updateOpenCLType();
+                tEnv.addRoot(tEnv.accu);
+                tEnv.accu.setAddressSpace("__private");
+                break;
+            default:
+                reportError("Invalid method called on RiverTrailUtils");
+        }
     }
 
     function typeOracle(val) {

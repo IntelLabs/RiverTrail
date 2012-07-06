@@ -1014,6 +1014,33 @@ RiverTrail.compiler.codeGen = (function() {
         }
     }
 
+    // Given a series of mem buffers representing levels of a nested array,
+    // this function initialized the pointers in the upper levels to point
+    // to the right mem buffer.
+
+    function initNestedArrayStructure(ast) {
+        var sourceShape = ast.typeInfo.getOpenCLShape();
+        var maxDepth = sourceShape.length;
+        // Create structure if this call is going to return a nested
+        // array
+        var s = "";
+        // emit statements to initialize pointers
+        var redu = 1; var rhs = ""; var lhs = "";
+        for(var i = 0 ; i < maxDepth-1; i++) {
+            for(var j = 0; j < sourceShape[i]*redu; j++) {
+                lhs = "(" + getPointerCast(i, maxDepth, ast.typeInfo.OpenCLType) +
+                    ast.memBuffers.list[i] + ")"
+                    + "[" + j + "]";
+                rhs = "&((" + getPointerCast(i+1, maxDepth, ast.typeInfo.OpenCLType)
+                    + ast.memBuffers.list[i+1]
+                    + ")" + "[" + j*sourceShape[i+1] + "]" + ")";
+                s += lhs + " = " + rhs + " ,";
+            }
+            redu = redu*sourceShape[i];
+        }
+        return s;
+    }
+
     // Creates a potentially checked array index.
     // If the index is statically known to be correct, this
     // just returns the index itself (expr).
@@ -1271,6 +1298,9 @@ RiverTrail.compiler.codeGen = (function() {
                     s = s + "((" + lhs.typeInfo.properties.elements.OpenCLType + "[]) {" + lhs.typeInfo.properties.shape.join(",") + "})";
                 } else if (lhs.value === "Math") {
                     s = s + mathOCLMethod(ast);
+                } else if (lhs.value === "RiverTrailUtils") {
+                    s += "(" + initNestedArrayStructure(ast);
+                    s = s + "(" + ast.typeInfo.OpenCLType + ")(" + ast.allocatedMem + ") )";
                 } else {
                     s = s + " 628 oclExpression not complete probable some sort of method call ";
                 }
@@ -1311,34 +1341,17 @@ RiverTrail.compiler.codeGen = (function() {
                     s += ", (" + ast.typeInfo.OpenCLType + ")" + rootBuffer + "))";
                 }
                 else if(!(ast.typeInfo.isScalarType()) && ast.typeInfo.getOpenCLShape().length > 1) {
-                    var sourceShape = ast.typeInfo.getOpenCLShape();
-                    var maxDepth = sourceShape.length;
                     // Create structure if this call is going to return a nested
                     // array
-                    s += "(";
-                    var post_parens = ""; 
-                    // emit statements to initialize pointers, then emit the
-                    // call itself.
-                    var redu = 1; var rhs = ""; var lhs = ""; post_parens = ")";
-                    for(var i = 0 ; i < maxDepth-1; i++) {
-                        for(var j = 0; j < sourceShape[i]*redu; j++) {
-                            lhs = "(" + getPointerCast(i, maxDepth, ast.typeInfo.OpenCLType) +
-                                ast.memBuffers.list[i] + ")"
-                                + "[" + j + "]";
-                            rhs = "&((" + getPointerCast(i+1, maxDepth, ast.typeInfo.OpenCLType)
-                                + ast.memBuffers.list[i+1]
-                                + ")" + "[" + j*sourceShape[i+1] + "]" + ")";
-                            s += lhs + " = " + rhs + " ,";
-                        }
-                        redu = redu*sourceShape[i];
-                    }
+                    s += "(" + initNestedArrayStructure(ast);
+                    post_parens = ")";
                     // NOTE: use renamed dispatch name here!
                     s = s + RENAME(ast.children[0].dispatch) + "( &_FAIL" + (actuals !== "" ? ", " : "") + actuals;
                     if (!(ast.typeInfo.isScalarType())) {
                         s = s + ", (" + ast.typeInfo.OpenCLType + ") " + ast.allocatedMem;
                     }
                     s = s + ")";
-                    s = s + post_parens;
+                    s = s + post_parens; // Close the comma list.
                 }
                 else {
                     // NOTE: use renamed dispatch name here!
@@ -1834,6 +1847,8 @@ RiverTrail.compiler.codeGen = (function() {
                 reportError("array comprehensions not yet implemented", ast);
                 break;
         case NEW:
+                reportError("general object construction not yet implemented", ast);
+                break;
         case NEW_WITH_ARGS:
         case OBJECT_INIT:
                 reportError("general object construction not yet implemented", ast);
