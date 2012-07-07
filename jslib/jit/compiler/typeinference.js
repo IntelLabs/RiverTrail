@@ -1583,8 +1583,17 @@ RiverTrail.Typeinference = function () {
                     reportError("Invalid value initializer", ast);
                 }
                 var objshape = [];
-                for(var idx in ast.children[1].children[0].children) {
-                    objshape.push(ast.children[1].children[0].children[idx].value);
+                // Infer shape description
+                ast.children[1].children[0] = drive(ast.children[1].children[0], tEnv, fEnv);
+                var shapes = ast.children[1].children[0].children;
+                var shapes_length = shapes.length;
+                for(var idx = 0; idx < shapes_length; idx++) {
+                    if(shapes[idx].typeInfo.kind !== "LITERAL" ||
+                            shapes[idx].typeInfo.type !== "NUMBER" ||
+                            shapes[idx].type !== 61) {
+                        reportError("Shape description must consist of literals only, e.g: [3, 4, 2]", ast);
+                    }
+                    objshape.push(shapes[idx].value);
                 }
                 tEnv.accu = new TObject("Array");
                 var elements = [];
