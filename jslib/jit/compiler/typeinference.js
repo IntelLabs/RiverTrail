@@ -1570,11 +1570,18 @@ RiverTrail.Typeinference = function () {
     function RiverTrailUtils_Trap(ast, tEnv, fEnv) {
         if(! (ast.children[1].type === LIST) ||
                 !(ast.children[1].children.length === 2) ) {
-            reportError("Invalid method signature on RiverTrailUtils");
+            reportError("Invalid method signature on RiverTrailUtils", ast);
         }
         switch(ast.children[0].children[1].value) {
             case "createArray":
                 var elementTypeInfo = drive(ast.children[1].children[1], tEnv, fEnv);
+                if(elementTypeInfo.typeInfo.kind === "LITERAL" &&
+                        elementTypeInfo.typeInfo.type === "NUMBER") {
+                    ast.initializer = ast.children[1].children[1].value;
+                }
+                else {
+                    reportError("Invalid value initializer", ast);
+                }
                 var objshape = [];
                 for(var idx in ast.children[1].children[0].children) {
                     objshape.push(ast.children[1].children[0].children[idx].value);
@@ -1596,7 +1603,6 @@ RiverTrail.Typeinference = function () {
                         elements[d].OpenCLType = elementTypeInfo.typeInfo.OpenCLType +
                             top_level_type.slice(0, top_level_type.length - d - 1);
                         elements[d].properties = {};
-                        //elements[d].properties.shape = objshape.slice(d, objshape.length-1);
                         elements[d].properties.shape = [objshape[d+1]];
                         elements[d].properties.addressSpace = "__private";
                     }
@@ -1611,7 +1617,7 @@ RiverTrail.Typeinference = function () {
                 tEnv.accu.setAddressSpace("__private");
                 break;
             default:
-                reportError("Invalid method called on RiverTrailUtils");
+                reportError("Invalid method called on RiverTrailUtils", ast);
         }
     }
 

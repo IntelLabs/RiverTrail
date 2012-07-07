@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = false;
+    const verboseDebug = true;
     const checkBounds = true;
     const verboseErrors = true;
     const parser = Narcissus.parser;
@@ -1014,26 +1014,34 @@ RiverTrail.compiler.codeGen = (function() {
         }
     }
 
-    // Given a series of mem buffers representing levels of a nested array,
-    // this function initialized the pointers in the upper levels to point
-    // to the right mem buffer.
 
-    function initNestedArrayStructure(ast) {
+    // Given a series of mem buffers representing levels of a nested array,
+    // this function initializes the pointers in the upper levels to point
+    // to the right mem buffer.
+    // When setInitialValues is 'true', it also sets the initial values at
+    // the leaves of the array
+
+    function initNestedArrayStructure(ast, setInitialValues) {
+        if(setInitialValues === true && ast.initializer === undefined) {
+            reportError("Invalid value initializer while creating array", ast)
+        }
         var sourceShape = ast.typeInfo.getOpenCLShape();
         var maxDepth = sourceShape.length;
-        // Create structure if this call is going to return a nested
-        // array
         var s = "";
-        // emit statements to initialize pointers
         var redu = 1; var rhs = ""; var lhs = "";
-        for(var i = 0 ; i < maxDepth-1; i++) {
+        for(var i = 0 ; i < maxDepth; i++) {
             for(var j = 0; j < sourceShape[i]*redu; j++) {
                 lhs = "(" + getPointerCast(i, maxDepth, ast.typeInfo.OpenCLType) +
                     ast.memBuffers.list[i] + ")"
                     + "[" + j + "]";
-                rhs = "&((" + getPointerCast(i+1, maxDepth, ast.typeInfo.OpenCLType)
+                if(i === maxDepth-1 && setInitialValues) {
+                    rhs = ast.initializer;
+                }
+                else {
+                    rhs = "&((" + getPointerCast(i+1, maxDepth, ast.typeInfo.OpenCLType)
                     + ast.memBuffers.list[i+1]
                     + ")" + "[" + j*sourceShape[i+1] + "]" + ")";
+                }
                 s += lhs + " = " + rhs + " ,";
             }
             redu = redu*sourceShape[i];
@@ -1299,7 +1307,7 @@ RiverTrail.compiler.codeGen = (function() {
                 } else if (lhs.value === "Math") {
                     s = s + mathOCLMethod(ast);
                 } else if (lhs.value === "RiverTrailUtils") {
-                    s += "(" + initNestedArrayStructure(ast);
+                    s += "(" + initNestedArrayStructure(ast, true);
                     s = s + "(" + ast.typeInfo.OpenCLType + ")(" + ast.allocatedMem + ") )";
                 } else {
                     s = s + " 628 oclExpression not complete probable some sort of method call ";
@@ -1343,7 +1351,7 @@ RiverTrail.compiler.codeGen = (function() {
                 else if(!(ast.typeInfo.isScalarType()) && ast.typeInfo.getOpenCLShape().length > 1) {
                     // Create structure if this call is going to return a nested
                     // array
-                    s += "(" + initNestedArrayStructure(ast);
+                    s += "(" + initNestedArrayStructure(ast, false);
                     post_parens = ")";
                     // NOTE: use renamed dispatch name here!
                     s = s + RENAME(ast.children[0].dispatch) + "( &_FAIL" + (actuals !== "" ? ", " : "") + actuals;
