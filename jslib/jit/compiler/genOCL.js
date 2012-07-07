@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = true;
+    const verboseDebug = false;
     const checkBounds = true;
     const verboseErrors = true;
     const parser = Narcissus.parser;
