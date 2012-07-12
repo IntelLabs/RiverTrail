@@ -1090,6 +1090,7 @@ RiverTrail.Typeinference = function () {
                     case IDENTIFIER:
                         // simple case of a = expr
                         tEnv.update(left.value, tEnv.accu);
+                        left = drive(left, tEnv, fEnv);
                         break;
                     case INDEX:
                         // array update <expr>[iv] = expr

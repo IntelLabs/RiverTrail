@@ -50,6 +50,7 @@ if (RiverTrail === undefined) {
 RiverTrail.compiler.codeGen = (function() {
     const verboseDebug = false;
     const checkBounds = true;
+    const checkall = false;
     const verboseErrors = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -1079,7 +1080,9 @@ RiverTrail.compiler.codeGen = (function() {
         }
 
         if (checkBounds && 
-                ((range.lb === undefined) ||
+                (checkall ||
+                 (range === undefined) ||
+                 (range.lb === undefined) ||
                  (range.lb < 0))) {
             // emit lower bound check
             result += "(_sel_idx_tmp < 0 ? (_FAIL ? 0 : (_FAIL = " + newError("index " + expr + " smaller than zero in " + RiverTrail.Helper.wrappedPP(ast)) + ", 0)) : ";
@@ -1088,7 +1091,9 @@ RiverTrail.compiler.codeGen = (function() {
         }
 
         if (checkBounds &&
-                ((range.ub === undefined) ||
+                (checkall ||
+                 (range === undefined) ||
+                 (range.ub === undefined) ||
                  (range.ub >= bound))) {
             // emit upper bound check
             result += "(_sel_idx_tmp >= " + bound + " ? (_FAIL ? 0: (_FAIL = " + newError("index " + expr + " greater than upper bound " + bound + " in " + RiverTrail.Helper.wrappedPP(ast)) + ", 0)) : ";
@@ -1181,9 +1186,9 @@ RiverTrail.compiler.codeGen = (function() {
                 for (i = sourceRank - elemRank - 1; i >= 0; i--) { // Ususally only 2 or 3 dimensions so ignore complexity
                     s = s + " + " + stride + " * ("
                         if (dynamicSel) {
-                            s = s + wrapIntoCheck(rangeInfo.get(0).get(i), sourceShape[i], oclExpression(arrayOfIndices.children[0], ast) + "[" + i + "]") + ")";
+                            s = s + wrapIntoCheck((rangeInfo ? rangeInfo.get(0).get(i) : undefined), sourceShape[i], oclExpression(arrayOfIndices.children[0], ast) + "[" + i + "]") + ")";
                         } else {
-                            s = s + wrapIntoCheck(rangeInfo.get(i), sourceShape[i], oclExpression(arrayOfIndices.children[i]), ast) + ")";
+                            s = s + wrapIntoCheck((rangeInfo ? rangeInfo.get(i) : undefined), sourceShape[i], oclExpression(arrayOfIndices.children[i]), ast) + ")";
                         }
                     stride = stride * sourceType.getOpenCLShape()[i];
                 }
