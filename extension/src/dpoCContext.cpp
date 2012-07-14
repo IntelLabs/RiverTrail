@@ -333,16 +333,16 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
 
     // USE_HOST_PTR is save as the CData object will keep the associated typed array alive as long as the
     // memory buffer lives
-	cl_mem_flags flags = CL_MEM_READ_ONLY;
-	void *tArrayBuffer = NULL;
-	size_t arrayByteLength = JS_GetTypedArrayByteLength(tArray);
-	if(arrayByteLength == 0) {
-		arrayByteLength = 1;
-	}
-	else {
-		tArrayBuffer = JS_GetTypedArrayData(tArray);
-		flags |= CL_MEM_USE_HOST_PTR;
-	}
+    cl_mem_flags flags = CL_MEM_READ_ONLY;
+    void *tArrayBuffer = NULL;
+    size_t arrayByteLength = JS_GetTypedArrayByteLength(tArray);
+    if(arrayByteLength == 0) {
+        arrayByteLength = 1;
+    }
+    else {
+        tArrayBuffer = JS_GetTypedArrayData(tArray);
+        flags |= CL_MEM_USE_HOST_PTR;
+    }
 
     cl_mem memObj = clCreateBuffer(context, flags,
 		arrayByteLength, tArrayBuffer , &err_code);
