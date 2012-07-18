@@ -1412,6 +1412,8 @@ var ParallelArray = function () {
                 offset = this.offset;
                 var len = index.length;
                 for (i=0;i<len;i++) {
+                    // if we go out of bounds, we return undefined
+                    if (index[i] < 0 || index[i] >= this.shape[i]) return undefined;
                     offset = offset + index[i]*this.strides[i];
                 }
                 if (this.shape.length === index.length) {
@@ -1436,9 +1438,10 @@ var ParallelArray = function () {
             //  else it is flat but not (index instanceof Array) 
             if (arguments.length == 1) { 
                 // One argument that is a scalar index.
+                if ((index < 0) || (index >= this.shape[0])) return undefined;
                 if (this.shape.length == 1) {
                     // a 1D array
-                    return this.data[this.offset + index];                     
+                    return this.data[this.offset + index];
                 } else {
                     // we have a nD array and we want the first dimension so create the new array
                     offset = this.offset+this.strides[0]*index;
@@ -1465,6 +1468,8 @@ var ParallelArray = function () {
                 result = this;
                 for (i=0;i<arguments[0].length;i++) {
                     result = result.data[arguments[0][i]];
+                    // out of bounds => abort further selections
+                    if (result === undefined) return result;
                 }
                 return result;
             }
@@ -1474,6 +1479,8 @@ var ParallelArray = function () {
         result = this;
         for (i=0;i<arguments.length;i++) {
             result = result.data[arguments[i]];
+            // out of bounds => abort further selections
+            if (result === undefined) return result;
         }
         return result;
     };
@@ -1797,6 +1804,7 @@ var ParallelArray = function () {
                 var aLen = arguments.length;
                 if (aLen === 1) {
                     if (typeof(index) === "number") {
+                        if ((index < 0) || (index >= this.shape[0])) return undefined;
                         return this.data[this.offset + index];
                     } else {
                         /* fall back to slow mode */
@@ -1834,9 +1842,11 @@ var ParallelArray = function () {
                 var result;
                 var aLen = arguments.length;
                 if (aLen === 2) {
+                    if ((index < 0) || (index >= this.shape[0]) || (index2 < 0) || (index2 >= this.shape[1])) return undefined;
                     return this.data[this.offset + index * this.strides[0] + index2];
                 } else if (aLen === 1) {
                     if (typeof index === "number") {
+                        if ((index < 0) || (index >= this.shape[0])) return undefined;
                         result = new Fast1DPA(this);
                         result.offset = this.offset + index * this.strides[0];
                         result.elementalType = this.elementalType;
@@ -1879,8 +1889,10 @@ var ParallelArray = function () {
                 var result;
                 var aLen = arguments.length;
                 if (aLen === 3) {
-                        return this.data[this.offset + index * this.strides[0] + index2 * this.strides[1] + index3];
+                    if ((index < 0) || (index >= this.shape[0]) || (index2 < 0) || (index2 >= this.shape[1]) || (index3 < 0) || (index3 >= this.shape[2])) return undefined;
+                    return this.data[this.offset + index * this.strides[0] + index2 * this.strides[1] + index3];
                 } else if (aLen === 2) {
+                    if ((index < 0) || (index >= this.shape[0]) || (index2 < 0) || (index2 >= this.shape[1])) return undefined;
                     result = new Fast1DPA(this);
                     result.offset = this.offset + index * this.strides[0] + index2 * this.strides[1];
                     result.elementalType = this.elementalType;
@@ -1890,6 +1902,7 @@ var ParallelArray = function () {
                     return result;
                 } else if (aLen === 1) {
                     if (typeof index === "number") {
+                        if ((index < 0) || (index >= this.shape[0])) return undefined;
                         result = new Fast2DPA(this);
                         result.offset = this.offset + index * this.strides[0];
                         result.elementalType = this.elementalType;
