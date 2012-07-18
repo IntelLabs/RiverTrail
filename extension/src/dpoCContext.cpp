@@ -298,7 +298,7 @@ NS_IMETHODIMP dpoCContext::GetBuildLog(nsAString & aBuildLog)
 	}
 }
 
-nsresult dpoCContext::ExtractArray(const jsval &source, JSObject **result)
+nsresult dpoCContext::ExtractArray(const jsval &source, JSObject **result, JSContext *cx)
 {
 	if (!JSVAL_IS_OBJECT( source)) {
 		return NS_ERROR_INVALID_ARG;
@@ -306,7 +306,7 @@ nsresult dpoCContext::ExtractArray(const jsval &source, JSObject **result)
 
 	*result = JSVAL_TO_OBJECT( source);
 
-	if (!js_IsTypedArray( *result)) {
+	if (!JS_IsTypedArrayObject( *result, cx)) {
 		*result = NULL;
 		return NS_ERROR_CANNOT_CONVERT_DATA;
 	}
@@ -322,7 +322,7 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
   JSObject *tArray;
   nsCOMPtr<dpoCData> data;
 
-  result = ExtractArray( source, &tArray);
+  result = ExtractArray( source, &tArray, cx);
   if (result == NS_OK) {
     // we have a typed array
     data = new dpoCData( this);
@@ -335,12 +335,12 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
     // memory buffer lives
     cl_mem_flags flags = CL_MEM_READ_ONLY;
     void *tArrayBuffer = NULL;
-    size_t arrayByteLength = JS_GetTypedArrayByteLength(tArray);
+    size_t arrayByteLength = JS_GetTypedArrayByteLength(tArray, cx);
     if(arrayByteLength == 0) {
         arrayByteLength = 1;
     }
     else {
-        tArrayBuffer = JS_GetTypedArrayData(tArray);
+        tArrayBuffer = JS_GetArrayBufferViewData(tArray, cx);
         flags |= CL_MEM_USE_HOST_PTR;
     }
 
@@ -351,8 +351,8 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
       return NS_ERROR_NOT_AVAILABLE;
     }
 
-    result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray), JS_GetTypedArrayLength(tArray), 
-        JS_GetTypedArrayByteLength(tArray), tArray);
+    result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray, cx), JS_GetTypedArrayLength(tArray, cx), 
+        JS_GetTypedArrayByteLength(tArray, cx), tArray);
 
 #ifdef SUPPORT_MAPPING_ARRAYS
   } else if (JSVAL_IS_OBJECT(source)) {
@@ -409,7 +409,7 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 
-	result = ExtractArray( templ, &tArray);
+	result = ExtractArray( templ, &tArray, cx);
 	if (result != NS_OK) {
 		return result;
 	}
@@ -422,10 +422,10 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 	
 	if (length == 0) {
 		DEBUG_LOG_STATUS("AllocateData", "size not provided, assuming template's size");
-		length = JS_GetTypedArrayLength(tArray);
+		length = JS_GetTypedArrayLength(tArray, cx);
 	}
 
-	bytePerElements = JS_GetTypedArrayByteLength(tArray) / JS_GetTypedArrayLength(tArray);
+	bytePerElements = JS_GetTypedArrayByteLength(tArray, cx) / JS_GetTypedArrayLength(tArray, cx);
 
 	DEBUG_LOG_STATUS("AllocateData", "length " << length << " bytePerElements " << bytePerElements);
 
@@ -447,7 +447,7 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 
-	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray), length, length * bytePerElements, jsArray);
+	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray, cx), length, length * bytePerElements, jsArray);
 
 	if (result == NS_OK) {
 		data.forget((dpoCData **) _retval);

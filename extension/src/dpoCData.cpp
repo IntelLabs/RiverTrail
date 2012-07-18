@@ -27,7 +27,7 @@
 #include "dpoCData.h"
 
 #include "dpo_debug.h"
-#include "jstypedarray.h"
+#include "jsfriendapi.h"
 #include "dpo_debug.h"
 #include "dpo_security_checks_stub.h"
 
@@ -201,14 +201,24 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
         	// tell the runtime that we cache this array object
 		DPO_HOLD_JS_OBJECTS(this, dpoCData);
 
-		theArray = js_CreateTypedArray(cx, type, length);
+		switch (type) {
+		case js::ArrayBufferView::TYPE_FLOAT64:
+			theArray = JS_NewFloat64Array(cx, length);
+			break;
+		case js::ArrayBufferView::TYPE_FLOAT32:
+			theArray = JS_NewFloat32Array(cx, length);
+			break;
+		default:
+			/* we only return float our double arrays, so fail in all other cases */
+			return NS_ERROR_NOT_IMPLEMENTED;
+		}
 
 		if (!theArray) {
 			DEBUG_LOG_STATUS("GetValue", "Cannot create typed array");
 			return NS_ERROR_OUT_OF_MEMORY;
 		}
 
-		err_code = clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, JS_GetTypedArrayData(theArray), 0, NULL, NULL);
+		err_code = clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, JS_GetArrayBufferViewData(theArray, cx), 0, NULL, NULL);
 		if (err_code != CL_SUCCESS) {
 			DEBUG_LOG_ERROR("GetValue", err_code);
 			return NS_ERROR_NOT_AVAILABLE;
@@ -234,15 +244,15 @@ NS_IMETHODIMP dpoCData::WriteTo(const jsval & dest, JSContext *cx)
 
 	destArray = JSVAL_TO_OBJECT(dest);
 
-	if (!js_IsTypedArray( destArray)) {
+	if (!JS_IsTypedArrayObject(destArray, cx)) {
 		return NS_ERROR_CANNOT_CONVERT_DATA;
 	}
 
-	if ((JS_GetTypedArrayType(destArray) != type) || (JS_GetTypedArrayLength(destArray) != length)) {
+	if ((JS_GetTypedArrayType(destArray, cx) != type) || (JS_GetTypedArrayLength(destArray, cx) != length)) {
 		return NS_ERROR_INVALID_ARG;
 	}
 
-	err_code = clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, JS_GetTypedArrayData(destArray), 0, NULL, NULL);
+	err_code = clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, JS_GetArrayBufferViewData(destArray, cx), 0, NULL, NULL);
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("WriteTo", err_code);
 		return NS_ERROR_NOT_AVAILABLE;

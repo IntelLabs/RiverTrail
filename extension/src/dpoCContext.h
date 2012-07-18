@@ -32,7 +32,7 @@
 #include "opencl_compat.h"
 
 #include "nsCOMPtr.h"
-#include "jstypedarray.h"
+#include "jsfriendapi.h"
 #include "nsCycleCollectionParticipant.h"
 
 #ifdef WINDOWS_ROUNDTRIP
@@ -74,7 +74,7 @@ protected:
   char *buildLog;				/* shared string used to store the build log in compileKernel */
   cl_mem kernelFailureMem;		/* memory buffer used to communicate abortion of kernels; shared among all kernels */
 
-  nsresult ExtractArray(const jsval &source, JSObject **result);
+  nsresult ExtractArray(const jsval &source, JSObject **result, JSContext *cx);
   
   #ifdef CLPROFILE
   cl_ulong clp_exec_start;
