@@ -739,6 +739,7 @@ var ParallelArray = function () {
         newPA.strides = shapeToStrides(newShape);
         newPA.offset = pa.offset;
         newPA.data = pa.data;
+        newPA.elementalType = this.elementalType;
         return newPA;
     };
     // Does this parallelArray have the following dimension?
@@ -1675,6 +1676,7 @@ var ParallelArray = function () {
             result.offset = 0;
             result.flat = true;
             result.data = this.data;
+            result.elementalType = this.elementalType;
             return result;
         }
         for (i=0;i<len;i++) {
@@ -1969,7 +1971,7 @@ var ParallelArray = function () {
             if (useLazyCommunication) {
                 // wrap all functions that need access to the data
                 requiresData(result, "get");
-                requiresData(result, "partition");
+                //requiresData(result, "partition");
                 requiresData(result, "concat");
                 requiresData(result, "join");
                 requiresData(result, "slice");
