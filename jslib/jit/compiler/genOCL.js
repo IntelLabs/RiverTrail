@@ -267,7 +267,7 @@ RiverTrail.compiler.codeGen = (function() {
                 if (indexType.isScalarType()) {
                     s = s + "const " + indexType.OpenCLType+" "+ RENAME(indexName)+" = tempThis[_readoffset];"
                 } else {
-                    s = s + indexType.getOpenCLAddressSpace() + " " + indexType.OpenCLType+" "+ indexName+" = &(tempThis[_readoffset]);"
+                    s = s + indexType.getOpenCLAddressSpace() + " " + indexType.OpenCLType+" "+ RENAME(indexName)+" = &(tempThis[_readoffset]);"
                 }
             }
             return s;
