@@ -160,7 +160,6 @@ var ParallelArray = function () {
     var useKernelCaching = true;
     // whether to use lazy communication of openCL values
     var useLazyCommunication = false;
-    //var useLazyCommunication = false;
     // whether to cache OpenCL buffers
     var useBufferCaching = false;
     // whether to do update in place in scan
@@ -593,19 +592,6 @@ var ParallelArray = function () {
         this.flat = true;
         this.offset = 0;
 
-        if (useLazyCommunication) {
-            // wrap all functions that need access to the data
-            requiresData(this, "get");
-            requiresData(this, "partition");
-            requiresData(this, "concat");
-            requiresData(this, "join");
-            requiresData(this, "slice");
-            requiresData(this, "toString");
-            requiresData(this, "getArray");
-        } else {
-            this.materialize();
-        }
-
         return this;
     };
     
@@ -753,6 +739,7 @@ var ParallelArray = function () {
         newPA.strides = shapeToStrides(newShape);
         newPA.offset = pa.offset;
         newPA.data = pa.data;
+        newPA.elementalType = pa.elementalType;
         return newPA;
     };
     // Does this parallelArray have the following dimension?
@@ -1689,6 +1676,7 @@ var ParallelArray = function () {
             result.offset = 0;
             result.flat = true;
             result.data = this.data;
+            result.elementalType = this.elementalType;
             return result;
         }
         for (i=0;i<len;i++) {
@@ -1977,6 +1965,21 @@ var ParallelArray = function () {
             try { // for Chrome/Safari compatability
                 result = Proxy.create(makeIndexOpHandler(result), ParallelArray.prototype);
             } catch (ignore) {}
+        }
+
+        if (result.data instanceof Components.interfaces.dpoIData) {
+            if (useLazyCommunication) {
+                // wrap all functions that need access to the data
+                requiresData(result, "get");
+                //requiresData(result, "partition");
+                requiresData(result, "concat");
+                requiresData(result, "join");
+                requiresData(result, "slice");
+                requiresData(result, "toString");
+                requiresData(result, "getArray");
+            } else {
+                result.materialize();
+            }  
         }
 
         return result;
