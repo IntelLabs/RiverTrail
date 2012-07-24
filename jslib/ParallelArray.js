@@ -739,7 +739,7 @@ var ParallelArray = function () {
         newPA.strides = shapeToStrides(newShape);
         newPA.offset = pa.offset;
         newPA.data = pa.data;
-        newPA.elementalType = this.elementalType;
+        newPA.elementalType = pa.elementalType;
         return newPA;
     };
     // Does this parallelArray have the following dimension?
