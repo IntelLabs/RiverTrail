@@ -1310,7 +1310,12 @@ RiverTrail.compiler.codeGen = (function() {
                     s = s + compileSelectionOperation(ast, ast.children[0].children[0], ast.children[1]);
                 } else if ((rhs.value === "getShape") && (lhs.typeInfo.isObjectType("ParallelArray"))) {
                     // create shape literal
-                    s = s + "((" + lhs.typeInfo.properties.elements.OpenCLType + "[]) {" + lhs.typeInfo.properties.shape.join(",") + "})";
+                    s = s + "(";
+                    var lhsShape = lhs.typeInfo.properties.shape;
+                    for (var rank = 0; rank < lhsShape.length; rank++) {
+                        s = s + "((int*)"+ast.allocatedMem+")["+rank+"]="+lhsShape[rank]+",";
+                    }
+                    s = s + "(int*)"+ast.allocatedMem+")";
                 } else if (lhs.value === "Math") {
                     s = s + mathOCLMethod(ast);
                 } else if (lhs.value === "RiverTrailUtils") {
