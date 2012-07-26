@@ -361,6 +361,8 @@ function render() {
 
     if (implementation == "parallel") {
 
+        // we have to make sure the PA's buffer is actually available in case LazyBufferCommunication is enabled
+        NBody.private.pos.materialize();
         for (i = 0; i < numBodies ; i++) {
            
             if (i < Math.round(numBodies / 2)){
