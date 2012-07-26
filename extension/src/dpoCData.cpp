@@ -238,7 +238,7 @@ NS_IMETHODIMP dpoCData::WriteTo(const jsval & dest, JSContext *cx)
 	JSObject *destArray;
 	cl_int err_code;
 	
-	if (!JSVAL_IS_OBJECT( dest)) {
+	if (JSVAL_IS_PRIMITIVE( dest)) {
 		return NS_ERROR_INVALID_ARG;
 	}
 

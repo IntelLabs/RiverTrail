@@ -300,7 +300,7 @@ NS_IMETHODIMP dpoCContext::GetBuildLog(nsAString & aBuildLog)
 
 nsresult dpoCContext::ExtractArray(const jsval &source, JSObject **result, JSContext *cx)
 {
-	if (!JSVAL_IS_OBJECT( source)) {
+	if (JSVAL_IS_PRIMITIVE( source)) {
 		return NS_ERROR_INVALID_ARG;
 	}
 
