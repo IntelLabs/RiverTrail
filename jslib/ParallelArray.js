@@ -135,7 +135,6 @@ var ParallelArray = function () {
             dpoI = new DPOInterface();
         } catch (e) {
             console.log("Unable to create new DPOInterface(): "+e);
-            throw e;
         }
 
         try {
@@ -208,10 +207,10 @@ var ParallelArray = function () {
     var materialize = function materialize() {
         if (useFF4Interface && (this.data instanceof Components.interfaces.dpoIData)) {
             // we have to first materialise the values on the JavaScript side
-            this.cachedOpenCLMem = this.data;
-            this.data = this.cachedOpenCLMem.getValue();
-            if (!useBufferCaching) {
-                this.cachedOpenCLMem = undefined;
+            var cachedOpenCLMem = this.data;
+            this.data = cachedOpenCLMem.getValue();
+            if (useBufferCaching) {
+                this.cachedOpenCLMem = cachedOpenCLMem;
             }
         }
     };
