@@ -110,6 +110,7 @@ dpoCContext::dpoCContext(dpoIPlatform *aParent)
 	DEBUG_LOG_CREATE("dpoCContext", this);
 	parent = aParent;
 	buildLog = NULL;
+	buildLogSize = 0;
 	cmdQueue = NULL;
 #ifdef CLPROFILE
 	clp_exec_start = 0;
@@ -198,7 +199,7 @@ NS_IMETHODIMP dpoCContext::CompileKernel(const nsAString & source, const nsAStri
 {
 	cl_program program;
 	cl_kernel kernel;
-	cl_int err_code;
+	cl_int err_code, err_code2;
 	cl_uint numDevices;
 	cl_device_id *devices = NULL;
 	size_t actual;
@@ -220,52 +221,63 @@ NS_IMETHODIMP dpoCContext::CompileKernel(const nsAString & source, const nsAStri
 	nsMemory::Free(optionsStr);
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("CompileKernel", err_code);
+	}
+		
+	err_code2 = clGetProgramInfo(program, CL_PROGRAM_NUM_DEVICES, sizeof(cl_uint), &numDevices, NULL);
+	if (err_code2 != CL_SUCCESS) {
+		DEBUG_LOG_ERROR("CompileKernel", err_code2);
+		goto FAIL;
+	} 
 
+	devices = (cl_device_id *) nsMemory::Alloc(numDevices * sizeof(cl_device_id));
+	err_code2 = clGetProgramInfo(program, CL_PROGRAM_DEVICES, numDevices * sizeof(cl_device_id), devices, NULL);
+	if (err_code2 != CL_SUCCESS) {
+		DEBUG_LOG_ERROR("CompileKernel", err_code);
+		goto FAIL;
+	} 
+	err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, buildLog, &actual);
+	if (actual > buildLogSize) {
+		if (buildLog != NULL) {
+			nsMemory::Free(buildLog);
+		}
+		buildLog = (char *) nsMemory::Alloc(actual * sizeof(char));
 		if (buildLog == NULL) {
-			buildLog = (char *) nsMemory::Alloc(DPO_BUILDLOG_MAX * sizeof(char));
-			if (buildLog == NULL) {
-				DEBUG_LOG_STATUS("CompileKernel", "Cannot allocate buildLog");
-				goto DONE;
-			}
+			DEBUG_LOG_STATUS("CompileKernel", "Cannot allocate buildLog");
+			buildLogSize = 0;
+			goto DONE;
 		}
-		err_code = clGetProgramInfo(program, CL_PROGRAM_NUM_DEVICES, sizeof(cl_uint), &numDevices, NULL);
-		if (err_code != CL_SUCCESS) {
-			DEBUG_LOG_ERROR("CompileKernel", err_code);
-			goto FAIL;
-		} 
-		devices = (cl_device_id *) nsMemory::Alloc(numDevices * sizeof(cl_device_id));
-		err_code = clGetProgramInfo(program, CL_PROGRAM_DEVICES, numDevices * sizeof(cl_device_id), devices, NULL);
-		if (err_code != CL_SUCCESS) {
-			DEBUG_LOG_ERROR("CompileKernel", err_code);
-			goto FAIL;
-		} 
-		err_code = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, DPO_BUILDLOG_MAX, buildLog, &actual);
-		if (err_code != CL_SUCCESS) {
-			DEBUG_LOG_ERROR("CompileKernel", err_code);
-			goto FAIL;
-		}
-		DEBUG_LOG_STATUS("CompileKernel", "buildLog: " << buildLog);
-		goto DONE;
+		buildLogSize = actual;
+		err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, buildLog, &actual);
+	}
+			
+	if (err_code2 != CL_SUCCESS) {
+		DEBUG_LOG_ERROR("CompileKernel", err_code);
+		goto FAIL;
+	}
+
+	DEBUG_LOG_STATUS("CompileKernel", "buildLog: " << buildLog);
+	goto DONE;
+
 FAIL:
-		buildLog[0] = '\0';
+	if (buildLog != NULL) {
+		nsMemory::Free(buildLog);
+		buildLog = NULL;
+		buildLogSize = 0;
+	}
+
 DONE:
-		if (devices != NULL) {
-			nsMemory::Free(devices);
-		}
-		clReleaseProgram(program);
-		return NS_ERROR_NOT_AVAILABLE;
+	if (devices != NULL) {
+		nsMemory::Free(devices);
 	}
 	
 	kernelNameStr = ToNewUTF8String(kernelName);
 	kernel = clCreateKernel(program, kernelNameStr, &err_code);
 	nsMemory::Free( kernelNameStr);
+	clReleaseProgram(program);
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("CompileKernel", err_code);
-		clReleaseProgram(program);
 		return NS_ERROR_NOT_AVAILABLE;
 	}
-
-	clReleaseProgram(program);
 
 	ret = new dpoCKernel(this);
 	if (ret == NULL) {

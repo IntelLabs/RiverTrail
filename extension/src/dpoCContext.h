@@ -72,6 +72,7 @@ protected:
   cl_context context;			/* the corresponding OpenCL context object */
   cl_command_queue cmdQueue;	/* command queue shared by all child objects (e.g. kernels) */
   char *buildLog;				/* shared string used to store the build log in compileKernel */
+  size_t buildLogSize;			/* current size of buildLog, 0 if not yet allocated */
   cl_mem kernelFailureMem;		/* memory buffer used to communicate abortion of kernels; shared among all kernels */
 
   nsresult ExtractArray(const jsval &source, JSObject **result, JSContext *cx);
