@@ -373,13 +373,11 @@ RiverTrail.RangeAnalysis = function () {
     };
     VEp.applyConstraints = function (constraints) {
         for (var name in constraints.bindings) {
-            var constraint = constraints.lookup(name);
             this.apply(name, constraints.lookup(name));
         }
     }
     VEp.enforceConstraints = function (constraints) {
         for (var name in constraints.bindings) {
-            var constraint = constraints.lookup(name);
             this.enforce(name, constraints.lookup(name));
         }
     }
@@ -722,10 +720,22 @@ RiverTrail.RangeAnalysis = function () {
             case MUL:
                 var left = drive(ast.children[0], varEnv, doAnnotate);
                 var right = drive(ast.children[1], varEnv, doAnnotate);
-                if ((left.lb >= 0) && (left.ub >= 0) && (right.lb >= 0) && (right.ub >= 0)) {
-                    result = left.map( right, function (a,b) { return a*b; }, left.isInt && right.isInt);
+                var newLb = Math.min(left.lb * right.lb, left.ub * right.lb, left.ub * right.lb, left.ub * right.ub);
+                var newUb = Math.max(left.lb * right.lb, left.ub * right.lb, left.ub * right.lb, left.ub * right.ub);
+
+                result = new Range( isNaN(newLb) ? undefined : newLb,
+                                    isNaN(newUb) ? undefined : newUb,
+                                    left.isInt && right.isInt);
+                break;
+
+            case DIV:
+                var left = drive(ast.children[0], varEnv, doAnnotate);
+                var right = drive(ast.children[1], varEnv, doAnnotate);
+                if ((left.lb !== undefined) && (left.ub !== undefined) && (Math.abs(right.lb) >= 1) && (Math.abs(right.ub) >= 1)) {
+                    var newLb = Math.min(left.lb / right.lb, left.ub / right.lb, left.ub / right.lb, left.ub / right.ub);
+                    var newUb = Math.max(left.lb / right.lb, left.ub / right.lb, left.ub / right.lb, left.ub / right.ub);
+                    result = new Range( isNaN(newLb) ? undefined : newLb, isNaN(newUb) ? undefined : newUb, false);
                 } else {
-                    // TODO: add all the special cases
                     result = new Range(undefined, undefined, false);
                 }
                 break;
@@ -750,7 +760,6 @@ RiverTrail.RangeAnalysis = function () {
             case LSH:
             case RSH:
             case URSH:
-            case DIV:
             case MOD:    
                 var left = drive(ast.children[0], varEnv, doAnnotate);
                 var right = drive(ast.children[1], varEnv, doAnnotate);
@@ -1443,7 +1452,7 @@ RiverTrail.RangeAnalysis = function () {
                             newAst.type = TOINT32;
                             newAst.typeInfo = ast.typeInfo.clone();
                             updateToNew(newAst.typeInfo, "int");
-                            newAst.rangeInfo = new Range(undefined, undefined, true); // better be conservative here
+                            newAst.rangeInfo = ast.rangeInfo.clone(); // if we have valid range info, TOINT32 will preserve it
                             newAst.children[0] = ast;
                             ast = newAst;
                         } else {
