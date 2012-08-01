@@ -733,12 +733,7 @@ var ParallelArray = function () {
         if (shapeToLength(newShape) != shapeToLength(pa.shape)) {
             throw new RangeError("Attempt to partition ParallelArray unevenly.");
         }
-        var newPA = new ParallelArray();
-        newPA.shape = newShape;
-        newPA.strides = shapeToStrides(newShape);
-        newPA.offset = pa.offset;
-        newPA.data = pa.data;
-        newPA.elementalType = pa.elementalType;
+        var newPA = new ParallelArray("reshape", pa, newShape);
         return newPA;
     };
     // Does this parallelArray have the following dimension?
@@ -1660,7 +1655,6 @@ var ParallelArray = function () {
     var flatten = function flatten () {
         var len = this.length;
         var newLength = 0;
-        var result;
         var shape;
         var i;
         if (this.flat) {
@@ -1668,15 +1662,9 @@ var ParallelArray = function () {
             if (shape.length == 1) {
                 throw new TypeError("ParallelArray.flatten array is flat");
             }
-            result = new ParallelArray();
-            result.shape = shape.slice(1);
-            result.shape[0] = result.shape[0] * shape[0];
-            result.strides = this.strides.slice(1);
-            result.offset = 0;
-            result.flat = true;
-            result.data = this.data;
-            result.elementalType = this.elementalType;
-            return result;
+            var newShape = shape.slice(1);
+            newShape[0] = newShape[0] * shape[0];
+            return new ParallelArray("reshape", this, newShape);
         }
         for (i=0;i<len;i++) {
             if (this.get(i) instanceof ParallelArray) {
@@ -1686,17 +1674,16 @@ var ParallelArray = function () {
             }
         }
         var resultArray = new Array(newLength);
-            var next = 0;
-            for (i=0;i<len;i++) {
-                var pa = this.get(i);
-                    for (j=0; j<pa.length; j++) {
-                        resultArray[next] = pa.get(j);
-                            next++;                
-                    }
-            }
+        var next = 0;
+        for (i=0;i<len;i++) {
+            var pa = this.get(i);
+                for (j=0; j<pa.length; j++) {
+                    resultArray[next] = pa.get(j);
+                        next++;
+                }
+        }
         
-            var res = new ParallelArray(resultArray);
-            return res;
+        return new ParallelArray(resultArray);
     };
     var flattenRegular = function flattenRegular () {
         var result;
@@ -1928,6 +1915,15 @@ var ParallelArray = function () {
         } else if ((arguments.length == 2) && (typeof(arguments[0]) == 'function')) {
             // Special case where we force the type of the result. Should only be used internally
             result = createSimpleParallelArray.call(this, arguments[1], arguments[0]);
+        } else if ((arguments.length == 3) && (arguments[0] == 'reshape')) {
+            // special constructor used internally to create a clone with different shape
+            result = this;
+            result.shape = arguments[2];
+            result.strides = shapeToStrides(arguments[2]);
+            result.offset = arguments[1].offset;
+            result.elementalType = arguments[1].elementalType;
+            result.data = arguments[1].data;
+            result.flat = arguments[1].flat;
         } else if (useFF4Interface && (arguments[0] instanceof Components.interfaces.dpoIData)) {
             result = createOpenCLMemParallelArray.apply(this, arguments);
         } else if (typeof(arguments[1]) === 'function') {    
