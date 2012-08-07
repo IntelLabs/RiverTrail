@@ -54,6 +54,10 @@ public:
   uint32 GetSize();
   uint32 GetLength();
 
+#ifdef INCREMENTAL_MEM_RELEASE
+  static int CheckFree();
+#endif /* INCREMENTAL_MEM_RELEASE */
+
 private:
   ~dpoCData();
 
@@ -71,4 +75,10 @@ protected:
 #ifdef PREALLOCATE_IN_JS_HEAP
   bool mapped;
 #endif /* PREALLOCATE_IN_JS_HEAP */
+  cl_int EnqueueReadBuffer( size_t size, void *ptr);
+#ifdef INCREMENTAL_MEM_RELEASE
+  static void DeferFree(cl_mem);
+  static cl_mem *defer_list; 
+  static uint defer_pos;
+#endif /* INCREMENTAL_MEM_RELEASE */
 };

@@ -174,7 +174,7 @@ nsresult dpoCContext::InitContext(cl_platform_id platform)
 
 	nsMemory::Free(devices);
 
-	kernelFailureMem = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int), NULL, &err_code);
+	kernelFailureMem = CreateBuffer(CL_MEM_READ_WRITE, sizeof(int), NULL, &err_code);
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("InitContext", err_code);
 		return NS_ERROR_NOT_AVAILABLE;
@@ -186,6 +186,11 @@ nsresult dpoCContext::InitContext(cl_platform_id platform)
 dpoCContext::~dpoCContext()
 {
 	DEBUG_LOG_DESTROY("dpoCContext", this);
+#ifdef INCREMENTAL_MEM_RELEASE
+	// free the pending queue
+	while (dpoCData::CheckFree()) {};
+#endif /* INCREMENTAL_MEM_RELEASE */
+
 	if (buildLog != NULL) {
 		nsMemory::Free(buildLog);
 	}
@@ -326,6 +331,21 @@ nsresult dpoCContext::ExtractArray(const jsval &source, JSObject **result, JSCon
 	return NS_OK;
 }
 
+cl_mem dpoCContext::CreateBuffer(cl_mem_flags flags, size_t size, void *ptr, cl_int *err)
+{
+#ifdef INCREMENTAL_MEM_RELEASE
+	int freed;
+	cl_mem result;
+	do {
+		freed = dpoCData::CheckFree();
+		result = clCreateBuffer(context, flags, size, ptr, err);
+	} while (((*err == CL_OUT_OF_HOST_MEMORY) || (*err == CL_MEM_OBJECT_ALLOCATION_FAILURE)) && freed);
+	return result;
+#else INCREMENTAL_MEM_RELEASE
+	return clCreateBuffer(context, flags, size, ptr, err);
+#endif INCREMENTAL_MEM_RELEASE
+}
+
 /* [implicit_jscontext] dpoIData mapData (in jsval source); */
 NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData **_retval NS_OUTPARAM)
 {
@@ -356,8 +376,7 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
         flags |= CL_MEM_USE_HOST_PTR;
     }
 
-    cl_mem memObj = clCreateBuffer(context, flags,
-		arrayByteLength, tArrayBuffer , &err_code);
+    cl_mem memObj = CreateBuffer(flags, arrayByteLength, tArrayBuffer , &err_code);
     if (err_code != CL_SUCCESS) {
       DEBUG_LOG_ERROR("MapData", err_code);
       return NS_ERROR_NOT_AVAILABLE;
@@ -380,7 +399,7 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
         DEBUG_LOG_STATUS("MapData", "Cannot create new dpoCData object");
         return NS_ERROR_OUT_OF_MEMORY;
       }
-	  cl_mem memObj = clCreateBuffer(context, CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY, sizeof(double *), &elems, &err_code);
+	  cl_mem memObj = CreateBuffer(CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY, sizeof(double *), &elems, &err_code);
       if (err_code != CL_SUCCESS) {
         DEBUG_LOG_ERROR("MapData", err_code);
         return NS_ERROR_NOT_AVAILABLE;
@@ -448,11 +467,11 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 		return NS_ERROR_OUT_OF_MEMORY;
 	}
 
-	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, 
-                                                JS_GetTypedArrayByteLength(jsArray), JS_GetTypedArrayData(jsArray), &err_code);
+	cl_mem memObj = CreateBuffer( CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, 
+                                  JS_GetTypedArrayByteLength(jsArray), JS_GetTypedArrayData(jsArray), &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
 	JSObject *jsArray = nsnull;
-	cl_mem memObj = clCreateBuffer(context, CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
+	cl_mem memObj = CreateBuffer(CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
 #endif /* PREALLOCATE_IN_JS_HEAP */
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("AllocateData", err_code);
@@ -510,11 +529,11 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, PRUint32 length, JSCon
 		return NS_ERROR_OUT_OF_MEMORY;
 	}
 
-	cl_mem memObj = clCreateBuffer(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, 
-                                                JS_GetTypedArrayByteLength(jsArray), JS_GetTypedArrayData(jsArray), &err_code);
+	cl_mem memObj = CreateBuffer(CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, 
+                                 JS_GetTypedArrayByteLength(jsArray), JS_GetTypedArrayData(jsArray), &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
 	JSObject *jsArray = NULL;
-	cl_mem memObj = clCreateBuffer(context, CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
+	cl_mem memObj = CreateBuffer(CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
 #endif /* PREALLOCATE_IN_JS_HEAP */
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("AllocateData2", err_code);

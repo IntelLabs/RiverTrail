@@ -37,11 +37,15 @@
 #define DPO_BUILDLOG_MAX 1024	/* size of buildlog buffer */
 #define DEBUG_OFF				/* disable debugging code */
 #undef WINDOWS_ROUNDTRIP		/* enable code to measure rounttrip time of kernel run using windows API */
-#undef PREALLOCATE_IN_JS_HEAP  /* allocate buffers in the JS heap and use CL_MEM_USE_HOST_POINTER */
-#undef SUPPORT_MAPPING_ARRAYS  /* allow dense arrays to be mapped to JavaScript */
+#undef PREALLOCATE_IN_JS_HEAP   /* allocate buffers in the JS heap and use CL_MEM_USE_HOST_POINTER */
+#undef SUPPORT_MAPPING_ARRAYS   /* allow dense arrays to be mapped to JavaScript */
+#define INCREMENTAL_MEM_RELEASE /* defer free of memObjs to disrtibute GC time */
 
 #define DPO_PREFERENCE_BRANCH "extensions.dpointerface."	/* preference branch to use */
 #define DPO_DEFAULT_PLATFORM_PREFNAME "defaultPlatform"		/* preference name for default platform */
+
+#define DEFER_LIST_LENGTH 4096	/* maximum number of in flight buffers */
+#define DEFER_CHUNK_SIZE 20		/* granularity of free operation */
 
 #include "xpcom-config.h"
 #include "mozilla-config.h"

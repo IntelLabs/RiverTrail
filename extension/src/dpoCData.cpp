@@ -36,22 +36,20 @@
 #include "nsServiceManagerUtils.h"
 #include "nsIXPConnect.h"
 
+static nsCOMPtr<nsIXPConnect> __xpc = NULL;
+
 /*
  * implement our own macros for DPO_PROP_JS_OBJECTS and DPO_HOLD_JS_OBJECTS
  */
 #define DPO_DROP_JS_OBJECTS(obj, clazz) {                                                                  \
-    nsresult result;                                                                                       \
-    nsCOMPtr<nsIXPConnect> xpconnect = do_GetService(nsIXPConnect::GetCID(), &result);                     \
-    if (result == NS_OK) {                                                                                 \
-        xpconnect->RemoveJSHolder(NS_CYCLE_COLLECTION_UPCAST(obj, clazz));                                 \
+    if ((__xpc != NULL) || (__xpc = do_GetService(nsIXPConnect::GetCID(), NULL))) {                        \
+        __xpc->RemoveJSHolder(NS_CYCLE_COLLECTION_UPCAST(obj, clazz));                                     \
     }                                                                                                      \
 }                                                                                                    
 
 #define DPO_HOLD_JS_OBJECTS(obj, clazz) {                                                                  \
-    nsresult result;                                                                                       \
-    nsCOMPtr<nsIXPConnect> xpconnect = do_GetService(nsIXPConnect::GetCID(), &result);                     \
-    if (result == NS_OK) {                                                                                 \
-        xpconnect->AddJSHolder(NS_CYCLE_COLLECTION_UPCAST(obj, clazz), &NS_CYCLE_COLLECTION_NAME(clazz));  \
+    if ((__xpc != NULL) || (__xpc = do_GetService(nsIXPConnect::GetCID(), NULL))) {                        \
+        __xpc->AddJSHolder(NS_CYCLE_COLLECTION_UPCAST(obj, clazz), &NS_CYCLE_COLLECTION_NAME(clazz));      \
     }                                                                                                      \
 }
 
@@ -117,7 +115,11 @@ dpoCData::~dpoCData()
 {
 	DEBUG_LOG_DESTROY("dpoCData", this);
 	if (memObj != NULL) {
+#ifdef INCREMENTAL_MEM_RELEASE
+		DeferFree(memObj);
+#else /* INCREMENTAL_MEM_RELEASE */
 		clReleaseMemObject( memObj);
+#endif /* INCREMENTAL_MEM_RELEASE */
 	}
 	if ((queue != NULL) && retained) {
         DEBUG_LOG_STATUS("~dpoCData", "releasing queue object");
@@ -128,6 +130,43 @@ dpoCData::~dpoCData()
         DPO_DROP_JS_OBJECTS(this, dpoCData);
         theArray = nsnull;
     }
+}
+
+#ifdef INCREMENTAL_MEM_RELEASE
+cl_mem *dpoCData::defer_list = new cl_mem[DEFER_LIST_LENGTH];
+uint dpoCData::defer_pos = 0;
+
+void dpoCData::DeferFree(cl_mem obj) {
+	if (dpoCData::defer_pos >= DEFER_LIST_LENGTH) {
+		clReleaseMemObject(obj);
+	} else {
+		dpoCData::defer_list[dpoCData::defer_pos++] = obj;
+	}
+}
+
+int dpoCData::CheckFree() {
+	int freed = 0;
+	while ((dpoCData::defer_pos > 0) && (freed++ < DEFER_CHUNK_SIZE)) {
+		clReleaseMemObject(dpoCData::defer_list[--dpoCData::defer_pos]);
+	}
+	return freed;
+}
+#endif /* INCREMENTAL_MEM_RELEASE */
+
+cl_int dpoCData::EnqueueReadBuffer(size_t size, void *ptr) {
+#ifdef INCREMENTAL_MEM_RELEASE
+	cl_int err_code;
+	int freed;
+
+	do {
+		freed = dpoCData::CheckFree();
+		err_code = clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, ptr, 0, NULL, NULL);
+	} while (((err_code == CL_MEM_OBJECT_ALLOCATION_FAILURE) || (err_code == CL_OUT_OF_HOST_MEMORY)) && freed);
+
+	return err_code;
+#else /* INCREMENTAL_MEM_RELEASE */
+	return clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, ptr, 0, NULL, NULL);
+#endif /* INCREMENTAL_MEM_RELEASE */
 }
 
 nsresult dpoCData::InitCData(JSContext *cx, cl_command_queue aQueue, cl_mem aMemObj, uint32 aType, uint32 aLength, uint32 aSize, JSObject *anArray)
@@ -218,7 +257,11 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 			return NS_ERROR_OUT_OF_MEMORY;
 		}
 
-		err_code = clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, JS_GetArrayBufferViewData(theArray, cx), 0, NULL, NULL);
+#ifdef INCREMENTAL_MEM_RELEASE
+		dpoCData::CheckFree();
+#endif /* INCREMENTAL_MEM_RELEASE */
+
+		err_code = EnqueueReadBuffer(size, JS_GetArrayBufferViewData(theArray, cx));
 		if (err_code != CL_SUCCESS) {
 			DEBUG_LOG_ERROR("GetValue", err_code);
 			return NS_ERROR_NOT_AVAILABLE;
@@ -252,7 +295,7 @@ NS_IMETHODIMP dpoCData::WriteTo(const jsval & dest, JSContext *cx)
 		return NS_ERROR_INVALID_ARG;
 	}
 
-	err_code = clEnqueueReadBuffer(queue, memObj, CL_TRUE, 0, size, JS_GetArrayBufferViewData(destArray, cx), 0, NULL, NULL);
+	err_code = EnqueueReadBuffer(size, JS_GetArrayBufferViewData(destArray, cx));
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("WriteTo", err_code);
 		return NS_ERROR_NOT_AVAILABLE;

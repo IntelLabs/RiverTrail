@@ -76,7 +76,8 @@ protected:
   cl_mem kernelFailureMem;		/* memory buffer used to communicate abortion of kernels; shared among all kernels */
 
   nsresult ExtractArray(const jsval &source, JSObject **result, JSContext *cx);
-  
+  cl_mem CreateBuffer(cl_mem_flags flags, size_t size, void *ptr, cl_int *err);
+
   #ifdef CLPROFILE
   cl_ulong clp_exec_start;
   cl_ulong clp_exec_end;
