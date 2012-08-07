@@ -100,6 +100,26 @@ RiverTrail.compiler.codeGen = (function() {
         return {"enter": enter, "exit": exit, "inCalledScope": inCalledScope};
     } ();
 
+    var toCNumber = function (val, type) {
+            var res = "";
+            if ((type.OpenCLType === "float") || (type.OpenCLType === "double")) {
+                res = val; 
+                if ((String.prototype.indexOf.call(res, '.') === -1) && (String.prototype.indexOf.call(res, 'e') === -1)) {
+                    res += ".0";
+                }
+                if (type.OpenCLType === "float") {
+                    res += "f";
+                }
+            } else if (type.OpenCLType === "int"){
+               res = val;
+            } else if (type.OpenCLType === "boolean"){
+                res =  val; // CR check that this works.
+            } else {
+                reportBug("unexpected number value in toCNumber");
+            }
+            return res;
+    };
+
     //
     // The Ast is set up so that formalsAst.params holds the names of the params specified in the signature
     // of the function.
@@ -1276,27 +1296,7 @@ RiverTrail.compiler.codeGen = (function() {
             }
             s = s + oclExpression(ast.children[0]);
         } else if (ast.type === NUMBER) {
-            //if (ast.typeInfo.OpenCLType) {
-            //    s = s + "("+ast.typeInfo.OpenCLType+")"+ast.value;
-            //} else {
-            if ((ast.typeInfo.OpenCLType === "float") ||
-                    (ast.typeInfo.OpenCLType === "double")) {
-                s = s + ast.value;
-                if (String.prototype.indexOf.call(ast.value, '.') === -1) {
-                    s = s + ".0";
-                }
-                if (ast.typeInfo.OpenCLType === "float") {
-                    s = s + "f";
-                }
-            } else if (ast.typeInfo.OpenCLType === "int"){
-                s = s + ast.value;
-            } else if (ast.typeInfo.OpenCLType === "boolean"){
-                s = s + ast.value; // CR check that this works.
-            } else {
-                s = s + ast.value; // CR TBD - Catch all at some point not all of the explicitly 
-                // and add an exception if not recognized.
-            }
-            //}
+            s = s + toCNumber(ast.value, ast.typeInfo);
         } else if (ast.type === THIS) {
             s = s + " tempThis "; // SAH: this should come from the boilerplate but that cannot be passed around easily
 
