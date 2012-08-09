@@ -791,12 +791,40 @@ RiverTrail.compiler.codeGen = (function() {
             return s;
         }
 
+        var isArrayLiteral = RiverTrail.Helper.isArrayLiteral;
+
         function genSimpleReturn(ast) {
             "use strict";
             var s = " ";
             var elements;
             var rhs;    // right-hand-side
             var i;
+            var buildWriteCopy = function buildWriteCopy(name, idx, idx2, src, shape) {
+                var res = "";
+                if (shape.length === 0) {
+                    res += name + idx + "=" + src + idx2 + ";";
+                } else {
+                    var newShape = shape.slice(1);
+                    for (var cnt = 0; cnt < shape[0]; cnt++) {
+                        res += buildWriteCopy(name, idx+"["+cnt+"]", idx2+"["+cnt+"]", src, newShape);
+                    }
+                }
+                return res;
+            };
+            var buildWrite = function buildWrite(name, idx, ast) {
+                var res = "";
+                if (ast.type === ARRAY_INIT) {
+                    for (var cnt = 0; cnt < ast.children.length; cnt++) {
+                        res += buildWrite(name, idx+"["+cnt+"]", ast.children[cnt]);
+                    }
+                } else if ((ast.type === IDENTIFIER) && (ast.typeInfo.getOpenCLShape().length >= 1)) {
+                    // in place copy
+                    res += buildWriteCopy(name, idx, "", oclExpression(ast), ast.typeInfo.getOpenCLShape());
+                } else {
+                    res += name + idx + " = " + oclExpression(ast) + ";";
+                }
+                return res;
+            };
             rhs = ast.value;
             if (rhs.typeInfo.isScalarType()) {
                 // scalar result
@@ -806,14 +834,8 @@ RiverTrail.compiler.codeGen = (function() {
             } else {
                 // direct write but only for flat arrays i.e.,
                 // rhs.typeInfo.properties.shape.length===1
-                if (rhs.type === ARRAY_INIT && (rhs.typeInfo.getOpenCLShape().length === 1)) {
-                    elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
-                    // inline array expression, do direct write
-                    s = s + "{"; 
-                    for (i = 0; i < elements; i++) {
-                        s = s + "retVal[_writeoffset + " + i + "] = " + oclExpression(rhs.children[i]) + ";";
-                    }
-                    s = s + "}";
+                if (isArrayLiteral(rhs)) {
+                    s = s + "{" + buildWrite("(retVal + _writeoffset)", "", rhs) + "}";
                 }
                 else if(rhs.typeInfo.isObjectType("InlineObject")) {
                     var numProps = 0;

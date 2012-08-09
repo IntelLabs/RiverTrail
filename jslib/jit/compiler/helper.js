@@ -502,6 +502,14 @@ RiverTrail.Helper = function () {
         }
     };
 
+    // used in genOCL and infermem to decide whether a return expression qualifies for
+    // allocation free copying
+    function isArrayLiteral (ast) {
+        return ((ast.type === ARRAY_INIT) &&
+                ((ast.typeInfo.getOpenCLShape().length == 1) ||
+                 ast.children.every(function (x) { return (x.type === IDENTIFIER) || isArrayLiteral(x);})));
+    };
+
     return { "traverseAst" : traverseAst,
              "wrappedPP" : wrappedPP,
              "inferPAType" : inferPAType,
@@ -519,6 +527,7 @@ RiverTrail.Helper = function () {
              "reportError" : reportError,
              "reportBug" : reportBug,
              "findSelectionRoot" : findSelectionRoot,
+             "isArrayLiteral" : isArrayLiteral,
              "compareObjectFields" : compareObjectFields
     };
 

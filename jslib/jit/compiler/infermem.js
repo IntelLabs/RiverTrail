@@ -159,6 +159,8 @@ RiverTrail.InferMem = function () {
         throw "Bug: " + msg; // could be more elaborate
     }
 
+    var isArrayLiteral = RiverTrail.Helper.isArrayLiteral;
+
     // The code below creates a single buffer for each
     // dimension of the nested array. These buffers are
     // attached to the AST node and the backend emits code
@@ -243,7 +245,7 @@ RiverTrail.InferMem = function () {
             case SCRIPT:
                 ast.funDecls.forEach(function (f) {infer(f.body);});
                 ast.memVars = new MemList();
-                ast.children.forEach(function (child) { infer(child, ast.memVars, ast.ins, ast.outs); });
+                ast.children.forEach(function (child) { infer(child, ast.memVars, null, null); });
                 break;
 
             case BLOCK:
@@ -257,11 +259,9 @@ RiverTrail.InferMem = function () {
                 // this is not an applied occurence but the declaration, so we do not do anything here
                 break;
             case RETURN:
-                // special case: if the value is an ARRAY_INIT, we only look at its elements but ignore
-                // the init itself as the corresponding array is never materialized
-                if (false && (ast.value.type === ARRAY_INIT)) {
-                    ast.value.children.forEach(function (v) { infer(v, memVars, ins, outs); });
-                } else {
+                // special case: if the value is an ARRAY_INIT that only contains allocation free
+                // expressions, we do not allocate space for the frame as it is directly written
+                if (!isArrayLiteral(ast.value)) {
                     infer(ast.value, memVars, ins, outs);
                 }
                 break;
@@ -324,8 +324,8 @@ RiverTrail.InferMem = function () {
                         // case 2:
                         // If <expr> is in a different address space than <a>, we have to copy, too.
                         var aVar = ast.children[0];
-                        if ((ast.children[1].typeInfo.getOpenCLAddressSpace() === "__private") && // case 1
-                            (ins.contains(aVar.value) && outs.contains(aVar.value)) ||
+                        if (((ast.children[1].typeInfo.getOpenCLAddressSpace() === "__private") && // case 1
+                            (ins && ins.contains(aVar.value) && outs && outs.contains(aVar.value))) ||
                             (aVar.typeInfo.getOpenCLAddressSpace() != ast.children[1].typeInfo.getOpenCLAddressSpace())) { // case 2
                             if(!ast.typeInfo.isScalarType()) {
                                 var shape = ast.typeInfo.getOpenCLShape();
