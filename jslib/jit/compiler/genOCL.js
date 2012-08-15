@@ -799,15 +799,27 @@ RiverTrail.compiler.codeGen = (function() {
             var elements;
             var rhs;    // right-hand-side
             var i;
-            var buildWriteCopy = function buildWriteCopy(name, idx, idx2, src, shape) {
+            var buildWriteCopy = function buildWriteCopy(name, idx, idx2, src, shape, rank) {
                 var res = "";
                 if (shape.length === 0) {
                     res += name + idx + "=" + src + idx2 + ";";
                 } else {
                     var newShape = shape.slice(1);
-                    for (var cnt = 0; cnt < shape[0]; cnt++) {
-                        res += buildWriteCopy(name, idx+"["+cnt+"]", idx2+"["+cnt+"]", src, newShape);
-                    }
+                    res += "for (int cpi_" + rank + " = 0; cpi_" + rank + " < " + shape[0] + "; cpi_" + rank + "++) {";
+                    res += buildWriteCopy(name, idx+"[cpi_"+rank+"]", idx2+"[cpi_"+rank+"]", src, newShape, rank+1);
+                    res += "}";
+                }
+                return res;
+            };
+            var buildWriteCopyGlob = function buildWriteCopyGlob(name, idx, idx2, src, shape, rank) {
+                var res = "";
+                if (shape.length === 0) {
+                    res += name + idx + "=" + src + "[" + idx2 + "++];";
+                } else {
+                    var newShape = shape.slice(1);
+                    res += "for (int cpi_" + rank + " = 0; cpi_" + rank + " < " + shape[0] + "; cpi_" + rank + "++) {";
+                    res += buildWriteCopyGlob(name, idx+"[cpi_"+rank+"]", idx2, src, newShape, rank+1);
+                    res += "}";
                 }
                 return res;
             };
@@ -819,7 +831,14 @@ RiverTrail.compiler.codeGen = (function() {
                     }
                 } else if ((ast.type === IDENTIFIER) && (ast.typeInfo.getOpenCLShape().length >= 1)) {
                     // in place copy
-                    res += buildWriteCopy(name, idx, "", oclExpression(ast), ast.typeInfo.getOpenCLShape());
+                    if (ast.typeInfo.getOpenCLAddressSpace() === "__global") {
+                        // copy from flat global array
+                        res += "{ int _readidx = 0;";
+                        res += buildWriteCopyGlob(name, idx, "_readidx", oclExpression(ast), ast.typeInfo.getOpenCLShape(), 0);
+                        res += "}";
+                    } else {
+                        res += buildWriteCopy(name, idx, "", oclExpression(ast), ast.typeInfo.getOpenCLShape(), 0);
+                    }
                 } else {
                     res += name + idx + " = " + oclExpression(ast) + ";";
                 }
@@ -939,6 +958,43 @@ RiverTrail.compiler.codeGen = (function() {
             var rhs;    // right-hand-side
             var i;
             rhs = ast.value;
+            var buildWriteCopy = function buildWriteCopy(name, idx, idx2, src, shape, rank) {
+                var res = "";
+                if (shape.length === 0) {
+                    res += name + "[" + idx + "++]" + "=" + src + idx2 + ";";
+                } else {
+                    var newShape = shape.slice(1);
+                    res += "for (int cpi_" + rank + " = 0; cpi_" + rank + " < " + shape[0] + "; cpi_" + rank + "++) {";
+                    res += buildWriteCopy(name, idx, idx2+"[cpi_"+rank+"]", src, newShape, rank+1);
+                    res += "}";
+                }
+                return res;
+            };
+            var buildWriteCopyGlob = function buildWriteCopyGlob(name, idx, src, shape) {
+                var length = shape.reduce(function (a,b) { return a*b; });
+                var res = "for (int cpi = 0; cpi < " + length + "; cpi++) {";
+                    res += name + "[" + idx + "++] = " + src + "[cpi];";
+                    res += "}";
+                return res;
+            };
+            var buildWrite = function buildWrite(name, idx, ast) {
+                var res = "";
+                if (ast.type === ARRAY_INIT) {
+                    for (var cnt = 0; cnt < ast.children.length; cnt++) {
+                        res += buildWrite(name, idx, ast.children[cnt]);
+                    }
+                } else if ((ast.type === IDENTIFIER) && (ast.typeInfo.getOpenCLShape().length >= 1)) {
+                    // in place copy
+                    if (ast.typeInfo.getOpenCLAddressSpace() === "__global") {
+                        res += buildWriteCopyGlob(name, idx, oclExpression(ast), ast.typeInfo.getOpenCLShape());
+                    } else {
+                        res += buildWriteCopy(name, idx, "", oclExpression(ast), ast.typeInfo.getOpenCLShape(), 0);
+                    }
+                } else {
+                    res += name + "[" + idx + "++] = " + oclExpression(ast) + ";";
+                }
+                return res;
+            };
             if (rhs.typeInfo.isScalarType()) {
                 // scalar result
                 s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
@@ -946,14 +1002,8 @@ RiverTrail.compiler.codeGen = (function() {
             } else {
                 // direct write but only for flat arrays i.e.,
                 // rhs.typeInfo.properties.shape.length===1
-                if (rhs.type === ARRAY_INIT && (rhs.typeInfo.getOpenCLShape().length === 1)) {
-                    elements = rhs.typeInfo.properties.shape.reduce(function (a,b) { return a*b;});
-                    // inline array expression, do direct write
-                    s = s + "{"; 
-                    for (i = 0; i < elements; i++) {
-                        s = s + "retVal[_writeoffset + " + i + "] = " + oclExpression(rhs.children[i]) + ";";
-                    }
-                    s = s + "}";
+                if (isArrayLiteral(rhs)) {
+                    s = s + "{ int writeidx = 0; " + buildWrite("(retVal + _writeoffset)", "writeidx", rhs) + "}";
                 } else if(rhs.typeInfo.properties.addressSpace === "__global") {
                     s = boilerplate.localResultName + " = " + oclExpression(rhs) + ";";
                     var elements = rhs.typeInfo.getOpenCLShape().reduce(function (a,b) { return a*b;});
