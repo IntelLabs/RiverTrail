@@ -51,6 +51,7 @@ RiverTrail.compiler.codeGen = (function() {
     const verboseDebug = false;
     const checkBounds = true;
     const checkall = false;
+    const conditionalInline = false;
     const verboseErrors = true;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
@@ -332,6 +333,14 @@ RiverTrail.compiler.codeGen = (function() {
             return s;
         };
 
+        function inliningMightHelp(ast) {
+            var stmts = ast.body.children;
+            var type = ast.typeInfo.result;
+            return !conditionalInline || // unconditionally inline everything
+                   type.isScalarType() || // it is a scalar function
+                   ((stmts.length === 1) && (stmts[0].type === RETURN) && ((stmts[0].value.type === IDENTIFIER) || isArrayLiteral(stmts[0].value))); // the return does not involve copying
+        };
+
         function genCalledFunction(ast) {
             "use strict";
             var s = "";
@@ -342,6 +351,9 @@ RiverTrail.compiler.codeGen = (function() {
                 throw "expecting function found " + ast.value;
             }
             var returnType = ast.typeInfo.result.OpenCLType;
+            if (!inliningMightHelp(ast)) {
+                    s = s + "__attribute__((noinline)) ";
+            }
             s = s + genCalledFunctionHeader(ast);
             s = s + " { ";// function body
             s = s + " const int _writeoffset = 0; "; // add a write offset to fool the rest of code generation
