@@ -32,10 +32,12 @@ RiverTrail.RangeAnalysis = function () {
 
     var stripToBaseType = RiverTrail.Helper.stripToBaseType;
 
-    const debug = false;
+    var debug = false;
+    var intraFun = false;
+    var maxRangeUpdates = 1;
 
-    const RANGE_MAX = 2147483647;
-    const RANGE_MIN = -2147483647;
+    var RANGE_MAX = 2147483647;
+    var RANGE_MIN = -2147483647;
 
     //
     // error reporting
@@ -209,8 +211,9 @@ RiverTrail.RangeAnalysis = function () {
         return (this.lb !== undefined) && (this.lb === this.ub);
     };
     Rp.covers = function (other) {
-        return ((this.lb === other.lb) || (this.lb < other.lb)) &&
-               ((this.ub === other.ub) || (this.ub > other.ub));
+        var res = ((this.lb === other.lb) || (this.lb < other.lb)) &&
+                  ((this.ub === other.ub) || (this.ub > other.ub));
+        return res;
     };
     Rp.clone = function () {
         return new Range(this.lb, this.ub, this.isInt);
@@ -499,11 +502,13 @@ RiverTrail.RangeAnalysis = function () {
             case SCRIPT:
                 varEnv = new VarEnv(varEnv);
                 ast.rangeSymbols = varEnv;
-                ast.funDecls.forEach(function (f) {
-                        var innerVEnv = new VarEnv();
-                        f.params.forEach(function (v) { innerVEnv.update(v, new Range(undefined, undefined, false)); });
-                        drive(f.body, innerVEnv, true);
-                    });
+                if (!intraFun) {
+                    ast.funDecls.forEach(function (f) {
+                            var innerVEnv = new VarEnv();
+                            f.params.forEach(function (v) { innerVEnv.update(v, new Range(undefined, undefined, false)); });
+                            drive(f.body, innerVEnv, true);
+                        });
+                }
                 // fallthrough
             case BLOCK:
                 ast.children.forEach(function (ast) { drive(ast, varEnv, doAnnotate); });
@@ -883,8 +888,53 @@ RiverTrail.RangeAnalysis = function () {
                                     varEnv.lookup(v.value).forceInt(false);
                                 }
                             });
+                        if (intraFun) {
+                            if (ast.callFrame) { // we have dispatch information available, so we can directly go there
+                                var target = ast.callFrame.frame.ast; // grab the target instance
 
-                        result = new Range(undefined, undefined, false);
+                                if (!target.rangeUpdate || (target.rangeUpdate < maxRangeUpdates)) {
+                                    debug && console.log("inferring/updating range information for " + target.dispatch);
+                                    var innerVEnv = new VarEnv();
+                                    var updatedRI = false;
+                                    if (!target.paramRanges) { target.paramRanges = []; }
+                                    target.params.forEach(function (v, idx) { 
+                                            if (target.paramRanges[idx]) {
+                                                var oldRange = target.paramRanges[idx];
+                                                var newRange = oldRange.union(ast.children[1].children[idx].rangeInfo);
+                                                if (!oldRange.covers(newRange)) {
+                                                  updatedRI = true;
+                                                  target.paramRanges[idx] = newRange;
+                                                }
+                                            } else {
+                                                updatedRI = true;
+                                                target.paramRanges[idx] = ast.children[1].children[idx].rangeInfo.clone();
+                                            }
+                                            innerVEnv.update(v, target.paramRanges[idx]);
+                                   });
+                                   if (updatedRI) {
+                                       target.rangeUpdate = (target.rangeUpdate || 0) + 1;
+                                       drive(target.body, innerVEnv, true);
+                                   }
+                                } else if (target.rangeUpdate == maxRangeUpdates) {
+                                    debug && console.log("neutralizing range information for " + target.dispatch);
+                                    var innerVEnv = new VarEnv();
+                                    target.params.forEach(function (v,idx) { 
+                                            target.paramRanges[idx] = new Range(undefined, undefined, false);
+                                            innerVEnv.update(v, target.paramRanges[idx]);
+                                   });
+                                   drive(target.body, innerVEnv, true);
+                                   target.rangeUpdate++;
+                                } 
+                                // we do not yet propagate result ranges yet
+                                result = new Range(undefined, undefined, false);
+                            } else {
+                                // this really should not happen
+                                debug && console.log("missing callFrame");
+                                result = new Range(undefined, undefined, false);
+                            }
+                        } else {
+                            result = new Range(undefined, undefined, false);
+                        }
                 }
                 break;
 
