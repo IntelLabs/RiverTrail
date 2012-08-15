@@ -33,6 +33,7 @@
 
 #include "nsCOMPtr.h"
 #include "nsCycleCollectionParticipant.h"
+#include "nsIXPConnect.h"
 
 #define DPO_DATA_CID_STR "a855373b-3de9-4a86-856c-0b201c33c0b0"
 #define DPO_DATA_CID { 0xa855373b, 0x3de9, 0x4a86, {0x85, 0x6c, 0x0b, 0x20, 0x1c, 0x33, 0xc0, 0xb0}}
@@ -54,10 +55,6 @@ public:
   uint32 GetSize();
   uint32 GetLength();
 
-#ifdef INCREMENTAL_MEM_RELEASE
-  static int CheckFree();
-#endif /* INCREMENTAL_MEM_RELEASE */
-
 private:
   ~dpoCData();
 
@@ -75,10 +72,12 @@ protected:
 #ifdef PREALLOCATE_IN_JS_HEAP
   bool mapped;
 #endif /* PREALLOCATE_IN_JS_HEAP */
-  cl_int EnqueueReadBuffer( size_t size, void *ptr);
 #ifdef INCREMENTAL_MEM_RELEASE
-  static void DeferFree(cl_mem);
-  static cl_mem *defer_list; 
-  static uint defer_pos;
+  int CheckFree();
+  void DeferFree(cl_mem);
 #endif /* INCREMENTAL_MEM_RELEASE */
+  nsCOMPtr<nsIXPConnect> xpc;
+  void HoldObjects();
+  void DropObjects();
+  cl_int EnqueueReadBuffer( size_t size, void *ptr);
 };

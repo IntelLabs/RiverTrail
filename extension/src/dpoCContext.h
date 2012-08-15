@@ -63,6 +63,12 @@ public:
 	static void RecordBeginOfRoundTrip(dpoIContext *parent);
 	static void RecordEndOfRoundTrip(dpoIContext *parent);
 #endif /* WINDOWS_ROUNDTRIP */
+
+#ifdef INCREMENTAL_MEM_RELEASE
+  int CheckFree();
+  void DeferFree(cl_mem);
+#endif /* INCREMENTAL_MEM_RELEASE */
+
 private:
   ~dpoCContext();
 
@@ -78,12 +84,19 @@ protected:
   nsresult ExtractArray(const jsval &source, JSObject **result, JSContext *cx);
   cl_mem CreateBuffer(cl_mem_flags flags, size_t size, void *ptr, cl_int *err);
 
-  #ifdef CLPROFILE
+#ifdef CLPROFILE
   cl_ulong clp_exec_start;
   cl_ulong clp_exec_end;
-  #endif /* CLPROFILE */
-  #ifdef WINDOWS_ROUNDTRIP
+#endif /* CLPROFILE */
+#ifdef WINDOWS_ROUNDTRIP
   LARGE_INTEGER wrt_exec_start;
   LARGE_INTEGER wrt_exec_end;
-  #endif /* WINDOWS_ROUNDTRIP */
+#endif /* WINDOWS_ROUNDTRIP */
+#ifdef INCREMENTAL_MEM_RELEASE
+    cl_mem *defer_list; 
+    uint defer_pos;
+	uint defer_max;
+#endif /* INCREMENTAL_MEM_RELEASE */
+
+
 };

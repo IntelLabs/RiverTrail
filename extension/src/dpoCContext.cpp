@@ -128,6 +128,12 @@ nsresult dpoCContext::InitContext(cl_platform_id platform)
 	cl_device_id *devices;
 	size_t cb;
 
+#ifdef INCREMENTAL_MEM_RELEASE
+	defer_list = (cl_mem *)nsMemory::Alloc(DEFER_LIST_LENGTH * sizeof cl_mem);
+	defer_pos = 0;
+	defer_max = DEFER_LIST_LENGTH;
+#endif /* INCREMENTAL_MEM_RELEASE */
+
 	cl_context_properties context_properties[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platform, NULL};
 	
 	context = clCreateContextFromType(context_properties, CL_DEVICE_TYPE_CPU, ReportCLError, this, &err_code);
@@ -187,10 +193,13 @@ dpoCContext::~dpoCContext()
 {
 	DEBUG_LOG_DESTROY("dpoCContext", this);
 #ifdef INCREMENTAL_MEM_RELEASE
+	// disable deferred free
+	defer_max = 0;
 	// free the pending queue
-	while (dpoCData::CheckFree()) {};
+	while (CheckFree()) {};
+	nsMemory::Free(defer_list);
+	defer_list = NULL;
 #endif /* INCREMENTAL_MEM_RELEASE */
-
 	if (buildLog != NULL) {
 		nsMemory::Free(buildLog);
 	}
@@ -198,6 +207,24 @@ dpoCContext::~dpoCContext()
 		clReleaseCommandQueue(cmdQueue);
 	}
 }
+
+#ifdef INCREMENTAL_MEM_RELEASE
+void dpoCContext::DeferFree(cl_mem obj) {
+	if (defer_pos >= defer_max) {
+		clReleaseMemObject(obj);
+	} else {
+		defer_list[defer_pos++] = obj;
+	}
+}
+
+int dpoCContext::CheckFree() {
+	int freed = 0;
+	while ((defer_pos > 0) && (freed++ < DEFER_CHUNK_SIZE)) {
+		clReleaseMemObject(defer_list[--defer_pos]);
+	}
+	return freed;
+}
+#endif /* INCREMENTAL_MEM_RELEASE */
 
 /* dpoIKernel compileKernel (in AString source, in AString kernelName, [optional] in AString options); */
 NS_IMETHODIMP dpoCContext::CompileKernel(const nsAString & source, const nsAString & kernelName, const nsAString & options, dpoIKernel **_retval NS_OUTPARAM)
@@ -337,7 +364,7 @@ cl_mem dpoCContext::CreateBuffer(cl_mem_flags flags, size_t size, void *ptr, cl_
 	int freed;
 	cl_mem result;
 	do {
-		freed = dpoCData::CheckFree();
+		freed = CheckFree();
 		result = clCreateBuffer(context, flags, size, ptr, err);
 	} while (((*err == CL_OUT_OF_HOST_MEMORY) || (*err == CL_MEM_OBJECT_ALLOCATION_FAILURE)) && freed);
 	return result;

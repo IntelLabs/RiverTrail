@@ -90,6 +90,7 @@ dpoCKernel::~dpoCKernel()
 	if (kernel != NULL) {
 		clReleaseKernel(kernel);
 	}
+	parent = NULL;
 }
 
 nsresult dpoCKernel::InitKernel(cl_command_queue aCmdQueue, cl_kernel aKernel, cl_mem aFailureMem)
