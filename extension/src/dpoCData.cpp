@@ -278,30 +278,7 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 /* [implicit_jscontext] void writeTo (in jsval dest); */
 NS_IMETHODIMP dpoCData::WriteTo(const jsval & dest, JSContext *cx)
 {
-	JSObject *destArray;
-	cl_int err_code;
-	
-	if (JSVAL_IS_PRIMITIVE( dest)) {
-		return NS_ERROR_INVALID_ARG;
-	}
-
-	destArray = JSVAL_TO_OBJECT(dest);
-
-	if (!JS_IsTypedArrayObject(destArray, cx)) {
-		return NS_ERROR_CANNOT_CONVERT_DATA;
-	}
-
-	if ((JS_GetTypedArrayType(destArray, cx) != type) || (JS_GetTypedArrayLength(destArray, cx) != length)) {
-		return NS_ERROR_INVALID_ARG;
-	}
-
-	err_code = EnqueueReadBuffer(size, JS_GetArrayBufferViewData(destArray, cx));
-	if (err_code != CL_SUCCESS) {
-		DEBUG_LOG_ERROR("WriteTo", err_code);
-		return NS_ERROR_NOT_AVAILABLE;
-	}
-
-    return NS_OK;
+	return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 cl_mem dpoCData::GetContainedBuffer()
