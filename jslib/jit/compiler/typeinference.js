@@ -39,6 +39,7 @@ RiverTrail.Typeinference = function () {
     eval(RiverTrail.definitions.consts);
 
     var inferPAType = RiverTrail.Helper.inferPAType;
+    var nameGen = RiverTrail.Helper.nameGen;
     
     const debug = false;
     //const allowGlobalFuns = false; // Set to true so kernel functions can call global functions.
@@ -1350,6 +1351,9 @@ RiverTrail.Typeinference = function () {
                         } 
                         
                         if (!resType) {
+                            // Ensure that the function has a unique, valid name to simplify
+                            // the treatment downstream
+                            fun.dispatch = nameGen(fun.name);
                             // create a new function frame
                             var innerTEnv = new TEnv(tEnv, true);
                             // put this call on the stack for tracing

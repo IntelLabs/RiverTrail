@@ -1627,10 +1627,9 @@ RiverTrail.compiler.codeGen = (function() {
                 // statements
                 //
             case FUNCTION:
-
-                reportBug("Function encountered that is not at the top level. ", ast);
-
                 // this is not an applied occurence but the declaration, so we do not do anything here
+                // functions are picked up from the body node earlier on
+
                 break;
             case RETURN:
                 s += genReturn(ast);

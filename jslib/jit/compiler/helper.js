@@ -343,9 +343,8 @@ RiverTrail.Helper = function () {
         var t = new parser.Tokenizer(kernelJS);
         t.get(true); // grab the first token
         var ast = parser.FunctionDefinition(t, undefined, false, parser.EXPRESSED_FORM);        
-        // Ensure that the function has a unique, valid name to simplify
-        // the treatment downstream
-        ast.dispatch = nameGen(ast.name || (ast.name = "nameless"));
+        // Ensure that the function has a valid name to simplify the treatment downstream
+        if (!ast.name) ast.name = "nameless";
         return ast;
     };
 
