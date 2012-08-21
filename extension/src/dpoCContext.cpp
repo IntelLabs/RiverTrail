@@ -129,7 +129,7 @@ nsresult dpoCContext::InitContext(cl_platform_id platform)
 	size_t cb;
 
 #ifdef INCREMENTAL_MEM_RELEASE
-	defer_list = (cl_mem *)nsMemory::Alloc(DEFER_LIST_LENGTH * sizeof cl_mem);
+	defer_list = (cl_mem *)nsMemory::Alloc(DEFER_LIST_LENGTH * sizeof(cl_mem));
 	defer_pos = 0;
 	defer_max = DEFER_LIST_LENGTH;
 #endif /* INCREMENTAL_MEM_RELEASE */
@@ -368,9 +368,9 @@ cl_mem dpoCContext::CreateBuffer(cl_mem_flags flags, size_t size, void *ptr, cl_
 		result = clCreateBuffer(context, flags, size, ptr, err);
 	} while (((*err == CL_OUT_OF_HOST_MEMORY) || (*err == CL_MEM_OBJECT_ALLOCATION_FAILURE)) && freed);
 	return result;
-#else INCREMENTAL_MEM_RELEASE
+#else /* INCREMENTAL_MEM_RELEASE */
 	return clCreateBuffer(context, flags, size, ptr, err);
-#endif INCREMENTAL_MEM_RELEASE
+#endif /* INCREMENTAL_MEM_RELEASE */
 }
 
 /* [implicit_jscontext] dpoIData mapData (in jsval source); */
