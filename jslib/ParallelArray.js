@@ -1296,7 +1296,7 @@ var ParallelArray = function () {
         ***/
     var scatter = function scatter(indices, defaultValue, conflictFunction, length) {
         var result;
-        var len = this.shape[1];
+        var len = this.shape[0];
         var hasDefault = (arguments.length >= 2);
         var hasConflictFunction = (arguments.length >=3 && arguments[2] != null);
         var newLen = (arguments.length >= 4 ? length : len);
@@ -1306,18 +1306,18 @@ var ParallelArray = function () {
         var i;
                 
         if (hasDefault) {
-            for (i = 0; i < len; i++) {
+            for (i = 0; i < newLen; i++) {
                 rawResult[i] = defaultValue;
-                conflictResult[i] = false;
             }
-        }
+        } 
     
         for (i = 0; i < indices.length; i++) {
-            var ind = indices.get(i);
+            var ind = (indices instanceof ParallelArray) ? indices.get(i) : indices[i];
+            if (ind >= newLen) throw new RangeError("Scatter index out of bounds");
             if (conflictResult[ind]) { // we have already placed a value at this location
                 if (hasConflictFunction) {
                     rawResult[ind] = 
-                        conflictFunction.call(this.get(i), rawResult[ind]); 
+                        conflictFunction.call(undefined, this.get(i), rawResult[ind]); 
                 } else {
                     throw new RangeError("Duplicate indices in scatter");
                 }
