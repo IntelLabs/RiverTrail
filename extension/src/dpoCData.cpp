@@ -36,6 +36,8 @@
 #include "nsServiceManagerUtils.h"
 #include "dpoCContext.h"
 
+#include "nsIDOMHTMLCanvasElement.h"
+
 /*
  * implement our own macros for DPO_PROP_JS_OBJECTS and DPO_HOLD_JS_OBJECTS
  */

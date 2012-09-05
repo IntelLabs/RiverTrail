@@ -655,3 +655,50 @@ void dpoCContext::RecordEndOfRoundTrip(dpoIContext *parent) {
 	}
 }
 #endif /* WINDOWS_ROUNDTRIP */
+
+/* [implicit_jscontext] void writeToContext2D (in nsIDOMCanvasRenderingContext2D ctx, in jsval source, in long width, in long height); */
+NS_IMETHODIMP dpoCContext::WriteToContext2D(nsIDOMCanvasRenderingContext2D *ctx, const JS::Value & source, PRInt32 width, PRInt32 height, JSContext* cx)
+{
+	JSObject *srcArray;
+	int result;
+
+	result = ExtractArray(source, &srcArray, cx);
+	if (result != NS_OK) {
+		return result;
+	}
+
+	uint32_t size = JS_GetTypedArrayLength(srcArray, cx);
+	uint32_t type = JS_GetTypedArrayType(srcArray, cx);
+
+	if (size != width*height*4)
+		return NS_ERROR_INVALID_ARG;
+
+    if (JS_IsFloat32Array(srcArray, cx)) {
+		unsigned char *data = (unsigned char *) nsMemory::Alloc(size);
+		float *src = JS_GetFloat32ArrayData(srcArray, cx);
+		for (int i = 0; i < size; i++) {
+			float val = src[i];
+			data[i] = val > 0 ? (val < 255 ? ((int) val) : 255) : 0;
+		}
+		ctx->PutImageData_explicit(0, 0, width, height, data, size, false, 0, 0, 0, 0);
+        nsMemory::Free(data);
+	} else if (JS_IsFloat64Array(srcArray, cx)) {
+		unsigned char *data = (unsigned char *) nsMemory::Alloc(size);
+		double *src = JS_GetFloat64ArrayData(srcArray, cx);
+		for (int i = 0; i < size; i++) {
+			double val = src[i];
+			data[i] = val > 0 ? (val < 255 ? ((int) val) : 255) : 0;
+		}
+		ctx->PutImageData_explicit(0, 0, width, height, data, size, false, 0, 0, 0, 0);
+        nsMemory::Free(data);
+	} else if(JS_IsUint8ClampedArray(srcArray, cx)) {
+		uint8_t *src = JS_GetUint8ClampedArrayData(srcArray, cx);
+		ctx->PutImageData_explicit(0, 0, width, height, src, size, false, 0, 0, 0, 0);
+	} else if(JS_IsUint8Array(srcArray, cx)) {
+		return NS_ERROR_INVALID_ARG;
+	} else {
+		return NS_ERROR_NOT_IMPLEMENTED;
+	}
+
+	return NS_OK;
+}

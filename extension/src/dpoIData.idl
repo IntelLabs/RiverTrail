@@ -25,6 +25,7 @@
  */
 
 #include "nsISecurityCheckedComponent.idl"
+#include "nsIDOMCanvasRenderingContext2D.idl"
 
 %{ C++
 #include "jsapi.h"
