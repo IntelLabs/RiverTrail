@@ -175,8 +175,21 @@ nsresult dpoCContext::InitContext(cl_platform_id platform)
 		nsMemory::Free(devices);
 		return NS_ERROR_NOT_AVAILABLE;
 	}
-
+	
 	DEBUG_LOG_STATUS("InitContext", "queue is " << cmdQueue);
+
+	err_code = clGetDeviceInfo(devices[0], CL_DEVICE_MEM_BASE_ADDR_ALIGN, sizeof(alignment_size), &alignment_size, NULL);
+	if (err_code != CL_SUCCESS) {
+		/* we can tolerate this, simply do not align */
+		alignment_size = 8;
+	} 
+	/* we use byte, not bits */
+	if (alignment_size % 8) {
+		/* they align on sub-byte borders? Odd architecture this must be. Give up */
+		alignment_size = 1;
+	} else {
+		alignment_size = alignment_size / 8;
+	}
 
 	nsMemory::Free(devices);
 
@@ -373,6 +386,37 @@ cl_mem dpoCContext::CreateBuffer(cl_mem_flags flags, size_t size, void *ptr, cl_
 #endif /* INCREMENTAL_MEM_RELEASE */
 }
 
+inline
+uint8_t *dpoCContext::GetPointerFromTA(JSObject *ta, JSContext *cx)
+{
+	return (uint8_t *) JS_GetArrayBufferViewData(ta, cx);
+}
+
+nsresult dpoCContext::CreateAlignedTA(uint type, size_t length, JSObject **res, JSContext *cx) 
+{
+	JSObject *buffer;
+	uintptr_t offset;
+	switch (type) {
+		case js::ArrayBufferView::TYPE_FLOAT64:
+			buffer = JS_NewArrayBuffer(cx, sizeof(double)*length+alignment_size);
+			offset = (uintptr_t) JS_GetArrayBufferData(buffer, cx);
+			offset = (offset + alignment_size) / alignment_size * alignment_size - offset;
+			*res = JS_NewFloat64ArrayWithBuffer(cx, buffer, offset, length);
+			break;
+		case js::ArrayBufferView::TYPE_FLOAT32:
+			buffer = JS_NewArrayBuffer(cx, sizeof(float)*length+alignment_size);
+			offset = (uintptr_t) JS_GetArrayBufferData(buffer, cx);
+			offset = (offset + alignment_size) / alignment_size * alignment_size - offset;
+			*res = JS_NewFloat32ArrayWithBuffer(cx, buffer, offset, length);
+			break;
+		default:
+			/* we only return float our double arrays, so fail in all other cases */
+			return NS_ERROR_NOT_IMPLEMENTED;
+	}
+
+	return NS_OK;
+}
+
 /* [implicit_jscontext] dpoIData mapData (in jsval source); */
 NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData **_retval NS_OUTPARAM)
 {
@@ -399,7 +443,7 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
         arrayByteLength = 1;
     }
     else {
-        tArrayBuffer = JS_GetArrayBufferViewData(tArray, cx);
+        tArrayBuffer = GetPointerFromTA(tArray, cx);
         flags |= CL_MEM_USE_HOST_PTR;
     }
 
@@ -488,14 +532,17 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 	DEBUG_LOG_STATUS("AllocateData", "length " << length << " bytePerElements " << bytePerElements);
 
 #ifdef PREALLOCATE_IN_JS_HEAP
-	JSObject *jsArray = js_CreateTypedArray(cx, JS_GetTypedArrayType(tArray), length);
+	JSObject *jsArray;
+	if (CreateAlignedTA(JS_GetTypedArrayType(tArray, cx), length, &jsArray, cx) != NS_OK) {
+		return NS_ERROR_NOT_AVAILABLE;
+	}
 	if (!jsArray) {
 		DEBUG_LOG_STATUS("AllocateData", "Cannot create typed array");
 		return NS_ERROR_OUT_OF_MEMORY;
 	}
 
 	cl_mem memObj = CreateBuffer( CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, 
-                                  JS_GetTypedArrayByteLength(jsArray), JS_GetTypedArrayData(jsArray), &err_code);
+                                  JS_GetTypedArrayByteLength(jsArray, cx), GetPointerFromTA(jsArray, cx), &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
 	JSObject *jsArray = nsnull;
 	cl_mem memObj = CreateBuffer(CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
@@ -550,14 +597,17 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, PRUint32 length, JSCon
 	DEBUG_LOG_STATUS("AllocateData2", "length " << length << " bytePerElements " << bytePerElements);
 
 #ifdef PREALLOCATE_IN_JS_HEAP
-	JSObject *jsArray = js_CreateTypedArray(cx, cData->GetType(), length);
+	JSObject *jsArray;
+	if (CreateAlignedTA(cData->GetType(), length, &jsArray, cx) != NS_OK) {
+		return NS_ERROR_NOT_AVAILABLE;
+	}
 	if (!jsArray) {
 		DEBUG_LOG_STATUS("AllocateData2", "Cannot create typed array");
 		return NS_ERROR_OUT_OF_MEMORY;
 	}
 
 	cl_mem memObj = CreateBuffer(CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, 
-                                 JS_GetTypedArrayByteLength(jsArray), JS_GetTypedArrayData(jsArray), &err_code);
+                                 JS_GetTypedArrayByteLength(jsArray, cx), JS_GetArrayBufferViewData(jsArray, cx), &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
 	JSObject *jsArray = NULL;
 	cl_mem memObj = CreateBuffer(CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
@@ -701,4 +751,37 @@ NS_IMETHODIMP dpoCContext::WriteToContext2D(nsIDOMCanvasRenderingContext2D *ctx,
 	}
 
 	return NS_OK;
+}
+
+/* readonly attribute PRUint32 alignmentSize; */
+NS_IMETHODIMP dpoCContext::GetAlignmentSize(PRUint32 *aAlignmentSize)
+{
+	*aAlignmentSize = alignment_size;
+    
+	return NS_OK;
+}
+
+/* [implicit_jscontext] PRUint32 getAlignmentOffset (in jsval source); */
+NS_IMETHODIMP dpoCContext::GetAlignmentOffset(const JS::Value & source, JSContext* cx, PRUint32 *_retval NS_OUTPARAM)
+{
+	JSObject *object;
+	nsresult result;
+	uint8_t *data;
+
+	if (JSVAL_IS_PRIMITIVE(source)) {
+		return NS_ERROR_INVALID_ARG;
+	}
+
+	object = JSVAL_TO_OBJECT(source);
+	if (JS_IsTypedArrayObject(object, cx)) {
+		data = GetPointerFromTA(object, cx);
+	} else if (JS_IsArrayBufferObject(object, cx)) {
+		data = JS_GetArrayBufferData(object, cx);
+	} else {
+		return NS_ERROR_INVALID_ARG;
+	}
+
+	*_retval = (((uintptr_t) data) + alignment_size) / alignment_size * alignment_size - ((uintptr_t) data);
+
+    return NS_OK;
 }

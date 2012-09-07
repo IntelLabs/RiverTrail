@@ -49,14 +49,20 @@ interface dpoIContext : nsISecurityCheckedComponent
 	dpoIData allocateData( in jsval templ, [optional] in PRUint32 length);
 	[implicit_jscontext]
 	dpoIData allocateData2( in dpoIData templ, [optional] in PRUint32 length);
-  [implicit_jscontext]
-  bool canBeMapped( in jsval source);
+	[implicit_jscontext]
+	bool canBeMapped( in jsval source);
 
 	// Profiling support
 	readonly attribute PRUint64 lastExecutionTime;
 	readonly attribute PRUint64 lastRoundTripTime;
 
+
 	// canvas writing support
 	[implicit_jscontext]
 	void writeToContext2D(in nsIDOMCanvasRenderingContext2D ctx, in jsval source, in long width, in long height);
+
+	// Aligning support
+	readonly attribute PRUint32 alignmentSize;
+	[implicit_jscontext]
+	PRUint32 getAlignmentOffset(in jsval source);
 };

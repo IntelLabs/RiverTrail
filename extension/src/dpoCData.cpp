@@ -82,9 +82,9 @@ NS_IMPL_CYCLE_COLLECTION_TRACE_END
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(dpoCData)
     NS_IMPL_CYCLE_COLLECTION_UNLINK_NSCOMPTR(parent)
     if (tmp->theArray) {
-	DEBUG_LOG_STATUS("UNLINK!", "unlinking array " << tmp->theArray);
+	    DEBUG_LOG_STATUS("UNLINK!", "unlinking array " << tmp->theArray);
+	    tmp->theArray = nsnull;
         tmp->DropObjects();
-        tmp->theArray = nsnull;
     }
 NS_IMPL_CYCLE_COLLECTION_UNLINK_END
 
@@ -131,8 +131,8 @@ dpoCData::~dpoCData()
 	}
     if (theArray) {
         DEBUG_LOG_STATUS("~dpoCData", "releasing array object");
-        DropObjects();
-        theArray = nsnull;
+		theArray = nsnull;
+		DropObjects();
     }
 	parent = NULL;
 	xpc = NULL;
@@ -218,7 +218,7 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 
 	if (theArray) {
 #ifdef PREALLOCATE_IN_JS_HEAP
-		if (!mapped) {
+		if (false && !mapped) {
 			DEBUG_LOG_STATUS("GetValue", "memory is " << theArray);
 			void *mem = clEnqueueMapBuffer(queue, memObj, CL_TRUE, CL_MAP_READ, 0, size, 0, NULL, NULL, &err_code);
 
@@ -249,24 +249,17 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 		CheckFree();
 #endif /* INCREMENTAL_MEM_RELEASE */
 
-		switch (type) {
-		case js::ArrayBufferView::TYPE_FLOAT64:
-			theArray = JS_NewFloat64Array(cx, length);
-			break;
-		case js::ArrayBufferView::TYPE_FLOAT32:
-			theArray = JS_NewFloat32Array(cx, length);
-			break;
-		default:
-			/* we only return float our double arrays, so fail in all other cases */
-			return NS_ERROR_NOT_IMPLEMENTED;
+		if (((dpoCContext *) parent.get())->CreateAlignedTA(type, length, &theArray, cx) != NS_OK) {
+			return NS_ERROR_NOT_AVAILABLE;
 		}
-
+		
 		if (!theArray) {
 			DEBUG_LOG_STATUS("GetValue", "Cannot create typed array");
 			return NS_ERROR_OUT_OF_MEMORY;
 		}
 
 		err_code = EnqueueReadBuffer(size, JS_GetArrayBufferViewData(theArray, cx));
+
 		if (err_code != CL_SUCCESS) {
 			DEBUG_LOG_ERROR("GetValue", err_code);
 			return NS_ERROR_NOT_AVAILABLE;

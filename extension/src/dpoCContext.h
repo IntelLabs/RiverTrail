@@ -58,7 +58,8 @@ public:
     static void CL_CALLBACK CollectTimings( cl_event event, cl_int status, void *data);
 #endif /* CLPROFILE */
 	static void CL_CALLBACK ReportCLError( const char *err_info, const void *private_info, size_t cb, void *user_data);
-
+    static uint8_t *GetPointerFromTA(JSObject *ta, JSContext *cx);
+	nsresult CreateAlignedTA(uint type, size_t length, JSObject **retval, JSContext *cx);
 #ifdef WINDOWS_ROUNDTRIP
 	static void RecordBeginOfRoundTrip(dpoIContext *parent);
 	static void RecordEndOfRoundTrip(dpoIContext *parent);
@@ -80,6 +81,7 @@ protected:
   char *buildLog;				/* shared string used to store the build log in compileKernel */
   size_t buildLogSize;			/* current size of buildLog, 0 if not yet allocated */
   cl_mem kernelFailureMem;		/* memory buffer used to communicate abortion of kernels; shared among all kernels */
+  cl_uint alignment_size;		/* stores the alignment size for the used devices */
 
   nsresult ExtractArray(const jsval &source, JSObject **result, JSContext *cx);
   cl_mem CreateBuffer(cl_mem_flags flags, size_t size, void *ptr, cl_int *err);

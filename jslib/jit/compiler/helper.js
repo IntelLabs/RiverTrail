@@ -509,6 +509,19 @@ RiverTrail.Helper = function () {
                  ast.children.every(function (x) { return (x.type === IDENTIFIER) || isArrayLiteral(x);})));
     };
 
+    // allocate an aligned Typed Array
+    function allocateAlignedTA(template, length) {
+        var alignment = RiverTrail.compiler.openCLContext.alignmentSize;
+        if (!alignment) {
+            // old extension, do not align
+            return undefined;
+            return new constructor(size);
+        }
+        var buffer = new ArrayBuffer(length * template.BYTES_PER_ELEMENT + alignment);
+        var offset = RiverTrail.compiler.openCLContext.getAlignmentOffset(buffer);
+        return new template(buffer, offset, length);
+    };
+
     return { "traverseAst" : traverseAst,
              "wrappedPP" : wrappedPP,
              "inferPAType" : inferPAType,
@@ -527,7 +540,8 @@ RiverTrail.Helper = function () {
              "reportBug" : reportBug,
              "findSelectionRoot" : findSelectionRoot,
              "isArrayLiteral" : isArrayLiteral,
-             "compareObjectFields" : compareObjectFields
+             "compareObjectFields" : compareObjectFields,
+             "allocateAlignedTA" : allocateAlignedTA
     };
 
 }();
