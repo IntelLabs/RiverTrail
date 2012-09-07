@@ -55,7 +55,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(INTELOCLSDKROOT)\lib\x86;gecko-sdk\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>xpcomglue_s.lib;xpcom.lib;nspr4.lib;mozjs.lib;mozalloc.lib;opencl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xpcomglue_s.lib;xpcom.lib;nspr4.lib;mozjs.lib;mozalloc.lib;opencl.lib;msvcrtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>call bin\deploy-components.cmd $(OutDir) $(MSBuildProjectDirectory)</Command>
@@ -80,7 +80,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(INTELOCLSDKROOT)\lib\x86;gecko-sdk\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>xpcomglue_s.lib;xpcom.lib;nspr4.lib;mozjs.lib;mozalloc.lib;opencl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xpcomglue_s.lib;xpcom.lib;nspr4.lib;mozjs.lib;mozalloc.lib;opencl.lib;msvcrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent />
     <PostBuildEvent />
