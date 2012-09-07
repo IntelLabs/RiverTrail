@@ -31,9 +31,9 @@
     <!--
     <em:iconURL>chrome://dpointerface/content/logo.png</em:iconURL>
     -->
-    <em:name>OpenCL Interface for Firefox</em:name>
+    <em:name>River Trail for Firefox</em:name>
     <em:description>
-      Provides an interface to OpenCL from JavaScript. 
+      Used by River Trail to interface with OpenCL from JavaScript. 
     </em:description>
     <em:homepageURL>
       http://github.com/RiverTrail/RiverTrail/wiki
