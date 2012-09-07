@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+<!--
+Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
+         Stephan Herhut stephan.a.herhut@intel.com
+-->
 <html>
 
     <head>
@@ -180,7 +184,7 @@ var pa7 = new ParallelArray([3, 2],
 // canvas and the RGBA values for each pixel.
 var pa8 = new ParallelArray(canvas);
 // pa8 = CanvasPixelArray
-        
+
         </pre>
          ParallelArray objects can be created in a variety of different ways
 as listed below.
@@ -424,7 +428,7 @@ how this is useful later when we build a video web app.
           function, which returns true for all even elements. Thus, we remove all odd elements from the source array, leading to the result <code>[2, 4]</code>.
           </p>
 
-          
+
           <h2>Parallel Video filters with River Trail</h2>
 
 
@@ -442,7 +446,7 @@ how this is useful later when we build a video web app.
               to build the extension. You only need the
               River Trail distribution and the River Trail binary
               extension for Firefox.
-              
+
           To be able to manipulate video from a webcam you will also need
           to install the Rainbow extension.
           <h3>Configure</h3>
@@ -461,7 +465,7 @@ how this is useful later when we build a video web app.
           River Trail. You won't need the extension but there will be no
           speedup either.</code><br><br> then the extension isn't installed properly.
           See the River Trail <a href="http://github.com/rivertrail/rivertrail/wiki">wiki</a> for instructions on installing.<br>
-          
+
           Once the extension is installed correctly, try running one of the
           included examples in <em>rivertrail/examples/</em>. For instance, the
           n-body simulation example in <em>idf-demo</em>.
@@ -503,7 +507,7 @@ how this is useful later when we build a video web app.
           output frame that is written to the output canvas context.
           The code below shows how a single frame from a HTML video element is
           drawn to a 2D context associated with a canvas element.<br><br>
-          
+
           <!--<p><script
               src="http://gist.github.com/3419413.js#L2"></script></p>-->
             <pre class="brush: js;first-line: 240">
@@ -551,7 +555,7 @@ how this is useful later when we build a video web app.
           <a href="https://developer.mozilla.org/en-US/docs/HTML/Canvas/Pixel_manipulation_with_canvas">Sepia Toning</a> is a process performed on black-and-white print
           photographs to give them a warmer color. This filter simulates the
           sepia toning process on digital photographs or video.
-    
+
           Let us first look at the sequential implementation of this filter in
           the function called <code>sepia_sequential()</code> in filters.js.
           <pre class="brush: js;first-line: 820">
@@ -562,7 +566,7 @@ function sepia_sequential(frame, len, ctx) {
         r = (pix[i] * 0.393 + pix[i+1] * 0.769 + pix[i+2] * 0.189);
         g = (pix[i] * 0.349 + pix[i+1] * 0.686 + pix[i+2] * 0.168);
         b = (pix[i] * 0.272 + pix[i+1] * 0.534 + pix[i+2] * 0.131);
-        
+
         if(r>255) r = 255;
         if(g>255) g = 255;
         if(b>255) b = 255;
@@ -622,9 +626,9 @@ var pa = new ParallelArray(canvas);
           So for pixel on the canvas at coordinates (x, y), pa.get(x, y, 0)
           will contain the red value, pa.get(x, y, 1) will contain the green
           value and pa.get(x, y, 2) will contain the blue value.
-          
+
           The input ParallelArray that is given to the filter(s) (line 253, main.js): 
-          
+
           <pre class="brush: js;first-line: 253">
             else if (execution_mode === "parallel") {
                 stage_output = stage_input = new ParallelArray(input_canvas);
@@ -635,7 +639,7 @@ var pa = new ParallelArray(canvas);
           ParallelArray objects that contain the input and output pixel data
           for each filtering "stage". Now lets look at the code that causes the
           filters to be applied (line 271, main.js):
-          
+
           <pre class="brush: js;first-line: 271">
           if(execution_mode === "parallel") {
             switch(filterName) {
@@ -656,13 +660,13 @@ var pa = new ParallelArray(canvas);
           </pre>
           You will see that this code block is wrapped in a <code>for</code>
           loop that iterates over all the available filters.
-          
+
           To implement a
           particular filter, we add code to produce a new ParallelArray object
           containing the transformed pixel data and assign it to
           <code>stage_output</code>.
 
-          
+
           So for example, for the sepia filter, we would write:
           <pre class="brush: js;first-line: 272; highlight:[275,276,277]">
             ...
@@ -692,13 +696,13 @@ var pa = new ParallelArray(canvas);
          w, 4] shaped ParallelArray. You can think of it as a two-dimensional
          ParallelArray with shape [h, w] in which each element (which corresponds to
          a single pixel) is itself a ParallelArray of shape [4].
-         
+
          <!--
          where the first two dimensions correspond to the
          2D corrdinates of the pixel in the image and the 3rd dimension
          corresponds to the color values.
          -->
-         
+
          The output ParallelArray we will
          produce will have this same shape - we will produce a new
          ParallelArray of shape [h, w] in which each element has a shape of
@@ -727,7 +731,7 @@ var pa = new ParallelArray(canvas);
         new ParallelArray is then assigned to <code>stage_output</code>.
         <br>
 
-        
+
 
         Finally, we have to create the elemental function that produces the
         color values for each pixel. You can think of it as a function that
@@ -757,7 +761,7 @@ var pa = new ParallelArray(canvas);
         function sepia_parallel (indices, frame) {
             var i = indices[0];
             var j = indices[1];
-            
+
             var old_r = frame[i][j][0];
             var old_g = frame[i][j][1];
             var old_b = frame[i][j][2];
@@ -770,7 +774,7 @@ var pa = new ParallelArray(canvas);
             return [r, g, b, a];
         }
         </pre>
-        
+
         In lines 3-9, we grab the indices and read the RGBA values from the
         input ParallelArray <code>frame</code>. then, just like in the
         sequential version we mix these colors in lines 11-13 and return a
@@ -812,7 +816,7 @@ var pa = new ParallelArray(canvas);
         <!--
         [Do we have time to explain the combine alternative?]
         -->
-         
+
        <h2><a name="3D"></a> Stereoscopic 3D</h2>
        Let's consider a slightly more complicated filter - one that transforms
        the input video stream into 3D in real time. <a href="http://en.wikipedia.org/wiki/Stereoscopy">Stereoscopic 3D</a> is a
@@ -882,7 +886,7 @@ var pa = new ParallelArray(canvas);
     that reads the pixel data in the input ParallelArray object and produces
     new pixel data into another. So just like sepia we can use the constructor
     + elemental function approach.
-    
+
     <pre class="brush: js;first-line: 272; highlight: [275, 276]">
         ...
         switch(filterName) {
@@ -981,7 +985,7 @@ var pa = new ParallelArray(canvas);
             return [rb, gb, bb, 255];
         }
         </pre>
-    
+
         And thats it. Select "RiverTrail" execution, click play and select the
         3D filter. Put on Red-Cyan 3D glasses and you should be able to notice
         the depth effect. Without the glasses this is how it looks (original
@@ -999,7 +1003,7 @@ var pa = new ParallelArray(canvas);
        computer vision that seeks to highlight points in the image where the
        image brightness changes sharply. Select the edge detection effect and
        click play to look at the result of the effect.<br>
-          
+
        <div align="center">
        <img src="images/se1.png" height="170"/>
        <img src="images/ed1.png" height="170"/><br>
@@ -1034,48 +1038,7 @@ var pa = new ParallelArray(canvas);
        <code>edge_detect_sequential</code> in filters.js. Don't worry about
        understanding it in detail yet.
 
-        <!--
-        <pre class="brush: js;first-line: 1405">
-        function edge_detect_sequential(frame, len, w, h, ctx) {
-        var pix = frame.data
-        var ekernel = [[1,1,1,1,1], [1,2,2,2,1], [1,2,-32,2,1], [1,2,2,2,1], [1,1,1,1,1]];
-        var new_pix = new Array(len);
-        var kernel_width = (kernel.length-1)/2; // how many elements in each direction
-        var neighbor_sum = [0, 0, 0, 255];
-        var weight;
-        for(var n = 0; n < len; n = n + 4) {
-
-            neighbor_sum[0] = 0;
-            neighbor_sum[1] = 0;
-            neighbor_sum[2] = 0;
-
-            for(var i = -1*kernel_width; i <= kernel_width; i++) {
-                for(var j = -1*kernel_width; j <= kernel_width; j++) {
-                    var offset =  n+(i*4*w)+(j*4);
-                    if(offset < 0 || offset > len-4)  offset = 0;
-                    weight = kernel[i+kernel_width][j+kernel_width];
-                    neighbor_sum[0] += pix[offset] * weight;
-                    neighbor_sum[1] += pix[offset+1] * weight;
-                    neighbor_sum[2] += pix[offset+2] * weight;
-                }
-            }
-            new_pix[n] = neighbor_sum[0];
-            new_pix[n+1] = neighbor_sum[1];
-            new_pix[n+2] = neighbor_sum[2];
-            new_pix[n+3] = pix[n+3];
-        }
-
-       for(var n = 0 ; n < len; n++) {
-           var val = new_pix[n];
-           if(val < 0) val = 0;
-           if(val > 255) val = 255;
-           pix[n] = val;
-       }
-       ctx.putImageData(frame, 0, 0);
-    }
-    </pre>
-    -->
-    Let us try and implement this using RiverTrail. Make a function called
+    Let us try and implement this filter using RiverTrail. Make a function called
     <code>edge_detect_parallel</code> in filters.js.
         <pre class="brush: js;highlight: [1,2,3,4,5,6,7]">
         function edge_detect_parallel(index, frame, w, h) {
@@ -1197,8 +1160,8 @@ var pa = new ParallelArray(canvas);
         To learn more about River Trail, visit the project page on <a
             href="http://github.com/rivertrail/rivertrail">Github</a>.
         </p>
-        
-        
+
+
 
         <h2> <a name="references"></a> References </h2>
         <ol>
@@ -1225,62 +1188,62 @@ var pa = new ParallelArray(canvas);
             <li><a href="http://en.wikipedia.org/wiki/Convolution">Convolution</a></li>
 
 
-        <br><br>
-        <h2> <a name="legal"></a> Legal Disclaimer</h2>
-INFORMATION IN THIS DOCUMENT IS PROVIDED IN CONNECTION WITH INTEL PRODUCTS.  NO LICENSE, EXPRESS OR IMPLIED, BY ESTOPPEL OR OTHERWISE, TO ANY INTELLECTUAL PROPERTY RIGHTS IS GRANTED BY THIS DOCUMENT.  EXCEPT AS PROVIDED IN INTEL'S TERMS AND CONDITIONS OF SALE FOR SUCH PRODUCTS, INTEL ASSUMES NO LIABILITY WHATSOEVER AND INTEL DISCLAIMS ANY EXPRESS OR IMPLIED WARRANTY, RELATING TO SALE AND/OR USE OF INTEL PRODUCTS INCLUDING LIABILITY OR WARRANTIES RELATING TO FITNESS FOR A PARTICULAR PURPOSE, MERCHANTABILITY, OR INFRINGEMENT OF ANY PATENT, COPYRIGHT OR OTHER INTELLECTUAL PROPERTY RIGHT.
-	A "Mission Critical Application" is any application in which failure of the Intel Product could result, directly or indirectly, in personal injury or death.  SHOULD YOU PURCHASE OR USE INTEL'S PRODUCTS FOR ANY SUCH MISSION CRITICAL APPLICATION, YOU SHALL INDEMNIFY AND HOLD INTEL AND ITS SUBSIDIARIES, SUBCONTRACTORS AND AFFILIATES, AND THE DIRECTORS, OFFICERS, AND EMPLOYEES OF EACH, HARMLESS AGAINST ALL CLAIMS COSTS, DAMAGES, AND EXPENSES AND REASONABLE ATTORNEYS' FEES ARISING OUT OF, DIRECTLY OR INDIRECTLY, ANY CLAIM OF PRODUCT LIABILITY, PERSONAL INJURY, OR DEATH ARISING IN ANY WAY OUT OF SUCH MISSION CRITICAL APPLICATION, WHETHER OR NOT INTEL OR ITS SUBCONTRACTOR WAS NEGLIGENT IN THE DESIGN, MANUFACTURE, OR WARNING OF THE INTEL PRODUCT OR ANY OF ITS PARTS.
-    <ul>
-        <li>    Intel may make changes to specifications and product
-        descriptions at any time, without notice.  Designers must not rely on
-        the absence or characteristics of any features or instructions marked
-        "reserved" or "undefined".  Intel reserves these for future definition
-        and shall have no responsibility whatsoever for conflicts or
-        incompatibilities arising from future changes to them.  The information
-        here is subject to change without notice.  Do not finalize a design
-        with this information.</li>
-        <li>    The products described in this document may contain design
-        defects or errors known as errata which may cause the product to
-        deviate from published specifications.  Current characterized errata
-        are available on request.</li>
-        <li>    Intel product plans in this presentation do not constitute
-        Intel plan of record product roadmaps. Please contact your Intel
-        representative to obtain Intel's current plan of record product
-        roadmaps. </li>
-        <li>    River Trail and other code names featured are used internally
-        within Intel to identify products that are in development and not yet
-        publicly announced for release.  Customers, licensees and other third
-        parties are not authorized by Intel to use code names in advertising,
-        promotion or marketing of any product or services and any such use of
-        Intel's internal code names is at the sole risk of the user </li>
-    </ul>
-    Intel and the Intel logo are trademarks of Intel Corporation in the United
-    States and other countries. <br> 
-    *Other names and brands may be claimed as the property of others.
-    Copyright &copy;2012 Intel Corporation.<br>
+            <br><br>
+            <h2> <a name="legal"></a> Legal Disclaimer</h2>
+            INFORMATION IN THIS DOCUMENT IS PROVIDED IN CONNECTION WITH INTEL PRODUCTS.  NO LICENSE, EXPRESS OR IMPLIED, BY ESTOPPEL OR OTHERWISE, TO ANY INTELLECTUAL PROPERTY RIGHTS IS GRANTED BY THIS DOCUMENT.  EXCEPT AS PROVIDED IN INTEL'S TERMS AND CONDITIONS OF SALE FOR SUCH PRODUCTS, INTEL ASSUMES NO LIABILITY WHATSOEVER AND INTEL DISCLAIMS ANY EXPRESS OR IMPLIED WARRANTY, RELATING TO SALE AND/OR USE OF INTEL PRODUCTS INCLUDING LIABILITY OR WARRANTIES RELATING TO FITNESS FOR A PARTICULAR PURPOSE, MERCHANTABILITY, OR INFRINGEMENT OF ANY PATENT, COPYRIGHT OR OTHER INTELLECTUAL PROPERTY RIGHT.
+            A "Mission Critical Application" is any application in which failure of the Intel Product could result, directly or indirectly, in personal injury or death.  SHOULD YOU PURCHASE OR USE INTEL'S PRODUCTS FOR ANY SUCH MISSION CRITICAL APPLICATION, YOU SHALL INDEMNIFY AND HOLD INTEL AND ITS SUBSIDIARIES, SUBCONTRACTORS AND AFFILIATES, AND THE DIRECTORS, OFFICERS, AND EMPLOYEES OF EACH, HARMLESS AGAINST ALL CLAIMS COSTS, DAMAGES, AND EXPENSES AND REASONABLE ATTORNEYS' FEES ARISING OUT OF, DIRECTLY OR INDIRECTLY, ANY CLAIM OF PRODUCT LIABILITY, PERSONAL INJURY, OR DEATH ARISING IN ANY WAY OUT OF SUCH MISSION CRITICAL APPLICATION, WHETHER OR NOT INTEL OR ITS SUBCONTRACTOR WAS NEGLIGENT IN THE DESIGN, MANUFACTURE, OR WARNING OF THE INTEL PRODUCT OR ANY OF ITS PARTS.
+            <ul>
+                <li>    Intel may make changes to specifications and product
+                descriptions at any time, without notice.  Designers must not rely on
+                the absence or characteristics of any features or instructions marked
+                "reserved" or "undefined".  Intel reserves these for future definition
+                and shall have no responsibility whatsoever for conflicts or
+                incompatibilities arising from future changes to them.  The information
+                here is subject to change without notice.  Do not finalize a design
+                with this information.</li>
+                <li>    The products described in this document may contain design
+                defects or errors known as errata which may cause the product to
+                deviate from published specifications.  Current characterized errata
+                are available on request.</li>
+                <li>    Intel product plans in this presentation do not constitute
+                Intel plan of record product roadmaps. Please contact your Intel
+                representative to obtain Intel's current plan of record product
+                roadmaps. </li>
+                <li>    River Trail and other code names featured are used internally
+                within Intel to identify products that are in development and not yet
+                publicly announced for release.  Customers, licensees and other third
+                parties are not authorized by Intel to use code names in advertising,
+                promotion or marketing of any product or services and any such use of
+                Intel's internal code names is at the sole risk of the user </li>
+            </ul>
+            Intel and the Intel logo are trademarks of Intel Corporation in the United
+            States and other countries. <br> 
+            *Other names and brands may be claimed as the property of others.
+            Copyright &copy;2012 Intel Corporation.<br>
 
-    <p>Intel Corporation owns the copyright to all the source code contained in
-    this tutorial.  Copyright &copy; 2012 Intel Corporation.  All rights reserved.
-This source is licensed to you under the terms of the MIT license reproduced
-below.</p>
+            <p>Intel Corporation owns the copyright to all the source code contained in
+            this tutorial.  Copyright &copy; 2012 Intel Corporation.  All rights reserved.
+            This source is licensed to you under the terms of the MIT license reproduced
+            below.</p>
 
-    <p>Permission is hereby granted, free of charge, to any person obtaining a
-    copy of this software and associated documentation files (the "Software"),
-    to deal in the Software without restriction, including without limitation
-    the rights to use, copy, modify, merge, publish, distribute, sublicense,
-    and/or sell copies of the Software, and to permit persons to whom the
-    Software is furnished to do so, subject to the following conditions: </p> 
+            <p>Permission is hereby granted, free of charge, to any person obtaining a
+            copy of this software and associated documentation files (the "Software"),
+            to deal in the Software without restriction, including without limitation
+            the rights to use, copy, modify, merge, publish, distribute, sublicense,
+            and/or sell copies of the Software, and to permit persons to whom the
+            Software is furnished to do so, subject to the following conditions: </p> 
 
-<p>The above copyright notice and this permission notice (including the  next  paragraph) shall be included in all copies or substantial portions of  the Software.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,  EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF  MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND  NONINFRINGEMENT.  IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.</p>
-    
-        </section>
-      </div>
+            <p>The above copyright notice and this permission notice (including the  next  paragraph) shall be included in all copies or substantial portions of  the Software.
+            THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,  EXPRESS OR
+            IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF  MERCHANTABILITY,
+            FITNESS FOR A PARTICULAR PURPOSE AND  NONINFRINGEMENT.  IN NO EVENT SHALL THE
+            AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+            LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+            OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+            SOFTWARE.</p>
 
-  </body>
+            </section>
+        </div>
+
+    </body>
 </html>
