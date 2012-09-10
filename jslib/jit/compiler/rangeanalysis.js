@@ -416,6 +416,11 @@ RiverTrail.RangeAnalysis = function () {
             }
         }
     };
+    VEp.updateAll = function (other) {
+        for (var name in other.bindings) { // only look at top level additions
+            this.update(name, other.bindings[name]);
+        }
+    };
     VEp.invalidate = function () {
         for (var name in this.bindings) {
             if (this.bindings[name] instanceof RangeArray) {
@@ -632,7 +637,7 @@ RiverTrail.RangeAnalysis = function () {
                     drive(ast.elsePart, elseVE, doAnnotate);
                 }
                 thenVE.merge(elseVE);
-                varEnv.merge(thenVE);
+                varEnv.updateAll(thenVE);
                 break;
             case SEMICOLON:
                 if (ast.expression) {
@@ -694,9 +699,14 @@ RiverTrail.RangeAnalysis = function () {
                 drive(ast.children[0], varEnv, doAnnotate, predC);
                 var thenVE = new VarEnv(varEnv);
                 thenVE.applyConstraints(predC);
-                left = drive(ast.children[1], thenVE, doAnnotate); // we do not forward constraints here, nor collect new ones, as we do 
-                right = drive(ast.children[2], varEnv, doAnnotate); // not know which branch will be taken
-                varEnv.merge(thenVE);
+                left = drive(ast.children[1], thenVE, doAnnotate); 
+                var predCE = new Constraints();
+                drive(ast.children[0], varEnv, doAnnotate, predCE, undefined, true); // compute inverse
+                var elseVE = new VarEnv(varEnv);
+                elseVE.applyConstraints(predCE);
+                right = drive(ast.children[2], elseEnv, doAnnotate); 
+                thenVE.merge(elseVE);
+                varEnv.updateAll(thenVE);
                 result = left.union(right);
                 break;
                 
