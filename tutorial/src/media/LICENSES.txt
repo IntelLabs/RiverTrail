@@ -1,0 +1,6 @@
+The file Big_Buck_Bunny_medium.ogv ("Big Buck Bunny") is (c) copyright 2008, Blender Foundation / www.bigbuckbunny.org
+
+The file "3d.png" is from http://www.fatcow.com/free-icons under a Creative
+Commons Attribution 3.0 License. See
+http://creativecommons.org/licenses/by/3.0/us/ for more details about this
+license. 

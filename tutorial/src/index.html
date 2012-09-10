@@ -1,0 +1,428 @@
+<!--------------------------
+ Copyright (c) 2012, Intel Corporation
+ All rights reserved.
+ 
+ Redistribution and use in source and binary forms, with or without 
+ modification, are permitted provided that the following conditions are met:
+
+ - Redistributions of source code must retain the above copyright notice, 
+   this list of conditions and the following disclaimer.
+ - Redistributions in binary form must reproduce the above copyright notice, 
+   this list of conditions and the following disclaimer in the documentation 
+   and/or other materials provided with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+ THE POSSIBILITY OF SUCH DAMAGE.
+-------------------------->
+
+<!--
+index.html : Application interface and controls
+@author: Jaswanth Sreeram
+-->
+<html>
+    <head>
+        <style type="text/css">
+            #leftbuttons {
+                position:absolute;
+                top:30%;
+                left:2%;
+            }
+            .titletable {
+              margin-left:20px;
+              color:#cbcbcb;
+              font-family: "Calibri", Helvetica, sans-serif;
+            }
+            .smallcelltop {
+              font-size:30px;
+              padding:0;
+              margin:0;
+              border:0;
+            }
+            .smallcellbot {
+              font-size:30px;
+              padding:0;
+              margin:0;
+              border:0;
+            }
+            .bigcell {
+              font-size:90px;
+              padding:0;
+              margin:0 auto;
+              border:1;
+            }
+            .outer {
+              color:#cbcbcb;
+              font-family: "Arial", Helvetica, sans-serif;
+              font-size:80px;
+              width: 100%;
+              padding:0px;
+              margin:0px;
+              border:0px;
+              float:left;
+            }
+            #header_wrap {
+              background: #212121;
+              background: -moz-linear-gradient(top, #373737, #212121);
+              background: -webkit-linear-gradient(top, #373737, #212121);
+              background: -ms-linear-gradient(top, #373737, #212121);
+              background: -o-linear-gradient(top, #373737, #212121);
+              background: linear-gradient(top, #373737, #212121);
+            }
+            
+            body {
+              padding:0px;
+              margin:0px;
+              border:0px;
+              overflow-y: hidden;
+              overflow-x: hidden;
+              background-color:#aaaaaa;
+            }
+           
+            #bodyid {
+                height:100%;
+                padding:0px;
+                margin:0px;
+                border:0px;
+                color:#CCCCCC; 
+                font-family: "Calibri", Helvetica, sans-serif;
+            }
+            
+            #bodyid.image {
+                height:100%;
+                padding:0px;
+                margin:0px;
+                border:0px;
+                background-image:url('media/img7.jpg');
+                color:#CCCCCC; 
+                font-family: "Calibri", Helvetica, sans-serif;
+            }
+            #bodyid.color {
+                height:100%
+                padding:0px;
+                margin:0px;
+                border:0px;
+                background-color:#111111;
+                color:#CCCCCC; 
+                font-family: "Calibri", Helvetica, sans-serif;
+            }
+           
+            .centernormal {
+                width: 896px;
+                height: 504px;
+                position: absolute;
+                left: 45%;
+                top: 50%; 
+                margin-left: -448px;
+                margin-top: -252px;
+                background:#3B3B3B;
+                box-shadow: 10px 10px 5px #333333;
+                -moz-border-radius: 15px;
+                border-radius: 15px;
+            }
+            .centermin {
+                width: 896px;
+                height: 504px;
+                position: absolute;
+                left: 45%;
+                top: 50%; 
+                margin-left: -448px;
+                margin-top: -252px;
+                background:#3B3B3B;
+                -moz-border-radius: 15px;
+                border-radius: 15px;
+            }
+            .right {
+                width: 310px;
+                height: 500px;
+                position: absolute;
+                left: 45%;
+                top: 50%; 
+                margin-left: 500px;
+                margin-top: -252px;
+            }
+            .left {
+                width: 200px;
+                height: 500px;
+                position: absolute;
+                left: 50%;
+                top: 50%; 
+                margin-left: -700px;
+                margin-top: -252px;
+                background:#3B3B3B;
+                box-shadow: 10px 10px 5px #333333;
+                -moz-border-radius: 15px;
+                border-radius: 15px;
+
+            }
+            .topbutton {
+                padding:10px;
+                border:1px;
+            }
+            .onbutton {
+                font-size:0.7em;
+            }
+            .header1 {
+                height: 30px;
+            }
+            .emodediv {
+                text-align: center;
+                padding:1px;
+                border:1px;
+            }
+            .adiv {
+                font-size:0.7em;
+            }
+            .fps {
+                position:absolute;
+                left: 43%;
+                top:71%;
+                font-size:60pt;
+                text-shadow: 0.1em 0.1em #222222
+            }
+            
+            .hist {
+                width:1200px;
+                height:100px;
+                margin-left:10%;
+                margin-top:40%;
+            }
+            .buttoncheckid {
+                margin:1px;
+                width:300px;
+                background:#3b3b3b;
+                box-shadow: 10px 10px 5px #2b2b2b;
+                -moz-border-radius: 15px;
+                border-radius: 15px;
+            }
+            
+            <style>
+                #red, #green, #blue, #grey {
+                    float: left;
+                    clear: left;
+                }
+                #red .ui-slider-range { background: #ef2929; }
+                #red .ui-slider-handle { border-color: #3b3b3b; }
+                #green .ui-slider-range { background: #8ae234; }
+                #green .ui-slider-handle { border-color: #3b3b3b; }
+                #blue .ui-slider-range { background: #729fcf; }
+                #blue .ui-slider-handle { border-color: #3b3b3b; }
+                #grey .ui-slider-range { background: #cccccc; }
+                #grey .ui-slider-handle { border-color: #3b3b3b; }
+                #dist .ui-slider-range { background: #cccccc; }
+                #dist .ui-slider-handle { border-color: #3b3b3b; }
+            </style>
+
+
+        </style>
+        <link type="text/css" href="css/ui-darkness/jquery-ui-1.8.22.custom.css" rel="Stylesheet" />	
+        <script type="text/javascript" src="js/jquery-1.7.2.min.js"></script>
+        <script type="text/javascript" src="js/jquery-ui-1.8.22.custom.min.js"></script>
+
+        
+        <script>
+            $(function() {
+                $( "#radiotop" ).buttonset();
+                $( "#emodedivtop" ).buttonset();
+            });
+        </script>
+        
+        <script>
+            var color_input = {"grey":1.0, "red":1.0, "green":1.0, "blue":1.0};
+            var g_dist = 20;
+            function refreshVal(ev, ui) {
+                if(this.id === "dist")
+                g_dist = $(this).slider("value");
+                else
+                color_input[this.id] = $(this).slider("value");
+            }
+            $(function() {
+                $( "#red, #green, #blue, #grey" ).slider({
+                    orientation: "horizontal",
+                    range: "min",
+                    min:0.25,
+                    max:2.0,
+                    value: 1,
+                    step:0.01,
+                    slide: refreshVal,
+                    change: refreshVal
+                });
+            });
+            $(function() {
+                $( "#dist" ).slider({
+                    orientation: "horizontal",
+                    range: "min",
+                    min:0,
+                    max:100,
+                    value: g_dist,
+                    step:1,
+                    slide: refreshVal,
+                    change: refreshVal
+                });
+            });
+        </script>
+
+        <script>
+            $(document).ready(function() {
+                $("#sepia, #lighten, #desaturate, #color_adjust, #edge_detect, #sharpen, #face_detect, #A3D").button({ icons:
+                    {primary:'ui-icon-triangle-1-e'}}).click(function(e, u)
+                {
+                    if (toggleKernel(this.id)) {
+                        $(this).button("option", "icons", {primary: "ui-icon-check"})
+                    }
+                    else {
+                        $(this).button("option", "icons", {primary: "ui-icon-triangle-1-e"})
+                    }
+                    
+                    if(this.id === "face_detect") {
+                        if(this.checked) {
+                            $('#radio2').trigger('click');
+                        }
+                    }
+                    if(this.id === "A3D") {
+                        if(this.checked) {
+                            $('#bodyid').addClass('color').removeClass('image');
+                            $('#outputdiv').addClass('centermin').removeClass('centernormal');
+
+                        }
+                        else {
+                            $('#bodyid').addClass('image').removeClass('color');
+                            $('#outputdiv').addClass('centernormal').removeClass('centermin');
+                        }
+                    }
+                });
+
+            });
+        </script>
+        <script>
+            var webcam;
+            function endit() {
+                $("#sepia, #lighten, #desaturate, #color_adjust, #edge_detect, #sharpen, #face_detect").button("option", "disabled", true );
+                $("#sepia, #lighten, #desaturate, #color_adjust, #edge_detect, #sharpen, #face_detect").removeClass("ui-state-active");
+
+                webcam.endSession();
+                return "";
+            }
+            window.onbeforeunload = endit;
+        </script>
+
+        <script type="text/javascript" src="../../jslib/ParallelArray.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/narcissus/jsdefs.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/narcissus/jslex.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/narcissus/jsparse.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/narcissus/jsdecomp.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/compiler/definitions.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/compiler/helper.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/compiler/driver.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/compiler/dotviz.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/compiler/typeinference.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/compiler/rangeanalysis.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/compiler/inferblockflow.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/compiler/infermem.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/compiler/genOCL.js"></script>
+        <script type="application/javascript" src="../../jslib/jit/compiler/runOCL.js"></script>
+        <script type="text/javascript;version=1.8" src="filters-skeleton.js"></script>
+        <script type="text/javascript;version=1.8" src="main-skeleton.js"></script>
+    </head>
+    <body class="image" onload="doLoad()">
+        <div id="header_wrap" class="outer"
+            style="width:100%;height:15%;padding:0px;margin:0px;border:0px">
+        <table border="0" class="titletable">
+<tr>
+  <td align="right" valign="bottom" class="smallcelltop">Video</td>
+  <td rowspan="2" class="bigcell">River Trail</td>
+</tr>
+<tr>
+<td align="right" valign="top" class="smallcellbot">With</td>
+</tr>
+</table>            
+
+
+        </div>
+        <a href="https://github.com/rivertrail/rivertrail"><img
+            style="position: absolute; top: 0; right: 0; border: 0;"
+            src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png"
+            alt="Fork me on GitHub"></a>
+        
+        <div id="bodyid" class="image">
+        <div id="leftbuttons">
+        <div id="radiotop" class="topbutton">
+            <input type="radio" id="radio1" name="radio" checked="checked"
+            onchange="toggleUseWebcam()" /><label
+                for="radio1">Video</label>
+            <input type="radio" id="radio2" name="radio"
+            onchange="toggleUseWebcam()"/><label
+                for="radio2">Webcam</label>
+        </div>
+        <div id="emodedivtop" class="topbutton">
+            <input type="radio" id="parallel" name="mode"
+            onchange="toggleExecutionMode()"/><label
+                for="parallel">River Trail</label>
+            <input type="radio" id="sequential" name="mode"
+            checked="checked" onchange="toggleExecutionMode()"/><label
+                for="sequential">Seq</label>
+        </div>
+    </div>
+
+        <div id="outputdiv" class="centernormal">
+            <canvas id="output" width="896" height="504"></canvas>
+        </div>
+        <div id="fpsdiv" class="fps">
+            <p id="text1"> FPS </p>
+        </div>
+        <div id="menu2" class="right">
+
+            <div>
+                <input type="checkbox" id="sepia" class="buttoncheckid" /><label
+                    for="sepia" class="buttoncheckid">Sepia</label> 
+            </div>
+
+            <div>
+                <input type="checkbox" id="lighten" class="buttoncheckid" /><label
+                    for="lighten" class="buttoncheckid">Lighten</label> 
+                <div id="grey"></div>
+            </div>
+
+            <div>
+                <input type="checkbox" id="desaturate" class="buttoncheckid" /><label
+                    for="desaturate" class="buttoncheckid">Desaturate</label> 
+            </div>
+
+            <div>
+                <input type="checkbox" id="color_adjust" class="buttoncheckid" /><label
+                    for="color_adjust" class="buttoncheckid">Color Adjust</label> 
+                <div id="red"></div>
+                <div id="green"></div>
+                <div id="blue"></div>
+            </div>
+            <input type="checkbox" id="edge_detect" class="buttoncheckid" /><label
+                for="edge_detect" class="buttoncheckid">Edge Detect</label> 
+            <input type="checkbox" id="sharpen" class="buttoncheckid" /><label
+                for="sharpen" class="buttoncheckid">Sharpen</label> 
+            <input type="checkbox" id="face_detect" class="buttoncheckid" /><label
+                for="face_detect" class="buttoncheckid">Face Detect</label> 
+            <div>
+                <input type="checkbox" id="A3D" class="buttoncheckid" /><label
+                    for="A3D" class="buttoncheckid">3D 
+                    <img class="icon3d" src="media/3d.png" height="20px"/></label>
+                <div id="dist"></div>
+            </div>
+            
+                </div> <!-- menu -->
+                <div id="inputdiv" style="display: none">
+                    <video id="video" src="media/Big_Buck_Bunny_medium.ogv" controls="false" type="video/ogv"/>
+                </div>
+                <canvas id="webcaminput" width="640" height="480" style="position:absolute;visibility:hidden"></canvas>
+                <canvas id="hist" width=896 height=50 class="hist"></canvas>
+            </div> <!-- body -->
+            
+            </body>
+        </html>
