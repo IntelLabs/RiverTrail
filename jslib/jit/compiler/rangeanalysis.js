@@ -704,7 +704,7 @@ RiverTrail.RangeAnalysis = function () {
                 drive(ast.children[0], varEnv, doAnnotate, predCE, undefined, true); // compute inverse
                 var elseVE = new VarEnv(varEnv);
                 elseVE.applyConstraints(predCE);
-                right = drive(ast.children[2], elseEnv, doAnnotate); 
+                right = drive(ast.children[2], elseVE, doAnnotate); 
                 thenVE.merge(elseVE);
                 varEnv.updateAll(thenVE);
                 result = left.union(right);
