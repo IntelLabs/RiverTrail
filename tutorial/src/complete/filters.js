@@ -233,7 +233,7 @@ var Filters = function() {
         var kernel = [[1,4,7,4,1], [4,16,26,16,4], [7,26,41,26,7],[4,16,26,16,4],[1,1,1,1,1]];
         var norm_factor = 273;
         var kernel_width = (kernel.length-1)/2; // how many elements in each direction
-
+        var frame_shape = frame.getShape();
         var neighbor_sum_r = 0;
         var neighbor_sum_g = 0;
         var neighbor_sum_b = 0;
@@ -243,8 +243,8 @@ var Filters = function() {
         for(var i = -1*kernel_width; i <= kernel_width; i++) {
             for(var j = -1*kernel_width; j <= kernel_width; j++) {
                 x = m+i; y = n+j;
-                x = (x < 0 || x > h-1) ? 0 : x;
-                y = (y < 0 || y > w-1) ? 0 : y;
+                x = (x < 0 || x > frame_shape[0]-1) ? 0 : x;
+                y = (y < 0 || y > frame_shape[1]-1) ? 0 : y;
                 weight = kernel[i+kernel_width][j+kernel_width];
                 neighbor_sum_r += frame[x][y][0] * weight;
                 neighbor_sum_g += frame[x][y][1] * weight;
@@ -474,14 +474,15 @@ var Filters = function() {
         var m = index[0]; var n = index[1];
         var kernel_width = (ekernel.length-1)/2; // how many elements in each direction
         var neighbor_sum = [0,0,0,255];
+        var frame_shape = frame.getShape();
         var x, y; var weight;
         for(var i = -1*kernel_width; i <= kernel_width; i++) {
             for(var j = -1*kernel_width; j <= kernel_width; j++) {
 
                 x = m+i; y = n+j;
                 
-                x = (x < 0 || x > h-1) ? 0 : x;
-                y = (y < 0 || y > w-1) ? 0 : y;
+                x = (x < 0 || x > frame_shape[0]-1) ? 0 : x;
+                y = (y < 0 || y > frame_shape[1]-1) ? 0 : y;
                 
                 weight = ekernel[i+kernel_width][j+kernel_width];
 
@@ -611,6 +612,7 @@ var Filters = function() {
         var m = index[0]; var n = index[1];
         var kernel_width = (ekernel.length-1)/2; // how many elements in each direction
         var neighbor_sum = [0,0,0,255];
+        var frame_shape = frame.getShape();
 
         var x, y;
         var weight;
@@ -619,8 +621,8 @@ var Filters = function() {
 
                 x = m+i; y = n+j;
 
-                x = (x < 0 || x > h-1) ? 0 : x;
-                y = (y < 0 || y > w-1) ? 0 : y;
+                x = (x < 0 || x > frame_shape[0]-1) ? 0 : x;
+                y = (y < 0 || y > frame_shape[1]-1) ? 0 : y;
 
                 weight = ekernel[i+kernel_width][j+kernel_width];
                 neighbor_sum[0] += frame[x][y][0] * weight;
