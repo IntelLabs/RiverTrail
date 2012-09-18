@@ -219,7 +219,7 @@ RiverTrail.RangeAnalysis = function () {
         return new Range(this.lb, this.ub, this.isInt);
     };
     Rp.isUndefined = function () {
-        return (this.lb === undefined) && (this.ub === undefined) && !this.isIntl
+        return (this.lb === undefined) && (this.ub === undefined) && !this.isInt;
     };
     Rp.forceInt = function forceInt(val) {
         this.isInt = val;
@@ -329,6 +329,14 @@ RiverTrail.RangeAnalysis = function () {
                     this.bindings[name].setInt(current, true);
                 } else {
                     !(range instanceof RangeArray) || reportBug("update of scalar range with array range?");
+                    this.bindings[name] = range.clone();
+                    this.bindings[name].isInt = range.isInt && current.isInt;
+                }
+            } else if (!range.isUndefined()) {
+                if (range instanceof RangeArray) {
+                    this.bindings[name] = range.clone();
+                    this.bindings[name].setInt(current, true);
+                } else {
                     this.bindings[name] = range.clone();
                     this.bindings[name].isInt = range.isInt && current.isInt;
                 }
