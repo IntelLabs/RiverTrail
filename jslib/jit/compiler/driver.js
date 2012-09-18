@@ -49,7 +49,7 @@ RiverTrail.compiler = (function () {
     // whether to cache OpenCL buffers
     var useBufferCaching = true;
 
-    const suppressOpenCL = false;
+    var suppressOpenCL = false;
 
     var openCLContext; 
     var dpoInterface; 
@@ -89,7 +89,7 @@ RiverTrail.compiler = (function () {
         } else {
             lowPrecision = !enable64BitFloatingPoint;
         }
-        const defaultNumberType = lowPrecision ? "float": "double";
+        var defaultNumberType = lowPrecision ? "float": "double";
 
         // First convert all array arguments into suitable flat representations that can be passed to
         // the OpenCL side

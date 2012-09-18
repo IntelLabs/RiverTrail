@@ -1962,7 +1962,7 @@ var ParallelArray = function () {
             } catch (ignore) {}
         }
 
-        if (result.data instanceof Components.interfaces.dpoIData) {
+        if (useFF4Interface && (result.data instanceof Components.interfaces.dpoIData)) {
             if (useLazyCommunication) {
                 // wrap all functions that need access to the data
                 requiresData(result, "get");

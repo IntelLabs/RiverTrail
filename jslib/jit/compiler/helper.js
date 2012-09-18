@@ -511,6 +511,9 @@ RiverTrail.Helper = function () {
 
     // allocate an aligned Typed Array
     function allocateAlignedTA(template, length) {
+        if(!RiverTrail.compiler){
+            return new template(length);
+        }
         var alignment = RiverTrail.compiler.openCLContext.alignmentSize;
         if (!alignment) {
             // old extension, do not align
