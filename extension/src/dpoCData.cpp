@@ -45,7 +45,7 @@ inline
 void dpoCData::HoldObjects() {
 	if (xpc == NULL) xpc = do_GetService(nsIXPConnect::GetCID(), NULL); 
     if (xpc != NULL) {
-        xpc->AddJSHolder(NS_CYCLE_COLLECTION_UPCAST(this, dpoCData), &NS_CYCLE_COLLECTION_NAME(dpoCData));
+        xpc->AddJSHolder(NS_CYCLE_COLLECTION_UPCAST(this, dpoCData), NS_CYCLE_COLLECTION_PARTICIPANT(dpoCData));
     }
 }                                                                                                    
 
