@@ -32,7 +32,7 @@ EXTENSIONDIR = xpi-contents
 GECKODIR = gecko-sdk
 GECKODIR32 = $(wildcard gecko-sdk-32)
 EXCLUDEFILES = src/dllmain.cpp
-CCFLAGS = 
+CCFLAGS = -std=c++11
 
 #
 # nothing to configure below this line
