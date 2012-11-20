@@ -116,8 +116,8 @@ nsresult dpoCKernel::InitKernel(cl_command_queue aCmdQueue, cl_kernel aKernel, c
 	return NS_OK;
 }
 
-/* readonly attribute PRUint32 numberOfArgs; */
-NS_IMETHODIMP dpoCKernel::GetNumberOfArgs(PRUint32 *aNumberOfArgs)
+/* readonly attribute uint32_t numberOfArgs; */
+NS_IMETHODIMP dpoCKernel::GetNumberOfArgs(uint32_t *aNumberOfArgs)
 {
 	cl_uint result;
 	cl_int err_code;
@@ -134,8 +134,8 @@ NS_IMETHODIMP dpoCKernel::GetNumberOfArgs(PRUint32 *aNumberOfArgs)
     return NS_OK;
 }
 
-/* void setArgument (in PRUint32 number, in dpoIData argument); */
-NS_IMETHODIMP dpoCKernel::SetArgument(PRUint32 number, dpoIData *argument)
+/* void setArgument (in uint32_t number, in dpoIData argument); */
+NS_IMETHODIMP dpoCKernel::SetArgument(uint32_t number, dpoIData *argument)
 {
 	cl_int err_code;
 	cl_mem buffer;
@@ -157,8 +157,8 @@ NS_IMETHODIMP dpoCKernel::SetArgument(PRUint32 number, dpoIData *argument)
 }
 
 // High precision is true when arguments are passed as doubles and false when passed as floats.
-/* void setScalarArgument (in PRUint32 number, in jsval argument); */
-NS_IMETHODIMP dpoCKernel::SetScalarArgument(PRUint32 number, const jsval & argument, 
+/* void setScalarArgument (in uint32_t number, in jsval argument); */
+NS_IMETHODIMP dpoCKernel::SetScalarArgument(uint32_t number, const jsval & argument, 
 	const jsval & isInteger, const jsval & highPrecision)
 {
 	cl_int err_code;
@@ -241,8 +241,8 @@ NS_IMETHODIMP dpoCKernel::SetScalarArgument(PRUint32 number, const jsval & argum
 	return NS_OK;
 }
 
-/* PRUint32 run (in PRUint32 rank, [array, size_is (rank)] in PRUint32 shape, [array, size_is (rank), optional] in PRUint32 tile); */
-NS_IMETHODIMP dpoCKernel::Run(PRUint32 rank, PRUint32 *shape, PRUint32 *tile, PRUint32 *_retval)
+/* uint32_t run (in uint32_t rank, [array, size_is (rank)] in uint32_t shape, [array, size_is (rank), optional] in uint32_t tile); */
+NS_IMETHODIMP dpoCKernel::Run(uint32_t rank, uint32_t *shape, uint32_t *tile, uint32_t *_retval)
 {
 	cl_int err_code;
 	cl_event runEvent, readEvent, writeEvent;
@@ -252,7 +252,7 @@ NS_IMETHODIMP dpoCKernel::Run(PRUint32 rank, PRUint32 *shape, PRUint32 *tile, PR
 
 	DEBUG_LOG_STATUS("Run", "preparing execution of kernel");
 
-    if (sizeof(size_t) == sizeof(PRUint32)) {
+    if (sizeof(size_t) == sizeof(uint32_t)) {
 		global_work_size = (size_t *) shape;
 	} else {
 		global_work_size = (size_t *) nsMemory::Alloc(rank * sizeof(size_t));
@@ -269,7 +269,7 @@ NS_IMETHODIMP dpoCKernel::Run(PRUint32 rank, PRUint32 *shape, PRUint32 *tile, PR
 	if (tile == NULL) {
 		local_work_size = NULL;
 	} else {
-		if ((sizeof(size_t) == sizeof(PRUint32))) {
+		if ((sizeof(size_t) == sizeof(uint32_t))) {
 			local_work_size = (size_t *) tile;
 		} else {
 			local_work_size = (size_t *) nsMemory::Alloc(rank * sizeof(size_t));

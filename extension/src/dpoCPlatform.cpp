@@ -86,8 +86,8 @@ dpoCPlatform::~dpoCPlatform()
 	parent = NULL;
 }
 
-/* readonly attribute PRUint32 numberOfDevices; */
-NS_IMETHODIMP dpoCPlatform::GetNumberOfDevices(PRUint32 *aNumberOfDevices)
+/* readonly attribute uint32_t numberOfDevices; */
+NS_IMETHODIMP dpoCPlatform::GetNumberOfDevices(uint32_t *aNumberOfDevices)
 {
 	cl_uint devices;
 	cl_int err_code = clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 0, NULL, &devices);
@@ -155,7 +155,7 @@ NS_IMETHODIMP dpoCPlatform::GetExtensions(nsAString & aExtensions)
 }
 
 /* dpoIContext createContext (in long target); */
-NS_IMETHODIMP dpoCPlatform::CreateContext(dpoIContext **_retval NS_OUTPARAM)
+NS_IMETHODIMP dpoCPlatform::CreateContext(dpoIContext **_retval)
 {
 	nsCOMPtr<dpoCContext> context;
 	nsresult result;

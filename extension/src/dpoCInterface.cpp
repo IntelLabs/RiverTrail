@@ -109,7 +109,7 @@ nsresult dpoCInterface::InitPlatformInfo()
 
 
 /* dpoIPlatform getPlatform (); */
-NS_IMETHODIMP dpoCInterface::GetPlatform(dpoIPlatform **_retval NS_OUTPARAM)
+NS_IMETHODIMP dpoCInterface::GetPlatform(dpoIPlatform **_retval)
 {
 	nsresult result = NS_OK;
 	cl_int err_code;
@@ -144,7 +144,7 @@ NS_IMETHODIMP dpoCInterface::GetPlatform(dpoIPlatform **_retval NS_OUTPARAM)
 	return NS_ERROR_NOT_AVAILABLE;
 }
 
-NS_IMETHODIMP dpoCInterface::GetVersion(PRUint32 *aVersion) 
+NS_IMETHODIMP dpoCInterface::GetVersion(uint32_t *aVersion) 
 { 
 	*aVersion = DPO_INTERFACE_VERSION; 
 
@@ -153,7 +153,7 @@ NS_IMETHODIMP dpoCInterface::GetVersion(PRUint32 *aVersion)
 
 #ifdef DPO_SCOPE_TRIAL
 /* [implicit_jscontext] jsval searchScope (in jsval scope, in AString name); */
-NS_IMETHODIMP dpoCInterface::SearchScope(const jsval & scope, const nsAString & name, JSContext *cx, jsval *_retval NS_OUTPARAM)
+NS_IMETHODIMP dpoCInterface::SearchScope(const jsval & scope, const nsAString & name, JSContext *cx, jsval *_retval)
 {
 	JSObject *scopeObj, *parentObj;
 	JSBool result;

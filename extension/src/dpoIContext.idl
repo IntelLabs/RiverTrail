@@ -46,15 +46,15 @@ interface dpoIContext : nsISecurityCheckedComponent
 	[implicit_jscontext]
 	dpoIData cloneData( in jsval source);
 	[implicit_jscontext]
-	dpoIData allocateData( in jsval templ, [optional] in PRUint32 length);
+	dpoIData allocateData( in jsval templ, [optional] in uint32_t length);
 	[implicit_jscontext]
-	dpoIData allocateData2( in dpoIData templ, [optional] in PRUint32 length);
+	dpoIData allocateData2( in dpoIData templ, [optional] in uint32_t length);
 	[implicit_jscontext]
 	bool canBeMapped( in jsval source);
 
 	// Profiling support
-	readonly attribute PRUint64 lastExecutionTime;
-	readonly attribute PRUint64 lastRoundTripTime;
+	readonly attribute uint64_t lastExecutionTime;
+	readonly attribute uint64_t lastRoundTripTime;
 
 
 	// canvas writing support
@@ -62,7 +62,7 @@ interface dpoIContext : nsISecurityCheckedComponent
 	void writeToContext2D(in nsIDOMCanvasRenderingContext2D ctx, in jsval source, in long width, in long height);
 
 	// Aligning support
-	readonly attribute PRUint32 alignmentSize;
+	readonly attribute uint32_t alignmentSize;
 	[implicit_jscontext]
-	PRUint32 getAlignmentOffset(in jsval source);
+	uint32_t getAlignmentOffset(in jsval source);
 };

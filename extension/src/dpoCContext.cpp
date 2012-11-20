@@ -240,7 +240,7 @@ int dpoCContext::CheckFree() {
 #endif /* INCREMENTAL_MEM_RELEASE */
 
 /* dpoIKernel compileKernel (in AString source, in AString kernelName, [optional] in AString options); */
-NS_IMETHODIMP dpoCContext::CompileKernel(const nsAString & source, const nsAString & kernelName, const nsAString & options, dpoIKernel **_retval NS_OUTPARAM)
+NS_IMETHODIMP dpoCContext::CompileKernel(const nsAString & source, const nsAString & kernelName, const nsAString & options, dpoIKernel **_retval)
 {
 	cl_program program;
 	cl_kernel kernel;
@@ -418,7 +418,7 @@ nsresult dpoCContext::CreateAlignedTA(uint type, size_t length, JSObject **res, 
 }
 
 /* [implicit_jscontext] dpoIData mapData (in jsval source); */
-NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData **_retval NS_OUTPARAM)
+NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData **_retval)
 {
   cl_int err_code;
   nsresult result;
@@ -492,13 +492,13 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
 }
 
 /* [implicit_jscontext] dpoIData cloneData (in jsval source); */
-NS_IMETHODIMP dpoCContext::CloneData(const jsval & source, JSContext *cx, dpoIData **_retval NS_OUTPARAM)
+NS_IMETHODIMP dpoCContext::CloneData(const jsval & source, JSContext *cx, dpoIData **_retval)
 {
 	return NS_ERROR_NOT_IMPLEMENTED;
 }
 
-/* [implicit_jscontext] dpoIData allocateData (in jsval templ, [optional] in PRUint32 length); */
-NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JSContext *cx, dpoIData **_retval NS_OUTPARAM)
+/* [implicit_jscontext] dpoIData allocateData (in jsval templ, [optional] in uint32_t length); */
+NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, uint32_t length, JSContext *cx, dpoIData **_retval)
 {
 	cl_int err_code;
 	nsresult result;
@@ -544,7 +544,7 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
 	cl_mem memObj = CreateBuffer( CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, 
                                   JS_GetTypedArrayByteLength(jsArray, cx), GetPointerFromTA(jsArray, cx), &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
-	JSObject *jsArray = nsnull;
+	JSObject *jsArray =  nullptr;
 	cl_mem memObj = CreateBuffer(CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
 #endif /* PREALLOCATE_IN_JS_HEAP */
 	if (err_code != CL_SUCCESS) {
@@ -563,8 +563,8 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, PRUint32 length, JS
     return result;
 }
 
-/* [implicit_jscontext] dpoIData allocateData2 (in dpoIData templ, [optional] in PRUint32 length); */
-NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, PRUint32 length, JSContext *cx, dpoIData **_retval NS_OUTPARAM) 
+/* [implicit_jscontext] dpoIData allocateData2 (in dpoIData templ, [optional] in uint32_t length); */
+NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, uint32_t length, JSContext *cx, dpoIData **_retval) 
 {
 	// this cast is only safe as long as no other implementations of the dpoIData interface exist
 	dpoCData *cData = (dpoCData *) templ;
@@ -629,7 +629,7 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, PRUint32 length, JSCon
 }
 	
 /* [implicit_jscontext] bool canBeMapped (in jsval source); */
-NS_IMETHODIMP dpoCContext::CanBeMapped(const jsval & source, JSContext* cx, bool *_retval NS_OUTPARAM)
+NS_IMETHODIMP dpoCContext::CanBeMapped(const jsval & source, JSContext* cx, bool *_retval)
 {
 #ifdef SUPPORT_MAPPING_ARRAYS
   if (!JSVAL_IS_OBJECT(source)) {
@@ -644,8 +644,8 @@ NS_IMETHODIMP dpoCContext::CanBeMapped(const jsval & source, JSContext* cx, bool
   return NS_OK;
 }
 
-/* readonly attribute PRUint64 lastExecutionTime; */
-NS_IMETHODIMP dpoCContext::GetLastExecutionTime(PRUint64 *_retval NS_OUTPARAM) 
+/* readonly attribute uint64_t lastExecutionTime; */
+NS_IMETHODIMP dpoCContext::GetLastExecutionTime(uint64_t *_retval) 
 {
 #ifdef CLPROFILE
 	if ((clp_exec_end == 0) || (clp_exec_start == 0)) {
@@ -660,8 +660,8 @@ NS_IMETHODIMP dpoCContext::GetLastExecutionTime(PRUint64 *_retval NS_OUTPARAM)
 #endif /* CLPROFILE */
 }
 
-/* readonly attribute PRUint64 lastRoundTripTime; */
-NS_IMETHODIMP dpoCContext::GetLastRoundTripTime(PRUint64 *_retval NS_OUTPARAM) 
+/* readonly attribute uint64_t lastRoundTripTime; */
+NS_IMETHODIMP dpoCContext::GetLastRoundTripTime(uint64_t *_retval) 
 {
 #ifdef WINDOWS_ROUNDTRIP
 	if ((wrt_exec_start.QuadPart == -1) || (wrt_exec_end.QuadPart == -1)) {
@@ -675,7 +675,7 @@ NS_IMETHODIMP dpoCContext::GetLastRoundTripTime(PRUint64 *_retval NS_OUTPARAM)
 		}
 		double diff = (double) (wrt_exec_end.QuadPart - wrt_exec_start.QuadPart);
 		double time = diff / (double) freq.QuadPart * 1000000000;
-		*_retval = (PRUint64) time;
+		*_retval = (uint64_t) time;
 		return NS_OK;
 	}
 #else /* WINDOWS_ROUNDTRIP */
@@ -753,16 +753,16 @@ NS_IMETHODIMP dpoCContext::WriteToContext2D(nsIDOMCanvasRenderingContext2D *ctx,
 	return NS_OK;
 }
 
-/* readonly attribute PRUint32 alignmentSize; */
-NS_IMETHODIMP dpoCContext::GetAlignmentSize(PRUint32 *aAlignmentSize)
+/* readonly attribute uint32_t alignmentSize; */
+NS_IMETHODIMP dpoCContext::GetAlignmentSize(uint32_t *aAlignmentSize)
 {
 	*aAlignmentSize = alignment_size;
     
 	return NS_OK;
 }
 
-/* [implicit_jscontext] PRUint32 getAlignmentOffset (in jsval source); */
-NS_IMETHODIMP dpoCContext::GetAlignmentOffset(const JS::Value & source, JSContext* cx, PRUint32 *_retval NS_OUTPARAM)
+/* [implicit_jscontext] uint32_t getAlignmentOffset (in jsval source); */
+NS_IMETHODIMP dpoCContext::GetAlignmentOffset(const JS::Value & source, JSContext* cx, uint32_t *_retval)
 {
 	JSObject *object;
 	nsresult result;

@@ -35,12 +35,12 @@
 [scriptable, uuid(512aec44-e8f2-4702-b04d-6283a7d0f546)]
 interface dpoIKernel : nsISecurityCheckedComponent
 {
-	readonly attribute PRUint32 numberOfArgs;
+	readonly attribute uint32_t numberOfArgs;
 
 	// Methods to supply arguments to a kernel.
-	void setArgument( in PRUint32 number, in dpoIData argument);
-	void setScalarArgument( in PRUint32 number, in jsval argument, in jsval isInteger, in jsval highPrecision);
+	void setArgument( in uint32_t number, in dpoIData argument);
+	void setScalarArgument( in uint32_t number, in jsval argument, in jsval isInteger, in jsval highPrecision);
 
 	// Methods to run a kernel
-	PRUint32 run( in PRUint32 rank, [array, size_is(rank)] in PRUint32 shape, [optional, array, size_is(rank)] in PRUint32 tile);
+	uint32_t run( in uint32_t rank, [array, size_is(rank)] in uint32_t shape, [optional, array, size_is(rank)] in uint32_t tile);
 };

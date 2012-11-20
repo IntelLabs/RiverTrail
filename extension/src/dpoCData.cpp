@@ -83,7 +83,7 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(dpoCData)
     NS_IMPL_CYCLE_COLLECTION_UNLINK_NSCOMPTR(parent)
     if (tmp->theArray) {
 	    DEBUG_LOG_STATUS("UNLINK!", "unlinking array " << tmp->theArray);
-	    tmp->theArray = nsnull;
+	    tmp->theArray = nullptr;
         tmp->DropObjects();
     }
 NS_IMPL_CYCLE_COLLECTION_UNLINK_END
@@ -107,7 +107,7 @@ dpoCData::dpoCData(dpoIContext *aParent)
 	parent = aParent;
 	queue = NULL;
 	memObj = NULL;
-	theArray = nsnull;
+	theArray = nullptr;
 	theContext = NULL;
 #ifdef PREALLOCATE_IN_JS_HEAP
 	mapped = false;
@@ -131,7 +131,7 @@ dpoCData::~dpoCData()
 	}
     if (theArray) {
         DEBUG_LOG_STATUS("~dpoCData", "releasing array object");
-		theArray = nsnull;
+		theArray = nullptr;
 		DropObjects();
     }
 	parent = NULL;
@@ -189,7 +189,7 @@ nsresult dpoCData::InitCData(JSContext *cx, cl_command_queue aQueue, cl_mem aMem
 		HoldObjects();
 		theArray = anArray;
 	} else {
-		theArray = nsnull;
+		theArray = nullptr;
 	}
 
 	DEBUG_LOG_STATUS("InitCData", "queue is " << aQueue << " buffer is " << aMemObj);

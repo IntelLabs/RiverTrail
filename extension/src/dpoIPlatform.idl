@@ -31,7 +31,7 @@
 interface dpoIPlatform : nsISecurityCheckedComponent
 {
 	// Methods to query properties of a platform
-	readonly attribute PRUint32 numberOfDevices;
+	readonly attribute uint32_t numberOfDevices;
 	readonly attribute AString version;
 	readonly attribute AString name;
 	readonly attribute AString vendor;
