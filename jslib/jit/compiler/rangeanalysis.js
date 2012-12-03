@@ -1093,6 +1093,7 @@ RiverTrail.RangeAnalysis = function () {
                 }
                 console.log("range analysis failed: " + e.toString());
             }
+            ast.rangeSymbols = env;
             debug && console.log(env.toString());
 
             return ast;
@@ -1541,7 +1542,18 @@ RiverTrail.RangeAnalysis = function () {
             return ast;
         }
 
-        function propagate(ast) {
+        function propagate(ast, construct) {
+            // if we found that the iv is used as an int only, we update its type.
+            if ((construct === "combine") || (construct === "comprehension") || (construct === "comprehensionScalar")) {
+                var tEnv = ast.symbols;
+                var rEnv = ast.rangeSymbols;
+                var rangeInfo = ast.rangeSymbols.lookup(ast.params[0]);
+                if (((rangeInfo instanceof RangeArray) ? rangeInfo.isInt() : rangeInfo.isInt)) {
+                    updateToNew(tEnv.lookup(ast.params[0]).type, "int");
+                    updateToNew(ast.typeInfo.parameters[(construct === "combine") ? 1 : 0], "int");
+                }
+            }
+
             return push(ast.body, null, undefined);
         }
 

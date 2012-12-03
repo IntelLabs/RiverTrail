@@ -1379,7 +1379,8 @@ RiverTrail.Typeinference = function () {
                             fun.flowFrame = new FFunction(innerArgT, resType, fun);
                             fun.typeInfo = new TFunction(innerArgT, resType);
                             fun.flowRoots = innerTEnv.getRoots();
-                            //debug && console.log(fun.name + " has type " + fun.typeInfo.toString());
+                            fun.symbols = innerTEnv;
+                            debug && console.log(fun.name + " has type " + fun.typeInfo.toString());
                         }
                         // tie the arguments to the function call
                         ast.callFrame = new FCall(argT, fun.flowFrame, resType.clone(), ast);
@@ -1900,7 +1901,6 @@ RiverTrail.Typeinference = function () {
             var ivType = new TObject(TObject.ARRAY);
             ivType.properties.shape = [rank];
             ivType.properties.elements = new TLiteral(TLiteral.NUMBER);
-            ivType.properties.elements.OpenCLType = "int";
             ivType.updateOpenCLType();
             ivType.properties.addressSpace = "__private";
             tEnv.bind(params[0]);
@@ -1911,7 +1911,6 @@ RiverTrail.Typeinference = function () {
         } else if (construct === "comprehensionScalar") {
             // create type info for scalar index argument
             var ivType = new TLiteral(TLiteral.NUMBER);
-            ivType.OpenCLType = "int";
             tEnv.bind(params[0]);
             tEnv.update(params[0], ivType);
             params = params.slice(1);
@@ -1945,6 +1944,7 @@ RiverTrail.Typeinference = function () {
 
         var type = new TFunction(argT, tEnv.functionResult);
         ast.typeInfo = type;
+        ast.symbols = tEnv;
 
         // propagate address space qualifiers
         propagateAddressSpaces(tEnv.getRoots());

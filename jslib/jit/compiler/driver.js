@@ -174,7 +174,7 @@ RiverTrail.compiler = (function () {
         try {
             RiverTrail.Typeinference.analyze(ast, paSource, construct, rank, args, lowPrecision);
             RiverTrail.RangeAnalysis.analyze(ast, paSource, construct, rankOrShape, args);
-            RiverTrail.RangeAnalysis.propagate(ast);
+            RiverTrail.RangeAnalysis.propagate(ast, construct);
             RiverTrail.InferBlockFlow.infer(ast);
             RiverTrail.InferMem.infer(ast);
         } catch (e) {

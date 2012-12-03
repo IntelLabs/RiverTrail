@@ -261,7 +261,8 @@ RiverTrail.compiler.codeGen = (function() {
             // the first argument is id that this call is responsible for.
             if (indexType.isObjectType("Array")) { //(formalsType === "int*") {
                 dimSizes = indexType.getOpenCLShape();
-                s = s + indexType.getOpenCLAddressSpace() +" const "+ RiverTrail.Helper.stripToBaseType(indexType.OpenCLType) + " " +
+                var idxTypeStr = RiverTrail.Helper.stripToBaseType(indexType.OpenCLType);
+                s = s + indexType.getOpenCLAddressSpace() +" const "+ idxTypeStr + " " +
                     indexName+"["+ dimSizes.toString() +"] = "; 
                 // Deal with array indices.
                 // SAH: id may _NEVER_ be changed in this process as it is required to assign the result!
@@ -273,7 +274,7 @@ RiverTrail.compiler.codeGen = (function() {
                     if (i > 0) {
                         s = s + ", ";
                     }
-                    s = s + "_id_" + i;
+                    s = s + "(" + idxTypeStr + ") _id_" + i;
                 }
                 s = s + "};";
             } else {            
