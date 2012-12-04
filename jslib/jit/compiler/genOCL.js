@@ -1995,7 +1995,7 @@ RiverTrail.compiler.codeGen = (function() {
                 if (ast.typeInfo.isNumberType()) {
                     // we have a scalar number, so we just emit the
                     // conversion code
-                    s = s + "(int)" + oclExpression(ast.children[0]); 
+                    s = s + "((int)" + oclExpression(ast.children[0]) + ")"; 
                 } else {
                     // this is some form of array or vector. We do not
                     // have allocation of local temps, yet, so fail
