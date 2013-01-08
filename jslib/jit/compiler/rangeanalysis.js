@@ -439,11 +439,11 @@ RiverTrail.RangeAnalysis = function () {
         }
     };
     VEp.toString = function () {
-        var s = "<<";
+        var s = "";
         for (var name in this.bindings) {
-            s = s + name + " => " + this.bindings[name].toString() + ",";
+            s = s + ((s === "") ? "" : ", ") + name + " => " + this.bindings[name].toString();
         }
-        return s;
+        return "<<" + s + ">>";
     };
 
 
@@ -490,6 +490,129 @@ RiverTrail.RangeAnalysis = function () {
                 break;
             default:
                 throw "unexpected node in computeRootRangeInfo. TI must have let something pass that it should not!";
+        }
+
+        return result;
+    }
+
+
+    function computeBinaryRange(op, leftAst, rightAst, varEnv, doAnnotate, constraints, constraintAccu, inverse) {
+        var result;
+
+        switch (op) {
+            case INCREMENT:
+            case PLUS: 
+                var left = drive(leftAst, varEnv, doAnnotate);
+                if (rightAst) {
+                    var right = drive(rightAst, varEnv, doAnnotate);
+                } else {
+                    var right = new Range(1,1, true);
+                }
+                result = left.map( right, function (a,b) { return a+b; }, left.isInt && right.isInt); 
+                if (!rightAst) { // INCREMENT
+                    varEnv.update(leftAst.value, result);
+                }
+                break;
+            case DECREMENT:
+            case MINUS:
+                var left = drive(leftAst, varEnv, doAnnotate);
+                if (rightAst) {
+                    var right = drive(rightAst, varEnv, doAnnotate);
+                } else {
+                    var right = new Range(1,1, true);
+                }
+                result = left.map( right, function (a,b) { return a-b; }, left.isInt && right.isInt); 
+                if (!rightAst) { // DECREMENT
+                    varEnv.update(leftAst.value, result);
+                }
+                break;
+            case MUL:
+                var left = drive(leftAst, varEnv, doAnnotate);
+                var right = drive(rightAst, varEnv, doAnnotate);
+                var newLb = Math.min(left.lb * right.lb, left.ub * right.lb, left.ub * right.lb, left.ub * right.ub);
+                var newUb = Math.max(left.lb * right.lb, left.ub * right.lb, left.ub * right.lb, left.ub * right.ub);
+
+                result = new Range( isNaN(newLb) ? undefined : newLb,
+                                    isNaN(newUb) ? undefined : newUb,
+                                    left.isInt && right.isInt);
+                break;
+
+            case DIV:
+                var left = drive(leftAst, varEnv, doAnnotate);
+                var right = drive(rightAst, varEnv, doAnnotate);
+                if ((left.lb !== undefined) && (left.ub !== undefined) && (Math.abs(right.lb) >= 1) && (Math.abs(right.ub) >= 1)) {
+                    var newLb = Math.min(left.lb / right.lb, left.ub / right.lb, left.ub / right.lb, left.ub / right.ub);
+                    var newUb = Math.max(left.lb / right.lb, left.ub / right.lb, left.ub / right.lb, left.ub / right.ub);
+                    result = new Range( isNaN(newLb) ? undefined : newLb, isNaN(newUb) ? undefined : newUb, false);
+                } else {
+                    result = new Range(undefined, undefined, false);
+                }
+                break;
+                
+            case EQ:
+            case NE:
+            case STRICT_EQ:
+            case STRICT_NE:
+            case LT:
+            case LE:
+            case GE:
+            case GT:
+                var right = drive(rightAst, varEnv, doAnnotate, constraints, undefined, inverse); // grab rhs range
+                var left = drive(leftAst, varEnv, doAnnotate, constraints, {"type" : op, "range" : right, "inverse" : inverse}, inverse); // apply constraint to lhs
+                result = new Range(0, 1, true); // result is a bool
+                break;
+
+            // we do not implement these yet
+            case BITWISE_OR:
+            case BITWISE_XOR:
+            case BITWISE_AND:
+            case LSH:
+            case RSH:
+            case URSH:
+            case MOD:    
+                var left = drive(leftAst, varEnv, doAnnotate);
+                var right = drive(rightAst, varEnv, doAnnotate);
+                result = new Range(undefined, undefined, false);
+                break;
+
+            // binary operators on bool
+            case AND: 
+            case OR:
+                if (((op === AND) && !inverse) ||
+                    ((op === OR ) && inverse)) { // merge both branches
+                    drive(leftAst, varEnv, doAnnotate, constraints, undefined, inverse);
+                    drive(rightAst, varEnv, doAnnotate, constraints, undefined, inverse);
+                } else { // intersect branches
+                    var leftC = new Constraints();
+                    drive(leftAst, varEnv, doAnnotate, leftC, undefined, inverse);
+                    var rightC = new Constraints();
+                    drive(rightAst, varEnv, doAnnotate, rightC, undefined, inverse);
+                    leftC.intersect(rightC);
+                    constraints.merge(leftC);
+                }
+                result = new Range(0, 1, true); // the result is a boolean :)
+                break;
+            // unary functions on all literals
+            case NOT:
+                drive(leftAst, varEnv, doAnnotate, constraints, undefined, !inverse); 
+                result = new Range(0, 1, true); // the result is a boolean :)
+                break;
+            case UNARY_PLUS:
+                result = drive(leftAst, varEnv, doAnnotate);
+                break;
+            case UNARY_MINUS:
+                var left = drive(leftAst, varEnv, doAnnotate);
+                result = new Range((left.ub === undefined) ? undefined : -left.ub,
+                                   (left.lb === undefined) ? undefined : -left.lb,
+                                   left.isInt);
+                break;
+            case BITWISE_NOT:
+                drive(leftAst, varEnv, doAnnotate);
+                result = new Range(undefined, undefined, false);
+                break;
+            default:
+                result = new Range(undefined, undefined, false);
+                break;
         }
 
         return result;
@@ -668,6 +791,10 @@ RiverTrail.RangeAnalysis = function () {
                 // both can be expressions. 
                 drive(ast.children[0], varEnv, doAnnotate);
                 var right = drive(ast.children[1], varEnv, doAnnotate);
+                // if we have an operation, like +=, we have to compute the new range of the LHS.
+                if (ast.assignOp) {
+                    right = computeBinaryRange(ast.assignOp, ast.children[0], ast.children[1], varEnv, doAnnotate, constraints, constraintAccu, inverse);
+                }
                 switch (ast.children[0].type) {
                     case IDENTIFIER:
                         // simple case of a = expr
@@ -721,53 +848,10 @@ RiverTrail.RangeAnalysis = function () {
             // binary operations on all literals
             case INCREMENT:
             case PLUS: 
-                var left = drive(ast.children[0], varEnv, doAnnotate);
-                if (ast.children[1]) {
-                    var right = drive(ast.children[1], varEnv, doAnnotate);
-                } else {
-                    var right = new Range(1,1, true);
-                }
-                result = left.map( right, function (a,b) { return a+b; }, left.isInt && right.isInt); 
-                if (!ast.children[1]) { // INCREMENT
-                    varEnv.update(ast.children[0].value, result);
-                }
-                break;
             case DECREMENT:
             case MINUS:
-                var left = drive(ast.children[0], varEnv, doAnnotate);
-                if (ast.children[1]) {
-                    var right = drive(ast.children[1], varEnv, doAnnotate);
-                } else {
-                    var right = new Range(1,1, true);
-                }
-                result = left.map( right, function (a,b) { return a-b; }, left.isInt && right.isInt); 
-                if (!ast.children[1]) { // DECREMENT
-                    varEnv.update(ast.children[0].value, result);
-                }
-                break;
             case MUL:
-                var left = drive(ast.children[0], varEnv, doAnnotate);
-                var right = drive(ast.children[1], varEnv, doAnnotate);
-                var newLb = Math.min(left.lb * right.lb, left.ub * right.lb, left.ub * right.lb, left.ub * right.ub);
-                var newUb = Math.max(left.lb * right.lb, left.ub * right.lb, left.ub * right.lb, left.ub * right.ub);
-
-                result = new Range( isNaN(newLb) ? undefined : newLb,
-                                    isNaN(newUb) ? undefined : newUb,
-                                    left.isInt && right.isInt);
-                break;
-
             case DIV:
-                var left = drive(ast.children[0], varEnv, doAnnotate);
-                var right = drive(ast.children[1], varEnv, doAnnotate);
-                if ((left.lb !== undefined) && (left.ub !== undefined) && (Math.abs(right.lb) >= 1) && (Math.abs(right.ub) >= 1)) {
-                    var newLb = Math.min(left.lb / right.lb, left.ub / right.lb, left.ub / right.lb, left.ub / right.ub);
-                    var newUb = Math.max(left.lb / right.lb, left.ub / right.lb, left.ub / right.lb, left.ub / right.ub);
-                    result = new Range( isNaN(newLb) ? undefined : newLb, isNaN(newUb) ? undefined : newUb, false);
-                } else {
-                    result = new Range(undefined, undefined, false);
-                }
-                break;
-                
             case EQ:
             case NE:
             case STRICT_EQ:
@@ -776,12 +860,6 @@ RiverTrail.RangeAnalysis = function () {
             case LE:
             case GE:
             case GT:
-                var right = drive(ast.children[1], varEnv, doAnnotate, constraints, undefined, inverse); // grab rhs range
-                var left = drive(ast.children[0], varEnv, doAnnotate, constraints, {"type" : ast.type, "range" : right, "inverse" : inverse}, inverse); // apply constraint to lhs
-                result = new Range(0, 1, true); // result is a bool
-                break;
-
-            // we do not implement these yet
             case BITWISE_OR:
             case BITWISE_XOR:
             case BITWISE_AND:
@@ -789,45 +867,13 @@ RiverTrail.RangeAnalysis = function () {
             case RSH:
             case URSH:
             case MOD:    
-                var left = drive(ast.children[0], varEnv, doAnnotate);
-                var right = drive(ast.children[1], varEnv, doAnnotate);
-                result = new Range(undefined, undefined, false);
-                break;
-
-            // binary operators on bool
             case AND: 
             case OR:
-                if (((ast.type === AND) && !inverse) ||
-                    ((ast.type === OR ) && inverse)) { // merge both branches
-                    drive(ast.children[0], varEnv, doAnnotate, constraints, undefined, inverse);
-                    drive(ast.children[1], varEnv, doAnnotate, constraints, undefined, inverse);
-                } else { // intersect branches
-                    var leftC = new Constraints();
-                    drive(ast.children[0], varEnv, doAnnotate, leftC, undefined, inverse);
-                    var rightC = new Constraints();
-                    drive(ast.children[1], varEnv, doAnnotate, rightC, undefined, inverse);
-                    leftC.intersect(rightC);
-                    constraints.merge(leftC);
-                }
-                result = new Range(0, 1, true); // the result is a boolean :)
-                break;
-            // unary functions on all literals
             case NOT:
-                drive(ast.children[0], varEnv, doAnnotate, constraints, undefined, !inverse); 
-                result = new Range(0, 1, true); // the result is a boolean :)
-                break;
             case UNARY_PLUS:
-                result = drive(ast.children[0], varEnv, doAnnotate);
-                break;
             case UNARY_MINUS:
-                var left = drive(ast.children[0], varEnv, doAnnotate);
-                result = new Range((left.ub === undefined) ? undefined : -left.ub,
-                                   (left.lb === undefined) ? undefined : -left.lb,
-                                   left.isInt);
-                break;
             case BITWISE_NOT:
-                drive(ast.children[0], varEnv, doAnnotate);
-                result = new Range(undefined, undefined, false);
+                result = computeBinaryRange(ast.type, ast.children[0], ast.children[1], varEnv, doAnnotate, constraints, constraintAccu, inverse);
                 break;
 
             // literals
@@ -1055,6 +1101,7 @@ RiverTrail.RangeAnalysis = function () {
 
         if (debug && (ast.type === SCRIPT)) {
             console.log("overall range map for SCRIPT node: " + ast.rangeSymbols.toString());
+            console.log("overall type map for SCRIPT node: " + ast.symbols.toString());
         }
         return result;
     }
@@ -1113,12 +1160,12 @@ RiverTrail.RangeAnalysis = function () {
             return ast.rangeInfo && ((ast.rangeInfo instanceof RangeArray) ? ast.rangeInfo.isInt() : ast.rangeInfo.isInt);
         }
 
-        function updateToNew(type, target) {
-            debug && console.log("updating " + type.toString() + " to " + target);
+        function updateToNew(type, target, name) {
+            debug && console.log("updating " + (name ? name + "::" : "") + type.toString() + " to " + target);
             if (type.isNumberType()) {
                 type.OpenCLType = target;
             } else if (type.isArrayishType()) {
-                updateToNew(type.properties.elements, target);
+                updateToNew(type.properties.elements, target, name);
                 type.updateOpenCLType();
             } else if (type.isBoolType()) {
                 // do nothing. bool and int work nicely together.
@@ -1172,7 +1219,6 @@ RiverTrail.RangeAnalysis = function () {
             if (!ast.type) {
                 reportBug("missing type information in syntax tree.", ast);
             }
-
             switch (ast.type) {
                 case SCRIPT:
                     // handle nested functions
@@ -1194,7 +1240,7 @@ RiverTrail.RangeAnalysis = function () {
                             if (makeInt) {
                                 // as we got a reference to the type in the environment, we
                                 // can simply update it directly here
-                                updateToNew(typeInfo, "int");
+                                updateToNew(typeInfo, "int", decl.value);
                             }
                     });
                     tEnv = ast.symbols;
@@ -1241,7 +1287,10 @@ RiverTrail.RangeAnalysis = function () {
                 case CONST:
                     ast.children = ast.children.map(function (ast) {
                                          // update type information on this node
-                                         ast.typeInfo = tEnv.lookup(ast.value).type;
+                                         var type = tEnv.lookup(ast.value).type;
+                                         if (type) {
+                                            ast.typeInfo = type.clone();
+                                         }
                                          if (ast.initializer) {
                                             if (isIntValue(ast) && (!validIntRepresentation(ast.typeInfo.OpenCLType))) {
                                                 ast.initializer = push(ast.initializer, tEnv, false);
@@ -1262,7 +1311,7 @@ RiverTrail.RangeAnalysis = function () {
                             // It might be that we compute on int but the variable is a double. In such
                             // a case, we have to cast the expression to double.
                             ast.children[1] = push(ast.children[1], tEnv, isIntValue(ast.children[0]));
-                            ast.children[0].typeInfo = tEnv.lookup(ast.children[0].value).type;
+                            ast.children[0].typeInfo = tEnv.lookup(ast.children[0].value).type.clone();
                             if (validIntRepresentation(ast.children[1].typeInfo.OpenCLType) && 
                                 (!validIntRepresentation(ast.children[0].typeInfo.OpenCLType))) {
                                 ast.children[1] = makeCast(ast.children[1], tEnv.openCLFloatType);
@@ -1347,14 +1396,13 @@ RiverTrail.RangeAnalysis = function () {
                 // literals
                 case IDENTIFIER:
                 case THIS:
-                    ast.typeInfo = tEnv.lookup(ast.value).type;
+                    ast.typeInfo = tEnv.lookup(ast.value).type.clone();
                     // if the variable is a float but this expression is known to be 
                     // an int, we have to put a cast here
                     if (isIntValue(ast) && (!validIntRepresentation(ast.typeInfo.OpenCLType))) {
                         ast = makeCast(ast, "int");
                         ast.rangeInfo = ast.children[0].rangeInfo; // inherit range info
                     }
-                    break;
                     break;
                 case DOT:
                     ast.children[0] = push(ast.children[0], tEnv, undefined);
@@ -1508,7 +1556,7 @@ RiverTrail.RangeAnalysis = function () {
                 if (isIntValue(ast)) {
                     if (ast.type !== ARRAY_INIT) {
                         // change type information to be int
-                        ast.typeInfo && updateToNew(ast.typeInfo, "int");
+                        ast.typeInfo && updateToNew(ast.typeInfo, "int", ast.value);
                         // if the node one level up cannot live with int, cast to a float representation
                         if (expectInt === false) {
                             ast = makeCast(ast, tEnv.openCLFloatType);
@@ -1526,7 +1574,9 @@ RiverTrail.RangeAnalysis = function () {
                             newAst.type = TOINT32;
                             newAst.typeInfo = ast.typeInfo.clone();
                             updateToNew(newAst.typeInfo, "int");
-                            newAst.rangeInfo = ast.rangeInfo.clone(); // if we have valid range info, TOINT32 will preserve it
+                            if (ast.rangeInfo) {
+                                newAst.rangeInfo = ast.rangeInfo.clone(); // if we have valid range info, TOINT32 will preserve it
+                            }
                             newAst.children[0] = ast;
                             ast = newAst;
                         } else {
@@ -1537,6 +1587,11 @@ RiverTrail.RangeAnalysis = function () {
                         }
                     }
                 }
+            }
+
+            if (debug && (ast.type === SCRIPT)) {
+                console.log("overall range map for SCRIPT node after push: " + ast.rangeSymbols.toString());
+                console.log("overall type map for SCRIPT node after push: " + ast.symbols.toString());
             }
 
             return ast;

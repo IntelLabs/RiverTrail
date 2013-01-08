@@ -452,6 +452,13 @@ RiverTrail.Typeinference = function () {
             this.bindings[name].initialized = false;
         }
     };
+    TEp.toString = function () {
+        var s = "";
+        for (var name in this.bindings) {
+            s = s + ((s === "") ? "" : ", ") + name + " => " + this.bindings[name].type.toString();
+        }
+        return "{{" + s + "}}";
+    };
 
     // this construction eases debugging :-)
     TEp.__defineGetter__("accu", function () {
@@ -1222,7 +1229,8 @@ RiverTrail.Typeinference = function () {
             case THIS:
                 var idType = tEnv.lookup(ast.value) || reportError("unbound variable: " + ast.value, ast);
                 idType.initialized || reportError("variable " + ast.value + " might be uninitialized", ast);
-                tEnv.accu = idType.type;
+                tEnv.accu = idType.type.clone();
+                tEnv.accu.registerFlow(idType);
                 break;
             case DOT:
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
