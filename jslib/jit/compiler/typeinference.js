@@ -121,7 +121,7 @@ RiverTrail.Typeinference = function () {
                  (this.name === name)));
     };
     Tp.isArrayishType = function () { // checks whether the type is an array like type
-        return this.isObjectType("Array") || this.isObjectType("JSArray") || this.isObjectType("ParallelArray");
+        return this.isObjectType(TObject.ARRAY) || this.isObjectType(TObject.JSARRAY) || this.isObjectType(TObject.PARALLELARRAY);
     };
     Tp.isBottomType = function () {
         return (this.kind === Type.BOTTOM);
@@ -681,7 +681,7 @@ RiverTrail.Typeinference = function () {
         }
     };
 
-    TOp.registry["Array"] = {
+    TOp.registry[TObject.ARRAY] = {
         methodCall : function(thisType, name, tEnv, fEnv, ast) {
             switch (name) {
                 // mutators
@@ -752,10 +752,10 @@ RiverTrail.Typeinference = function () {
             var elemType = this.properties.elements;
             if (elemType instanceof TLiteral) {
                 this.OpenCLType = this.properties.elements.OpenCLType + "*";
-            } else if( (elemType.properties.addressSpace === "__private") && (elemType.isObjectType("Array") || elemType.isObjectType("ParallelArray"))) {
+            } else if( (elemType.properties.addressSpace === "__private") && (elemType.isObjectType(TObject.ARRAY) || elemType.isObjectType(TObject.PARALLELARRAY))) {
                 // JS : Generate right type for nested local arrays (JS Arrays and ParallelArrays)
                 this.OpenCLType = elemType.OpenCLType + "*";
-            } else if (elemType.isObjectType("Array") || elemType.isObjectType("ParallelArray")) {
+            } else if (elemType.isObjectType(TObject.ARRAY) || elemType.isObjectType(TObject.PARALLELARRAY)) {
                 // TODO: Global arrays of element type T should have type T* here
                 //
                 this.OpenCLType = elemType.OpenCLType;
@@ -782,9 +782,9 @@ RiverTrail.Typeinference = function () {
         }
     };
 
-    TOp.registry["JSArray"] = {
-        methodCall : TOp.registry["Array"].methodCall,
-        propertySelection : TOp.registry["Array"].propertySelection,
+    TOp.registry[TObject.JSARRAY] = {
+        methodCall : TOp.registry[TObject.ARRAY].methodCall,
+        propertySelection : TOp.registry[TObject.ARRAY].propertySelection,
         constructor : Array,
         makeType : function (val) {
             var type;
@@ -817,13 +817,13 @@ RiverTrail.Typeinference = function () {
             /* this type is hardwired */
             this.OpenCLType = "/* jsval */ double*";
         },
-        getOpenCLShape : TOp.registry["Array"].getOpenCLShape,
-        getOpenCLSize : TOp.registry["Array"].getOpenCLSize,
-        equals : TOp.registry["Array"].equals,
-        setAddressSpace : TOp.registry["Array"].setAddressSpace
+        getOpenCLShape : TOp.registry[TObject.ARRAY].getOpenCLShape,
+        getOpenCLSize : TOp.registry[TObject.ARRAY].getOpenCLSize,
+        equals : TOp.registry[TObject.ARRAY].equals,
+        setAddressSpace : TOp.registry[TObject.ARRAY].setAddressSpace
     };
 
-    TOp.registry["ParallelArray"] = {
+    TOp.registry[TObject.PARALLELARRAY] = {
         methodCall : function(thisType, name, tEnv, fEnv, ast) {
             "use strict";
             var type;
@@ -1103,7 +1103,7 @@ RiverTrail.Typeinference = function () {
                         // 1) infer types for lhs
                         left = drive(left, tEnv, fEnv);
                         // 2) figure out what <expr> is. Has to yield an Array object of some sort.
-                        left.children[0].typeInfo.isObjectType("Array") || reportError("illegal object in lhs selection; type seen was " 
+                        left.children[0].typeInfo.isObjectType(TObject.ARRAY) || reportError("illegal object in lhs selection; type seen was " 
                                                                                        + left.children[0].typeInfo, ast);
                         // 3) ensure the update is monomorphic
                         left.typeInfo.equals(ast.children[1].typeInfo) || reportError("mutation of array invalidates types: " 
@@ -1252,11 +1252,11 @@ RiverTrail.Typeinference = function () {
                 ast.children[1] = drive(ast.children[1], tEnv, fEnv);
                 tEnv.accu.isArithType() || reportError("index not a number (found " + tEnv.accu.toString() + ")", ast);
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
-                if (tEnv.accu.isObjectType("Array") || tEnv.accu.isObjectType("JSArray")) {
+                if (tEnv.accu.isObjectType(TObject.ARRAY) || tEnv.accu.isObjectType(TObject.JSARRAY)) {
                     left = tEnv.accu.properties.elements.clone();
                     left.registerFlow(tEnv.accu);
                     tEnv.accu = left;
-                } else if (tEnv.accu.isObjectType("ParallelArray")) {
+                } else if (tEnv.accu.isObjectType(TObject.PARALLELARRAY)) {
                     if (tEnv.accu.properties.shape.length === 1) {
                         // result is a scalar
                         left = tEnv.accu.properties.elements.clone();
@@ -1284,7 +1284,7 @@ RiverTrail.Typeinference = function () {
                 }
                 (left.length > 0) || reportError("empty arrays are not supported", ast);
                 left.reduce(function(a,b) { a.equals(b) || reportError("inhomogeneous element types in array initialiser", ast); return a;});
-                tEnv.accu = new TObject("Array");
+                tEnv.accu = new TObject(TObject.ARRAY);
                 tEnv.accu.properties.elements = left[0].clone();
                 tEnv.accu.properties.shape = [ast.children.length];
                 tEnv.accu.updateOpenCLType();
@@ -1459,19 +1459,19 @@ RiverTrail.Typeinference = function () {
                     // this turns into the identity modulo type
                     ast.children[1].children[0] = drive(ast.children[1].children[0], tEnv, fEnv);
                     right = tEnv.accu.clone();
-                    if (right.isObjectType("Array")) {
+                    if (right.isObjectType(TObject.ARRAY)) {
                         // Change the type. We have to construct the resulting type
                         // by hand here, as usually parallel arrays objects do not
                         // fall from the sky but are passed in or derived from
                         // selections. As this is potentially a nested array,
                         // we have to flatten the type here.
-                        right.name = "ParallelArray";
+                        right.name = TObject.PARALLELARRAY;
                         right.properties.shape = right.getOpenCLShape();
                         right.properties.elements = function getLast(type) { return type.isScalarType() ? type : getLast(type.properties.elements);}(right);
                         ast.type = FLATTEN;
                         ast.children[0] = ast.children[1].children[0];
                         delete ast.children[1];
-                    } else if (right.isObjectType("ParallelArray")) {
+                    } else if (right.isObjectType(TObject.PARALLELARRAY)) {
                         // simply get rid of the new
                         ast = ast.children[1].children[0];
                     } else {
@@ -1607,7 +1607,7 @@ RiverTrail.Typeinference = function () {
                     }
                     objshape.push(shapes[idx].value);
                 }
-                tEnv.accu = new TObject("Array");
+                tEnv.accu = new TObject(TObject.ARRAY);
                 var elements = [];
                 var d;
                 var top_level_type = "";
@@ -1620,7 +1620,7 @@ RiverTrail.Typeinference = function () {
                         elements[d].properties = {};
                     }
                     else {
-                        elements[d] = new TObject("Array");
+                        elements[d] = new TObject(TObject.ARRAY);
                         elements[d].OpenCLType = elementTypeInfo.typeInfo.OpenCLType +
                             top_level_type.slice(0, top_level_type.length - d - 1);
                         elements[d].properties = {};
@@ -1895,7 +1895,7 @@ RiverTrail.Typeinference = function () {
         tEnv.openCLFloatType = (openCLUseLowPrecision ? "float" : "double");
         // create type info for this
         if ((construct === "combine") || (construct === "map")) {
-            var thisT = TObject.makeType("ParallelArray", pa);
+            var thisT = TObject.makeType(TObject.PARALLELARRAY, pa);
             thisT.properties.addressSpace = "__global";
             tEnv.bind("this");
             tEnv.update("this", thisT);
