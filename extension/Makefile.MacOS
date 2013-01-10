@@ -81,7 +81,7 @@ $(OUTPUTDIR):
 	mkdir -p $(OUTPUTDIR)
 
 $(OUTPUTDIR)/$(OUTPUTNAME): $(OUTPUTDIR) $(OBJFILES)
-	$(CXX) $(CCFLAGS) $(OBJFILES) -bundle -framework OpenCL -L$(GECKODIR)/$(GECKOLIB) -I$(GECKODIR)/$(GECKOINC) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR)/$(GECKOLIB)/XUL -o $@
+	$(CXX) $(CCFLAGS) $(OBJFILES) -bundle -framework OpenCL -L$(GECKODIR)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR)/$(GECKOLIB)/XUL -o $@
 
 $(OUTPUTDIR)/$(OUTPUTNAME32): $(OUTPUTDIR) $(OBJFILES32)
 	$(CXX) $(CCFLAGS) $(OBJFILES32) -bundle -framework OpenCL -L$(GECKODIR32)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR32)/$(GECKOLIB)/XUL -arch i386 -o $@ 
@@ -93,12 +93,12 @@ $(OUTPUTDIR)/$(OUTPUTNAME32): $(OUTPUTDIR) $(OBJFILES32)
 	$(GENHEADER) -o $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 
 
 %.o: %.cpp 
-	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR)/$(GECKOINC) $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.o:|' > $*.d
-	$(CXX) $(CCFLAGS) -c $< -o $@ -I $(dir $<) -I $(GECKODIR)/$(GECKOINC) $(GECKOFLAGS) $(GECKODEF)
+	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR)/$(GECKOINC) -I $(GECKODIR)/$(GECKOINC)/nspr $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.o:|' > $*.d
+	$(CXX) $(CCFLAGS) -c $< -o $@ -I $(dir $<) -I $(GECKODIR)/$(GECKOINC) -I $(GECKODIR)/$(GECKOINC)/nspr $(GECKOFLAGS) $(GECKODEF)
 
 %.32.o: %.cpp 
-	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR32)/$(GECKOINC) $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.32.o:|' > $*.32.d
-	$(CXX) $(CCFLAGS) -c $< -o $@ -I $(dir $<) -I $(GECKODIR32)/$(GECKOINC) $(GECKOFLAGS) $(GECKODEF) -arch i386
+	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR32)/$(GECKOINC) -I $(GECKODIR32)/$(GECKOINC)/nspr $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.32.o:|' > $*.32.d
+	$(CXX) $(CCFLAGS) -c $< -o $@ -I $(dir $<) -I $(GECKODIR32)/$(GECKOINC) -I $(GECKODIR32)/$(GECKOINC)/nspr $(GECKOFLAGS) $(GECKODEF) -arch i386
 
 
 

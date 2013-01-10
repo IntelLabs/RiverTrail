@@ -333,7 +333,7 @@ DONE:
 
 	/* all kernels share the single buffer for the failure code */
 	result = ret->InitKernel(cmdQueue, kernel, kernelFailureMem);
-	if (result != NS_OK) {
+	if (NS_FAILED(result)) {
 		clReleaseKernel(kernel);
 		return result;
 	}
@@ -426,7 +426,7 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
   nsCOMPtr<dpoCData> data;
 
   result = ExtractArray( source, &tArray, cx);
-  if (result == NS_OK) {
+  if (NS_SUCCEEDED(result)) {
     // we have a typed array
     data = new dpoCData( this);
     if (data == NULL) {
@@ -484,7 +484,7 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
 #endif /* SUPPORT_MAPPING_ARRAYS */
   }
 
-  if (result == NS_OK) {
+  if (NS_SUCCEEDED(result)) {
     data.forget((dpoCData **)_retval);
   }
 
@@ -512,7 +512,7 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, uint32_t length, JS
 	}
 
 	result = ExtractArray( templ, &tArray, cx);
-	if (result != NS_OK) {
+	if (NS_FAILED(result)) {
 		return result;
 	}
 
@@ -533,7 +533,7 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, uint32_t length, JS
 
 #ifdef PREALLOCATE_IN_JS_HEAP
 	JSObject *jsArray;
-	if (CreateAlignedTA(JS_GetTypedArrayType(tArray, cx), length, &jsArray, cx) != NS_OK) {
+	if (NS_FAILED(CreateAlignedTA(JS_GetTypedArrayType(tArray, cx), length, &jsArray, cx))) {
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 	if (!jsArray) {
@@ -554,7 +554,7 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, uint32_t length, JS
 
 	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray, cx), length, length * bytePerElements, jsArray);
 
-	if (result == NS_OK) {
+	if (NS_SUCCEEDED(result)) {
 		data.forget((dpoCData **) _retval);
 	}
 
@@ -598,7 +598,7 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, uint32_t length, JSCon
 
 #ifdef PREALLOCATE_IN_JS_HEAP
 	JSObject *jsArray;
-	if (CreateAlignedTA(cData->GetType(), length, &jsArray, cx) != NS_OK) {
+	if (NS_FAILED(CreateAlignedTA(cData->GetType(), length, &jsArray, cx))) {
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 	if (!jsArray) {
@@ -619,7 +619,7 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, uint32_t length, JSCon
 
 	result = data->InitCData(cx, cmdQueue, memObj, cData->GetType(), length, length * bytePerElements, jsArray);
 
-	if (result == NS_OK) {
+	if (NS_SUCCEEDED(result)) {
 		data.forget((dpoCData **) _retval);
 	}
 
@@ -710,10 +710,10 @@ void dpoCContext::RecordEndOfRoundTrip(dpoIContext *parent) {
 NS_IMETHODIMP dpoCContext::WriteToContext2D(nsIDOMCanvasRenderingContext2D *ctx, const JS::Value & source, PRInt32 width, PRInt32 height, JSContext* cx)
 {
 	JSObject *srcArray;
-	int result;
+	nsresult result;
 
 	result = ExtractArray(source, &srcArray, cx);
-	if (result != NS_OK) {
+	if (NS_FAILED(result)) {
 		return result;
 	}
 

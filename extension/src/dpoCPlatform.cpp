@@ -163,7 +163,7 @@ NS_IMETHODIMP dpoCPlatform::CreateContext(dpoIContext **_retval)
 	context = new dpoCContext( this);
 	result = context->InitContext(platform);
 
-	if (result == NS_OK) {
+	if (NS_SUCCEEDED(result)) {
 		context.forget((dpoCContext **) _retval);
 	}
 

@@ -249,7 +249,7 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 		CheckFree();
 #endif /* INCREMENTAL_MEM_RELEASE */
 
-		if (((dpoCContext *) parent.get())->CreateAlignedTA(type, length, &theArray, cx) != NS_OK) {
+		if (NS_FAILED(((dpoCContext *) parent.get())->CreateAlignedTA(type, length, &theArray, cx))) {
 			return NS_ERROR_NOT_AVAILABLE;
 		}
 		

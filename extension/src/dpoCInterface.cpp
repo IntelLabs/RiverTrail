@@ -121,7 +121,7 @@ NS_IMETHODIMP dpoCInterface::GetPlatform(dpoIPlatform **_retval)
 		result = InitPlatformInfo();
 	}
 
-	if (result != NS_OK) 
+	if (NS_FAILED(result)) 
 		return result;
 		
 	for (cl_uint i = 0; i < noOfPlatforms; i++) {

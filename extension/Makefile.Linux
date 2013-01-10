@@ -80,5 +80,5 @@ $(OUTPUTDIR)/$(OUTPUTNAME): $(OUTPUTDIR) $(OBJFILES)
 	$(GENHEADER) -o $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 
 
 %.o: %.cpp 
-	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR)/$(GECKOINC) $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.o:|' > $*.d
-	$(CXX) -c $< -o $@ -I $(dir $<) -I $(GECKODIR)/$(GECKOINC) $(GECKOFLAGS) $(GECKODEF)
+	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR)/$(GECKOINC) -I $(GECKODIR)/$(GECKOINC)/nspr $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.o:|' > $*.d
+	$(CXX) -c $< -o $@ -I $(dir $<) -I $(GECKODIR)/$(GECKOINC) -I $(GECKODIR)/$(GECKOINC)/nspr $(GECKOFLAGS) $(GECKODEF)
