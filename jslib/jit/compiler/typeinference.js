@@ -1230,7 +1230,7 @@ RiverTrail.Typeinference = function () {
                 var idType = tEnv.lookup(ast.value) || reportError("unbound variable: " + ast.value, ast);
                 idType.initialized || reportError("variable " + ast.value + " might be uninitialized", ast);
                 tEnv.accu = idType.type.clone();
-                tEnv.accu.registerFlow(idType);
+                tEnv.accu.registerFlow(idType.type);
                 break;
             case DOT:
                 ast.children[0] = drive(ast.children[0], tEnv, fEnv);
