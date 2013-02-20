@@ -51,7 +51,7 @@ NS_IMPL_CI_INTERFACE_GETTER2(dpoCContext, dpoIContext, nsISecurityCheckedCompone
 NS_IMPL_CYCLE_COLLECTION_CLASS(dpoCContext)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN(dpoCContext)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE_SCRIPT_OBJECTS
-  NS_IMPL_CYCLE_COLLECTION_TRAVERSE_NSCOMPTR(parent)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(parent)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
 
 //NS_IMPL_CYCLE_COLLECTION_ROOT_BEGIN(dpoCContext)
@@ -61,7 +61,7 @@ NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN(dpoCContext)
 NS_IMPL_CYCLE_COLLECTION_TRACE_END
 
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(dpoCContext)
-  NS_IMPL_CYCLE_COLLECTION_UNLINK_NSCOMPTR(parent)
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(parent)
 NS_IMPL_CYCLE_COLLECTION_UNLINK_END
 
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(dpoCContext)
@@ -363,7 +363,7 @@ nsresult dpoCContext::ExtractArray(const jsval &source, JSObject **result, JSCon
 
 	*result = JSVAL_TO_OBJECT( source);
 
-	if (!JS_IsTypedArrayObject( *result, cx)) {
+	if (!JS_IsTypedArrayObject( *result)) {
 		*result = NULL;
 		return NS_ERROR_CANNOT_CONVERT_DATA;
 	}
@@ -389,7 +389,7 @@ cl_mem dpoCContext::CreateBuffer(cl_mem_flags flags, size_t size, void *ptr, cl_
 inline
 uint8_t *dpoCContext::GetPointerFromTA(JSObject *ta, JSContext *cx)
 {
-	return (uint8_t *) JS_GetArrayBufferViewData(ta, cx);
+	return (uint8_t *) JS_GetArrayBufferViewData(ta);
 }
 
 nsresult dpoCContext::CreateAlignedTA(uint type, size_t length, JSObject **res, JSContext *cx) 
@@ -399,13 +399,13 @@ nsresult dpoCContext::CreateAlignedTA(uint type, size_t length, JSObject **res, 
 	switch (type) {
 		case js::ArrayBufferView::TYPE_FLOAT64:
 			buffer = JS_NewArrayBuffer(cx, sizeof(double)*length+alignment_size);
-			offset = (uintptr_t) JS_GetArrayBufferData(buffer, cx);
+			offset = (uintptr_t) JS_GetArrayBufferData(buffer);
 			offset = (offset + alignment_size) / alignment_size * alignment_size - offset;
 			*res = JS_NewFloat64ArrayWithBuffer(cx, buffer, offset, length);
 			break;
 		case js::ArrayBufferView::TYPE_FLOAT32:
 			buffer = JS_NewArrayBuffer(cx, sizeof(float)*length+alignment_size);
-			offset = (uintptr_t) JS_GetArrayBufferData(buffer, cx);
+			offset = (uintptr_t) JS_GetArrayBufferData(buffer);
 			offset = (offset + alignment_size) / alignment_size * alignment_size - offset;
 			*res = JS_NewFloat32ArrayWithBuffer(cx, buffer, offset, length);
 			break;
@@ -438,7 +438,7 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
     // memory buffer lives
     cl_mem_flags flags = CL_MEM_READ_ONLY;
     void *tArrayBuffer = NULL;
-    size_t arrayByteLength = JS_GetTypedArrayByteLength(tArray, cx);
+    size_t arrayByteLength = JS_GetTypedArrayByteLength(tArray);
     if(arrayByteLength == 0) {
         arrayByteLength = 1;
     }
@@ -453,8 +453,8 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
       return NS_ERROR_NOT_AVAILABLE;
     }
 
-    result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray, cx), JS_GetTypedArrayLength(tArray, cx), 
-        JS_GetTypedArrayByteLength(tArray, cx), tArray);
+    result = data->InitCData(cx, cmdQueue, memObj, JS_GetArrayBufferViewType(tArray), JS_GetTypedArrayLength(tArray), 
+        JS_GetTypedArrayByteLength(tArray), tArray);
 
 #ifdef SUPPORT_MAPPING_ARRAYS
   } else if (JSVAL_IS_OBJECT(source)) {
@@ -506,11 +506,6 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, uint32_t length, JS
 	size_t bytePerElements;
 	nsCOMPtr<dpoCData> data;
 
-	if (!JS_EnterLocalRootScope(cx)) {
-		DEBUG_LOG_STATUS("AllocateData", "Cannot root local scope");
-		return NS_ERROR_NOT_AVAILABLE;
-	}
-
 	result = ExtractArray( templ, &tArray, cx);
 	if (NS_FAILED(result)) {
 		return result;
@@ -524,10 +519,10 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, uint32_t length, JS
 	
 	if (length == 0) {
 		DEBUG_LOG_STATUS("AllocateData", "size not provided, assuming template's size");
-		length = JS_GetTypedArrayLength(tArray, cx);
+		length = JS_GetTypedArrayLength(tArray);
 	}
 
-	bytePerElements = JS_GetTypedArrayByteLength(tArray, cx) / JS_GetTypedArrayLength(tArray, cx);
+	bytePerElements = JS_GetTypedArrayByteLength(tArray) / JS_GetTypedArrayLength(tArray);
 
 	DEBUG_LOG_STATUS("AllocateData", "length " << length << " bytePerElements " << bytePerElements);
 
@@ -552,13 +547,11 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, uint32_t length, JS
 		return NS_ERROR_NOT_AVAILABLE;
 	}
 
-	result = data->InitCData(cx, cmdQueue, memObj, JS_GetTypedArrayType(tArray, cx), length, length * bytePerElements, jsArray);
+	result = data->InitCData(cx, cmdQueue, memObj, JS_GetArrayBufferViewType(tArray), length, length * bytePerElements, jsArray);
 
 	if (NS_SUCCEEDED(result)) {
 		data.forget((dpoCData **) _retval);
 	}
-
-	JS_LeaveLocalRootScope(cx);
 
     return result;
 }
@@ -575,11 +568,6 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, uint32_t length, JSCon
 #ifdef PREALLOCATE_IN_JS_HEAP
 	jsval jsBuffer;
 #endif /* PREALLOCATE_IN_JS_HEAP */
-
-	if (!JS_EnterLocalRootScope(cx)) {
-		DEBUG_LOG_STATUS("AllocateData2", "Cannot root local scope");
-		return NS_ERROR_NOT_AVAILABLE;
-	}
 
 	data = new dpoCData( this);
 	if (data == NULL) {
@@ -622,8 +610,6 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, uint32_t length, JSCon
 	if (NS_SUCCEEDED(result)) {
 		data.forget((dpoCData **) _retval);
 	}
-
-	JS_LeaveLocalRootScope(cx);
 		
     return result;
 }
@@ -709,6 +695,7 @@ void dpoCContext::RecordEndOfRoundTrip(dpoIContext *parent) {
 /* [implicit_jscontext] void writeToContext2D (in nsIDOMCanvasRenderingContext2D ctx, in jsval source, in long width, in long height); */
 NS_IMETHODIMP dpoCContext::WriteToContext2D(nsIDOMCanvasRenderingContext2D *ctx, const JS::Value & source, PRInt32 width, PRInt32 height, JSContext* cx)
 {
+#ifdef DIRECT_WRITE
 	JSObject *srcArray;
 	nsresult result;
 
@@ -717,40 +704,42 @@ NS_IMETHODIMP dpoCContext::WriteToContext2D(nsIDOMCanvasRenderingContext2D *ctx,
 		return result;
 	}
 
-	uint32_t size = JS_GetTypedArrayLength(srcArray, cx);
-	uint32_t type = JS_GetTypedArrayType(srcArray, cx);
+	uint32_t size = JS_GetTypedArrayLength(srcArray);
 
 	if (size != width*height*4)
 		return NS_ERROR_INVALID_ARG;
 
-    if (JS_IsFloat32Array(srcArray, cx)) {
+    if (JS_IsFloat32Array(srcArray)) {
 		unsigned char *data = (unsigned char *) nsMemory::Alloc(size);
-		float *src = JS_GetFloat32ArrayData(srcArray, cx);
+		float *src = JS_GetFloat32ArrayData(srcArray);
 		for (int i = 0; i < size; i++) {
 			float val = src[i];
 			data[i] = val > 0 ? (val < 255 ? ((int) val) : 255) : 0;
 		}
 		ctx->PutImageData_explicit(0, 0, width, height, data, size, false, 0, 0, 0, 0);
         nsMemory::Free(data);
-	} else if (JS_IsFloat64Array(srcArray, cx)) {
+	} else if (JS_IsFloat64Array(srcArray)) {
 		unsigned char *data = (unsigned char *) nsMemory::Alloc(size);
-		double *src = JS_GetFloat64ArrayData(srcArray, cx);
+		double *src = JS_GetFloat64ArrayData(srcArray);
 		for (int i = 0; i < size; i++) {
 			double val = src[i];
 			data[i] = val > 0 ? (val < 255 ? ((int) val) : 255) : 0;
 		}
 		ctx->PutImageData_explicit(0, 0, width, height, data, size, false, 0, 0, 0, 0);
         nsMemory::Free(data);
-	} else if(JS_IsUint8ClampedArray(srcArray, cx)) {
-		uint8_t *src = JS_GetUint8ClampedArrayData(srcArray, cx);
+	} else if(JS_IsUint8ClampedArray(srcArray)) {
+		uint8_t *src = JS_GetUint8ClampedArrayData(srcArray);
 		ctx->PutImageData_explicit(0, 0, width, height, src, size, false, 0, 0, 0, 0);
-	} else if(JS_IsUint8Array(srcArray, cx)) {
+	} else if(JS_IsUint8Array(srcArray)) {
 		return NS_ERROR_INVALID_ARG;
 	} else {
 		return NS_ERROR_NOT_IMPLEMENTED;
 	}
 
 	return NS_OK;
+#else /* DIRECT_WRITE */
+	return NS_ERROR_NOT_IMPLEMENTED;
+#endif /* DIRECT_WRITE */
 }
 
 /* readonly attribute uint32_t alignmentSize; */
@@ -773,10 +762,10 @@ NS_IMETHODIMP dpoCContext::GetAlignmentOffset(const JS::Value & source, JSContex
 	}
 
 	object = JSVAL_TO_OBJECT(source);
-	if (JS_IsTypedArrayObject(object, cx)) {
+	if (JS_IsTypedArrayObject(object)) {
 		data = GetPointerFromTA(object, cx);
-	} else if (JS_IsArrayBufferObject(object, cx)) {
-		data = JS_GetArrayBufferData(object, cx);
+	} else if (JS_IsArrayBufferObject(object)) {
+		data = JS_GetArrayBufferData(object);
 	} else {
 		return NS_ERROR_INVALID_ARG;
 	}

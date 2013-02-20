@@ -72,7 +72,7 @@ NS_IMPL_CI_INTERFACE_GETTER2(dpoCData, dpoIData, nsXPCOMCycleCollectionParticipa
 NS_IMPL_CYCLE_COLLECTION_CLASS(dpoCData)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN(dpoCData)
     NS_IMPL_CYCLE_COLLECTION_TRAVERSE_SCRIPT_OBJECTS
-    NS_IMPL_CYCLE_COLLECTION_TRAVERSE_NSCOMPTR(parent)
+    NS_IMPL_CYCLE_COLLECTION_TRAVERSE(parent)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
 
 NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN(dpoCData)
@@ -80,7 +80,7 @@ NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN(dpoCData)
 NS_IMPL_CYCLE_COLLECTION_TRACE_END
 
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(dpoCData)
-    NS_IMPL_CYCLE_COLLECTION_UNLINK_NSCOMPTR(parent)
+    NS_IMPL_CYCLE_COLLECTION_UNLINK(parent)
     if (tmp->theArray) {
 	    DEBUG_LOG_STATUS("UNLINK!", "unlinking array " << tmp->theArray);
 	    tmp->theArray = nullptr;
@@ -258,7 +258,7 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 			return NS_ERROR_OUT_OF_MEMORY;
 		}
 
-		err_code = EnqueueReadBuffer(size, JS_GetArrayBufferViewData(theArray, cx));
+		err_code = EnqueueReadBuffer(size, JS_GetArrayBufferViewData(theArray));
 
 		if (err_code != CL_SUCCESS) {
 			DEBUG_LOG_ERROR("GetValue", err_code);

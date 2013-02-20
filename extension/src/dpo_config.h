@@ -40,6 +40,7 @@
 #undef PREALLOCATE_IN_JS_HEAP   /* allocate buffers in the JS heap and use CL_MEM_USE_HOST_POINTER */
 #undef SUPPORT_MAPPING_ARRAYS   /* allow dense arrays to be mapped to JavaScript */
 #define INCREMENTAL_MEM_RELEASE /* defer free of memObjs to disrtibute GC time */
+#undef DIRECT_WRITE				/* support helper function for fast write to canvas */
 
 #define DPO_PREFERENCE_BRANCH "extensions.dpointerface."	/* preference branch to use */
 #define DPO_DEFAULT_PLATFORM_PREFNAME "defaultPlatform"		/* preference name for default platform */
