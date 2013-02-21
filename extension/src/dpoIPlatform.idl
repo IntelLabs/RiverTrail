@@ -39,5 +39,6 @@ interface dpoIPlatform : nsISecurityCheckedComponent
 	readonly attribute AString extensions;
 
 	// Methods to create a context. 
+	[implicit_jscontext]
 	dpoIContext createContext();
 };

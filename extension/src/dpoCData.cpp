@@ -250,11 +250,13 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 #endif /* INCREMENTAL_MEM_RELEASE */
 
 		if (NS_FAILED(((dpoCContext *) parent.get())->CreateAlignedTA(type, length, &theArray, cx))) {
+			DropObjects();
 			return NS_ERROR_NOT_AVAILABLE;
 		}
 		
 		if (!theArray) {
 			DEBUG_LOG_STATUS("GetValue", "Cannot create typed array");
+			DropObjects();
 			return NS_ERROR_OUT_OF_MEMORY;
 		}
 
@@ -262,6 +264,8 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 
 		if (err_code != CL_SUCCESS) {
 			DEBUG_LOG_ERROR("GetValue", err_code);
+			theArray = nullptr;
+			DropObjects();
 			return NS_ERROR_NOT_AVAILABLE;
 		}
 

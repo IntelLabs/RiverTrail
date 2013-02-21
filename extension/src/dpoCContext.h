@@ -52,7 +52,7 @@ public:
   NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(dpoCContext)
 
   dpoCContext(dpoIPlatform *parent);
-  nsresult InitContext(cl_platform_id platform);
+  nsresult InitContext(JSContext *cx, cl_platform_id platform);
 
 #ifdef CLPROFILE
     static void CL_CALLBACK CollectTimings( cl_event event, cl_int status, void *data);
@@ -84,7 +84,7 @@ protected:
   cl_uint alignment_size;		/* stores the alignment size for the used devices */
 
   nsresult ExtractArray(const jsval &source, JSObject **result, JSContext *cx);
-  cl_mem CreateBuffer(cl_mem_flags flags, size_t size, void *ptr, cl_int *err);
+  cl_mem CreateBuffer(JSContext *ctx, cl_mem_flags flags, size_t size, void *ptr, cl_int *err);
 
 #ifdef CLPROFILE
   cl_ulong clp_exec_start;

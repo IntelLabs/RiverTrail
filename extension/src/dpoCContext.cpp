@@ -122,7 +122,7 @@ dpoCContext::dpoCContext(dpoIPlatform *aParent)
 #endif /* WINDOWS_ROUNDTRIP */
 }
 
-nsresult dpoCContext::InitContext(cl_platform_id platform)
+nsresult dpoCContext::InitContext(JSContext *cx, cl_platform_id platform)
 {
 	cl_int err_code;
 	cl_device_id *devices;
@@ -193,7 +193,7 @@ nsresult dpoCContext::InitContext(cl_platform_id platform)
 
 	nsMemory::Free(devices);
 
-	kernelFailureMem = CreateBuffer(CL_MEM_READ_WRITE, sizeof(int), NULL, &err_code);
+	kernelFailureMem = CreateBuffer(cx, CL_MEM_READ_WRITE, sizeof(int), NULL, &err_code);
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("InitContext", err_code);
 		return NS_ERROR_NOT_AVAILABLE;
@@ -371,15 +371,22 @@ nsresult dpoCContext::ExtractArray(const jsval &source, JSObject **result, JSCon
 	return NS_OK;
 }
 
-cl_mem dpoCContext::CreateBuffer(cl_mem_flags flags, size_t size, void *ptr, cl_int *err)
+cl_mem dpoCContext::CreateBuffer(JSContext *cx, cl_mem_flags flags, size_t size, void *ptr, cl_int *err)
 {
 #ifdef INCREMENTAL_MEM_RELEASE
 	int freed;
 	cl_mem result;
+	bool didGC = false;
 	do {
 		freed = CheckFree();
 		result = clCreateBuffer(context, flags, size, ptr, err);
-	} while (((*err == CL_OUT_OF_HOST_MEMORY) || (*err == CL_MEM_OBJECT_ALLOCATION_FAILURE)) && freed);
+		if ((*err != CL_OUT_OF_HOST_MEMORY) && (*err != CL_MEM_OBJECT_ALLOCATION_FAILURE) && (*err != CL_OUT_OF_RESOURCES)) break;
+		if (!freed && !didGC) {
+			JS_GC(JS_GetRuntime(cx));
+			didGC = freed = true;
+		}
+	} while (freed);
+
 	return result;
 #else /* INCREMENTAL_MEM_RELEASE */
 	return clCreateBuffer(context, flags, size, ptr, err);
@@ -399,12 +406,18 @@ nsresult dpoCContext::CreateAlignedTA(uint type, size_t length, JSObject **res, 
 	switch (type) {
 		case js::ArrayBufferView::TYPE_FLOAT64:
 			buffer = JS_NewArrayBuffer(cx, sizeof(double)*length+alignment_size);
+			if (!buffer) {
+				return NS_ERROR_OUT_OF_MEMORY;
+			}
 			offset = (uintptr_t) JS_GetArrayBufferData(buffer);
 			offset = (offset + alignment_size) / alignment_size * alignment_size - offset;
 			*res = JS_NewFloat64ArrayWithBuffer(cx, buffer, offset, length);
 			break;
 		case js::ArrayBufferView::TYPE_FLOAT32:
 			buffer = JS_NewArrayBuffer(cx, sizeof(float)*length+alignment_size);
+			if (!buffer) {
+				return NS_ERROR_OUT_OF_MEMORY;
+			}
 			offset = (uintptr_t) JS_GetArrayBufferData(buffer);
 			offset = (offset + alignment_size) / alignment_size * alignment_size - offset;
 			*res = JS_NewFloat32ArrayWithBuffer(cx, buffer, offset, length);
@@ -447,7 +460,7 @@ NS_IMETHODIMP dpoCContext::MapData(const jsval & source, JSContext *cx, dpoIData
         flags |= CL_MEM_USE_HOST_PTR;
     }
 
-    cl_mem memObj = CreateBuffer(flags, arrayByteLength, tArrayBuffer , &err_code);
+    cl_mem memObj = CreateBuffer(cx, flags, arrayByteLength, tArrayBuffer , &err_code);
     if (err_code != CL_SUCCESS) {
       DEBUG_LOG_ERROR("MapData", err_code);
       return NS_ERROR_NOT_AVAILABLE;
@@ -540,7 +553,7 @@ NS_IMETHODIMP dpoCContext::AllocateData(const jsval & templ, uint32_t length, JS
                                   JS_GetTypedArrayByteLength(jsArray, cx), GetPointerFromTA(jsArray, cx), &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
 	JSObject *jsArray =  nullptr;
-	cl_mem memObj = CreateBuffer(CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
+	cl_mem memObj = CreateBuffer(cx, CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
 #endif /* PREALLOCATE_IN_JS_HEAP */
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("AllocateData", err_code);
@@ -598,7 +611,7 @@ NS_IMETHODIMP dpoCContext::AllocateData2(dpoIData *templ, uint32_t length, JSCon
                                  JS_GetTypedArrayByteLength(jsArray, cx), JS_GetArrayBufferViewData(jsArray, cx), &err_code);
 #else /* PREALLOCATE_IN_JS_HEAP */
 	JSObject *jsArray = NULL;
-	cl_mem memObj = CreateBuffer(CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
+	cl_mem memObj = CreateBuffer(cx, CL_MEM_READ_WRITE, length * bytePerElements, NULL, &err_code);
 #endif /* PREALLOCATE_IN_JS_HEAP */
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("AllocateData2", err_code);

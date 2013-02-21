@@ -155,13 +155,13 @@ NS_IMETHODIMP dpoCPlatform::GetExtensions(nsAString & aExtensions)
 }
 
 /* dpoIContext createContext (in long target); */
-NS_IMETHODIMP dpoCPlatform::CreateContext(dpoIContext **_retval)
+NS_IMETHODIMP dpoCPlatform::CreateContext(JSContext *cx, dpoIContext **_retval)
 {
 	nsCOMPtr<dpoCContext> context;
 	nsresult result;
 
 	context = new dpoCContext( this);
-	result = context->InitContext(platform);
+	result = context->InitContext(cx, platform);
 
 	if (NS_SUCCEEDED(result)) {
 		context.forget((dpoCContext **) _retval);
