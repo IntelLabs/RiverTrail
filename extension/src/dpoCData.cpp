@@ -280,7 +280,58 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 /* [implicit_jscontext] void writeTo (in jsval dest); */
 NS_IMETHODIMP dpoCData::WriteTo(const jsval & dest, JSContext *cx)
 {
+#ifdef DIRECT_WRITE
+	if (JSVAL_IS_NULL(dest) || JSVAL_IS_PRIMITIVE(dest))
+		return NS_ERROR_INVALID_ARG;
+
+	JSObject *obj = JSVAL_TO_OBJECT(dest);
+
+	if (!JS_IsTypedArrayObject(obj))
+		return NS_ERROR_INVALID_ARG;
+
+	if (JS_GetTypedArrayLength(obj) != length)
+		return NS_ERROR_INVALID_ARG;
+
+	jsval src;
+	if (NS_FAILED(GetValue(cx, &src)))
+		return NS_ERROR_NOT_AVAILABLE;
+
+	JSObject *oSrc = JSVAL_TO_OBJECT(src);
+
+	if (JS_IsFloat64Array(oSrc)) {
+		if (JS_IsUint8ClampedArray(obj)) {
+			// write with clamping
+			uint8_t *pDest = JS_GetUint8ClampedArrayData(obj);
+			double *pSrc = JS_GetFloat64ArrayData(oSrc);
+
+			for (size_t pos = 0; pos < length; pos++) {
+				double val = pSrc[pos];
+				pDest[pos] = (val > 255) ? 255 : ((val < 0) ? 0 : val);
+			}
+		} else {
+			return NS_ERROR_NOT_IMPLEMENTED;
+		}
+	} else if (JS_IsFloat32Array(oSrc)) {
+		if (JS_IsUint8ClampedArray(obj)) {
+			// write with clamping
+			uint8_t *pDest = JS_GetUint8ClampedArrayData(obj);
+			float *pSrc = JS_GetFloat32ArrayData(oSrc);
+
+			for (size_t pos = 0; pos < length; pos++) {
+				float val = pSrc[pos];
+				pDest[pos] = (val > 255) ? 255 : ((val < 0) ? 0 : val);
+			}
+		} else {
+			return NS_ERROR_NOT_IMPLEMENTED;
+		}
+	} else {
+		return NS_ERROR_NOT_IMPLEMENTED;
+	}
+
+	return NS_OK;
+#else /* DIRECT_WRITE */
 	return NS_ERROR_NOT_IMPLEMENTED;
+#endif /* DIRECT_WRITE */
 }
 
 cl_mem dpoCData::GetContainedBuffer()

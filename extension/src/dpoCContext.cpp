@@ -787,3 +787,30 @@ NS_IMETHODIMP dpoCContext::GetAlignmentOffset(const JS::Value & source, JSContex
 
     return NS_OK;
 }
+
+/* readonly attribute AString extensions; */
+NS_IMETHODIMP dpoCContext::GetExtensions(nsAString & aExtensions)
+{
+	char *rString = NULL;
+	cl_device_id device;
+	size_t length;
+	cl_int err;
+	nsresult result;
+
+	err = clGetCommandQueueInfo(cmdQueue, CL_QUEUE_DEVICE, sizeof(cl_device_id), &device, NULL);
+	if (err != CL_SUCCESS)
+		return NS_ERROR_NOT_AVAILABLE;
+
+	err = clGetDeviceInfo(device, CL_DEVICE_EXTENSIONS, 0, NULL, &length);
+
+	if (err == CL_SUCCESS) {
+		rString = (char *) nsMemory::Alloc(sizeof(char)*(length+1));
+		err = clGetDeviceInfo(device, CL_DEVICE_EXTENSIONS, length, rString, NULL);
+		aExtensions.AssignLiteral(rString);
+		nsMemory::Free(rString);
+
+		result = NS_OK;
+	} else {
+		result = NS_ERROR_NOT_AVAILABLE;
+	}
+}

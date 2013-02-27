@@ -56,6 +56,8 @@ interface dpoIContext : nsISecurityCheckedComponent
 	readonly attribute uint64_t lastExecutionTime;
 	readonly attribute uint64_t lastRoundTripTime;
 
+	// device property queries
+	readonly attribute AString extensions;
 
 	// canvas writing support
 	[implicit_jscontext]

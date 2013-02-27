@@ -129,23 +129,27 @@ var ParallelArray = function () {
     // check whether the OpenCL implementation supports double
     var enable64BitFloatingPoint = false;
     if (useFF4Interface) { 
-        var dpoI; 
-        var dpoP; 
+        var extensions;
         try {
-            dpoI = new DPOInterface();
-        } catch (e) {
-            console.log("Unable to create new DPOInterface(): "+e);
+            extensions = RiverTrail.compiler.openCLContext.extensions;
+        } catch (ignore) {
+            // extensions = undefined;
         }
+        if (!extensions) {
+            var dpoI;
+            var dpoP;
+            var dpoC;
+            try {
+                dpoI = new DPOInterface();
+                dpoP = dpoI.getPlatform();
+                dpoC = dpoP.createContext();
 
-        try {
-            dpoP = dpoI.getPlatform();
-            enable64BitFloatingPoint = (dpoP.extensions.indexOf("cl_khr_fp64") !== -1);
-        } catch (e) {
-            console.log("Unable to find OpenCL platform: "+e);
-            console.log("enable64BitFloatingPoint has been disabled");
-            enable64BitFloatingPoint = false;
-            // eat the problem after you announce it to the console log.
+                extensions = dpoC.extensions || dpoP.extensions;
+            } catch (e) {
+                console.log("Unable to query dpoInterface: "+e);
+            }
         }
+        enable64BitFloatingPoint = (extensions.indexOf("cl_khr_fp64") !== -1);
     }
     // this is the storage that is used by default when converting arrays 
     // to typed arrays.
