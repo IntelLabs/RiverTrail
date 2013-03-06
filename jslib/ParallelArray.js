@@ -1930,7 +1930,7 @@ var ParallelArray = function () {
             result.flat = arguments[1].flat;
         } else if (useFF4Interface && (arguments[0] instanceof Components.interfaces.dpoIData)) {
             result = createOpenCLMemParallelArray.apply(this, arguments);
-        } else if (typeof(arguments[1]) === 'function') {    
+        } else if (typeof(arguments[1]) === 'function' || arguments[1] instanceof low_precision.wrapper) {
             var extraArgs;
             if (arguments.length > 2) {
                 extraArgs = new Array(arguments.length -2); // skip the size vector and the function

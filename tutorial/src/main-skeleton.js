@@ -251,6 +251,7 @@ function computeFrame() {
         len = frame.data.length;
         w = frame.width; h = frame.height;
     } else if (execution_mode === "parallel") {
+        frame = output_context.getImageData(0, 0, input_canvas.width, input_canvas.height);
         stage_output = stage_input = new ParallelArray(input_canvas);
         w = input_canvas.width; h = input_canvas.height;
     }
@@ -312,14 +313,16 @@ function computeFrame() {
         switch(filterName) {
             case "face_detect":
                 break;
-            case "edge_detect":
-            case "sharpen":
-                stage_output.materialize();
-                RiverTrail.compiler.openCLContext.writeToContext2D(output_context, stage_output.data, w, h);
-                break;
             default:
                 stage_output.materialize();
-                RiverTrail.compiler.openCLContext.writeToContext2D(output_context, stage_output.data, w, h);
+                var so_data = stage_output.data;
+                var so_len = so_data.length;
+                var f_data = frame.data;
+                for(var i = 0; i < so_len; i++) {
+                    f_data[i] = so_data[i];
+                }
+                //frame.data.set(stage_output.data);
+                output_context.putImageData(frame, 0, 0);
         }
     }
     //if(hist_on)
