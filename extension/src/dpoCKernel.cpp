@@ -340,7 +340,7 @@ NS_IMETHODIMP dpoCKernel::Run(uint32_t rank, uint32_t *shape, uint32_t *tile, ui
 		return NS_ERROR_ABORT;
 	}
 #else /* CLPROFILE_ASYNC */
-	dpoCContext::CollectTimings(readEvent,CL_COMPLETE,parent);
+	dpoCContext::CollectTimings(runEvent,CL_COMPLETE,parent);
 #endif /* CLPROFILE_ASYNC */
 #endif /* CLPROFILE */
 		
