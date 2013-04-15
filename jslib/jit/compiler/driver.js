@@ -46,10 +46,22 @@ RiverTrail.compiler = (function () {
     
     // whether to use kernel caching or not
     var useKernelCaching = true;
+    // whether to specialize kernels up to values for frequent arguments
+    var useValueSpec = true;
+    // how many different values to track for specialisation before falling back to megamorphic
+    var polymorphLimit = 2;
+    // how recently active does this spec need to be
+    var specDepth = 1;
+    // how long to watch for values before starting to specialize
+    var specWarmUp = 2;
+    // max size of value to specialize for
+    var maxValSpecLen = 16;
     // whether to cache OpenCL buffers
     var useBufferCaching = true;
 
     var suppressOpenCL = false;
+
+    var reportVectorized = false;
 
     var openCLContext; 
     var dpoInterface; 
@@ -70,6 +82,45 @@ RiverTrail.compiler = (function () {
         throw Error("RiverTrail extension out of date");
     }
 
+    var isTypedArray = RiverTrail.Helper.isTypedArray;
+
+    var equalsSpecValue = function equalsSpecValue(a,b) {
+        var l,r;
+        // both might be null
+        if (a === b) 
+            return true;
+        // or just one is null
+        if ((a === null) || (b === null))
+            return false;
+        // this should always be true, as both have the same type (in the type inference sense)
+        if (a.type !== b.type)
+            return false;
+        switch (a.type) {
+            case 'number':
+                return a.val === b.val;
+            case 'array':
+                l = a.val; r = b.val;
+                for (var cnt = 0; cnt < r.length; cnt++) {
+                    if (l[cnt] !== r[cnt])
+                        return false;
+                }
+                return true;
+            case 'flatarray':
+            case 'parallelarray':
+                l = a.val.data; r = b.val.data;
+                // make sure that both hold data
+                if ((l.length === undefined) || (r.length === undefined))
+                    return false;
+                for (var cnt = 0; cnt < r.length; cnt++) {
+                    if (l[cnt] !== r[cnt])
+                        return false;
+                }
+                return true;
+            default:
+                return false;
+        }
+    };
+
     // main hook to start the compilation/execution process for running a construct using OpenCL
     // paSource -> 'this' inside kernel
     // f -> function to run
@@ -77,6 +128,7 @@ RiverTrail.compiler = (function () {
     // rankOrShape -> either rank of iterationspace or in case of comprehension and comprehensionScalar the shape of the iterationspace
     // args -> additional arguments to the kernel
     var compileAndGo = function compileAndGo (paSource, f, construct, rankOrShape, args, enable64BitFloatingPoint) {
+        "use strict";
         var paResult = null;
         var kernelString;
         var lowPrecision;
@@ -109,15 +161,97 @@ RiverTrail.compiler = (function () {
 
         var argumentTypes = constructArgTypes(construct, args, rankOrShape, defaultNumberType);
 
+        // this stores information on the value we see
+        var specVector = null;
+        if (useValueSpec) {
+            specVector = args.map(function (v) { 
+                    if (typeof(v) === 'number') {
+                        return {val: v, type: 'number', seen: 1};
+                    } else if (isTypedArray(v) && (v.length < maxValSpecLen)) {
+                        // we can only get flat arrays here, so no need to check what the actual values are
+                        return {val: v, type: 'array', seen: 1};
+                    } else if ((v instanceof RiverTrail.Helper.FlatArray) && (v.shape.length <= 2) && (v.shape[0] * (v.shape[1] | 1) < maxValSpecLen)) {
+                        return {val: v, type: 'flatarray', seen: 1};
+                    } else if ((v instanceof ParallelArray) && (v.shape.length <= 2) && (v.shape[0] * (v.shape[1] | 1) < maxValSpecLen)) {
+                        return {val: v, type: 'parallelarray', seen: 1};
+                    } else {
+                        return null;
+                    }
+                });
+        } 
+        // spec stores what we actually want to specialize for
+        var spec = null;
+        var cacheEntry = null;
+
         if (f.openCLCache !== undefined) {
             if (useKernelCaching) {
-                var cacheEntry = getCacheEntry(f, construct, paSource, argumentTypes, lowPrecision, rankOrShape);
+                cacheEntry = getCacheEntry(f, construct, paSource, argumentTypes, lowPrecision, rankOrShape);
                 // try and find a matching kernel from previous runs
                 if (cacheEntry != null) {
-                    paResult = RiverTrail.compiler.runOCL(paSource, cacheEntry.kernel, cacheEntry.ast, f, 
-                                      construct, rankOrShape, args, argumentTypes, lowPrecision, 
-                                      enable64BitFloatingPoint, useBufferCaching, useKernelCaching);
-                    return paResult;
+                    cacheEntry.uses++;
+                    if (useValueSpec) {
+                        // record value frequencies
+                        cacheEntry.vals = cacheEntry.vals.map(function (v,i) {
+                            "use strict";
+                            if (v === null) {
+                                return v; // megamorphic
+                            } else {
+                                var elem = specVector[i];
+                                if (v[0] === elem) {
+                                    // both null, nothing to be done
+                                    return v;
+                                } else if ((v[0] !== null) &&
+                                           (elem !== null) &&
+                                           equalsSpecValue(elem,v[0])) {
+                                    // it is the first element
+                                    v[0].seen++;
+                                    return v;
+                                } else {
+                                    // search through all other elements
+                                    if (elem === null) {
+                                        for (var pos = 1; pos < v.length; pos++) {
+                                            if (v[pos] === null) {
+                                                v[pos] = v[pos-1];
+                                                v[pos-1] = null;
+                                                return v;
+                                            }
+                                        }
+                                        v.push(null);
+                                    } else {
+                                        // search for a value
+                                        for (var pos = 1; pos <v.length; pos++) {
+                                            if ((v[pos] !== null) && equalsSpecValue(v[pos], elem)) {
+                                                var swap = v[pos];
+                                                v[pos] = v[pos-1];
+                                                v[pos-1] = swap;
+                                                swap.seen++;
+                                                return v;
+                                            }
+                                        }
+                                        v.push(elem);
+                                    }
+                                    if (v.length > polymorphLimit) {
+                                        return null;
+                                    } else {
+                                        return v;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                                
+                    // there is always at least a match
+                    var kSpec = findBestMatch(cacheEntry, specVector);
+                    spec = doWeNeedBetter(cacheEntry, kSpec, specVector);
+
+                    if (!spec) {
+                        // execute what we have
+                        paResult = RiverTrail.compiler.runOCL(paSource, kSpec.kernel, cacheEntry.ast, 
+                                       construct, rankOrShape, args, argumentTypes, lowPrecision, 
+                                       useBufferCaching);
+                        return paResult;
+                    }
+                    // fall through with our spec vector to recompilation below
                 }
             } else {
                 // remove cache 
@@ -126,7 +260,7 @@ RiverTrail.compiler = (function () {
         } 
         //
         // NOTE: we only get here if caching has failed!
-        // We need to pass in argumentTypes.
+        //       this means we have seen new types OR a have to do a better specialization!
         //
         if (useKernelCaching && (f.openCLCache === undefined)) {
             // create empty cache
@@ -134,7 +268,7 @@ RiverTrail.compiler = (function () {
         }
                         
         try {
-            ast = parse(paSource, construct, rankOrShape, f.toString(), args, lowPrecision); // parse, no code gen
+            ast = parse(paSource, construct, rankOrShape, f.toString(), args, lowPrecision, spec); // parse, no code gen
             kernelString = RiverTrail.compiler.codeGen.compile(ast, paSource, rankOrShape, construct); // Creates an OpenCL kernel function
         } catch (e) {
             RiverTrail.Helper.debugThrow(e);
@@ -147,18 +281,70 @@ RiverTrail.compiler = (function () {
 
         if (suppressOpenCL) {
             console.log("Not executing OpenCL returning 'this' parseGenRunOCL:surpressOpenCL: ", suppressOpenCL);
-            paResult = this;
-        } else {
-            // what arg should be used, args seems correct.?
+            return this;
+        } 
+
+        var kernelName = ast.name;
+        var kernel;
+        if (!kernelName) {
+            throw new Error("Invalid ast: Function expected at top level");
+        }
+
+        try {
+            if (enable64BitFloatingPoint) {
+                // enable 64 bit extensions
+                kernelString = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n" + kernelString;
+            }
+            kernel = RiverTrail.compiler.openCLContext.compileKernel(kernelString, "RT_" + kernelName);
+        } catch (e) {
             try {
-                paResult = RiverTrail.compiler.runOCL(paSource, kernelString, ast, f, construct, rankOrShape, args, 
-                                                argumentTypes, lowPrecision, enable64BitFloatingPoint, useBufferCaching, useKernelCaching);
-            } catch (e) {
-                try {
-                    RiverTrail.Helper.debugThrow(e + RiverTrail.compiler.openCLContext.buildLog);
-                } catch (e2) {
-                    RiverTrail.Helper.debugThrow(e); // ignore e2. If buildlog throws, there simply is none.
+                var log = RiverTrail.compiler.openCLContext.buildLog;
+            } catch (e2) {
+                var log = "<not available>";
+            }
+            RiverTrail.Helper.debugThrow("The OpenCL compiler failed. Log was `" + log + "'.");
+        }
+        if (reportVectorized) {
+            try {
+                var log = RiverTrail.compiler.openCLContext.buildLog;
+                if (log.indexOf("was successfully vectorized") !== -1) {
+                    console.log(kernelName + "was successfully vectorized");
                 }
+            } catch (e) {
+                // ignore
+            }
+        }
+        if (useKernelCaching) {
+            // save ast information required for future use
+            // if we came here due to specialisation, we have a cacheEntry already!
+            if (!cacheEntry) {
+                var cacheEntry = { "ast": ast,
+                    "name": ast.name,
+                    "source": f,
+                    "paType": RiverTrail.Helper.inferPAType(paSource),
+                    "kernel": [{"kernel": kernel, "spec": spec}],
+                    "construct": construct,
+                    "lowPrecision": lowPrecision,
+                    "argumentTypes": argumentTypes,
+                    "iterSpace": rankOrShape,
+                    "uses": 1,
+                    "vals" : useValueSpec ? specVector.map(function (v) { return [v]; }) : null
+                };
+                f.openCLCache.push(cacheEntry);
+            } else {
+                // update existing entry
+                cacheEntry.kernel.push({"kernel": kernel, "spec": spec});
+            }
+        }
+        
+        try {
+            paResult = RiverTrail.compiler.runOCL(paSource, kernel, ast, construct, rankOrShape, args, 
+                                            argumentTypes, lowPrecision, useBufferCaching);
+        } catch (e) {
+            try {
+                RiverTrail.Helper.debugThrow(e + RiverTrail.compiler.openCLContext.buildLog);
+            } catch (e2) {
+                RiverTrail.Helper.debugThrow(e); // ignore e2. If buildlog throws, there simply is none.
             }
         }
         // NOTE: Do not add general code here. This is not the only exit from this function!
@@ -168,12 +354,12 @@ RiverTrail.compiler = (function () {
     //
     // Driver method to steer compilation process
     //
-    function parse(paSource, construct, rankOrShape, kernel, args, lowPrecision) {
+    function parse(paSource, construct, rankOrShape, kernel, args, lowPrecision, spec) {
         var ast = RiverTrail.Helper.parseFunction(kernel);
         var rank = rankOrShape.length || rankOrShape;
         try {
             RiverTrail.Typeinference.analyze(ast, paSource, construct, rank, args, lowPrecision);
-            RiverTrail.RangeAnalysis.analyze(ast, paSource, construct, rankOrShape, args);
+            RiverTrail.RangeAnalysis.analyze(ast, paSource, construct, rankOrShape, args, spec);
             RiverTrail.RangeAnalysis.propagate(ast, construct);
             RiverTrail.InferBlockFlow.infer(ast);
             RiverTrail.InferMem.infer(ast);
@@ -183,7 +369,7 @@ RiverTrail.compiler = (function () {
         return ast;
     }
     
-    var getCacheEntry = function (f, construct, paSource, argumentTypes, lowPrecision, rankOrShape) {
+    var getCacheEntry = function (f, construct, paType, argumentTypes, lowPrecision, rankOrShape) {
         var argumentMatches = function (argTypeA, argTypeB) {
             return ((argTypeA.inferredType === argTypeB.inferredType) &&
                     equalsShape(argTypeA.dimSize, argTypeB.dimSize));
@@ -201,12 +387,92 @@ RiverTrail.compiler = (function () {
                 (lowPrecision === entry.lowPrecision) &&
                 (entry.source === f) &&
                 argumentsMatch(argumentTypes, entry.argumentTypes) &&
-                (((construct !== "comprehension") && (construct !== "comprehensionScalar") && argumentMatches(RiverTrail.Helper.inferPAType(paSource), entry.paType)) || equalsShape(rankOrShape, entry.iterSpace))
+                (((construct !== "comprehension") && (construct !== "comprehensionScalar")
+                  && argumentMatches(paType, entry.paType)) || equalsShape(rankOrShape, entry.iterSpace))
                ) {
                 return f.openCLCache[i];
             }
         }
         return null;
+    };
+
+    var findBestMatch = function findBestMatch(entry, vals) {
+        "use strict";
+        var fits = 0;
+        // the first entry is always the generic one
+        var match = entry.kernel[0];
+        for (var i = 1; i < entry.kernel.length; i++) {
+            var matches = true;
+            var lFits = 0;
+            var lSpec = entry.kernel[i].spec;
+            if (lSpec === null) { // this should not happen
+                matches = false;
+                break;
+            }
+            for (var j = 0; j < vals.length; j++) {
+                if (lSpec[j] !== null) {
+                    if (equalsSpecValue(lSpec[j], vals[j])) {
+                        lFits++;
+                    } else {
+                        matches = false;
+                        break;
+                    }
+                }
+            }
+            if (matches && (lFits > fits)) {
+                match = entry.kernel[i];
+            }
+        }
+        return match;
+    };
+
+    var doWeNeedBetter = function doWeNeedBetter(cache, current, vals) {
+        "use strict";
+        // we wait to see some values before we decide
+        if (cache.uses < specWarmUp) return null;
+        // no more than 5 specs per function
+        if (cache.kernel.length > 5) return null;
+        
+        var result;
+        var changed = false;
+        if (current.spec === null) {
+            result = vals.map(function (v) { return null;});
+        } else {
+            result = current.spec.map(function (v) { return v;});
+        }
+
+        for (var i = 0; i < result.length; i++) {
+            if (result[i] === null) {
+                // we could go further here
+                var seen = cache.vals[i];
+                if (seen !== null) {
+                    for (var j = 0; j < specDepth; j++) {
+                        if (equalsSpecValue(seen[j], vals[i])) {
+                            // this is a frequent value
+                            result[i] = vals[i];
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        console.log("new spec: " + specToString(result));
+
+        return (changed ? result : null);
+    };
+
+    var specToString = function specToString(spec) {
+        "use strict";
+        if (!spec) 
+            return "null";
+
+        var s = "";
+        for (var i = 0; i < spec.length; i++) {
+            s = s + "["+i+", " + (spec[i] ? spec[i].val.toString() + ", " + spec[i].type : "null") + "]";
+        }
+        return s;
     };
 
     var constructArgTypes = function (construct, args, rankOrShape, defaultNumberType) {

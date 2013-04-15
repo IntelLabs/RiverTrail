@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = false;
+    const verboseDebug = true;
     const checkBounds = true;
     const checkall = false;
     const conditionalInline = false;

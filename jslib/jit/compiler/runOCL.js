@@ -30,39 +30,25 @@ if (RiverTrail === undefined) {
     var RiverTrail = {};
 }
 
-// Executes the kernel function with the ParallelArray this and the args for the elemental function
-// paSource     - 'this' inside the kernel
-// kernelString - either a JavaScript code string or a precompiled kernel (dpoIKernel object)
-// ast          - result from parsing
-// f            - function to compile
-// construct    - outer construct in {combine,,map,comprehension,comprehensionScalar}
-// rankOrShape  - either the rank of the iteration space, or for comprehension the shape of the interationspace
-// actualArgs   - extra kernel arguments
-
 RiverTrail.compiler.runOCL = function () {
-    var reportVectorized = false;
-
     // Executes the kernel function with the ParallelArray this and the args for the elemental function
     // paSource     - 'this' inside the kernel
-    // kernelString - either a JavaScript code string or a precompiled kernel (dpoIKernel object)
+    // kernel       - a precompiled kernel (dpoIKernel object)
     // ast          - result from parsing
-    // f            - function to compile
     // construct    - outer construct in {combine,map,comprehension,comprehensionScalar}
     // rankOrShape  - either the rank of the iteration space, or for comprehension the shape of the interationspace
     // actualArgs   - extra kernel arguments
-    var runOCL = function runOCL(paSource, kernelString, ast, f, construct, rankOrShape, actualArgs,
-                                 argumentTypes, lowPrecision, enable64BitFloatingPoint, useBufferCaching, useKernelCaching) {
+    // argumentTypes- types of kernel arguments
+    // lowPrecision - whether kernel is meant to use float
+    // useBuffer... - whether buffers should be cached
+    var runOCL = function runOCL(paSource, kernel, ast, construct, rankOrShape, actualArgs,
+                                 argumentTypes, lowPrecision, useBufferCaching) {
         var paResult;
         var kernelArgs = [];
         var resultMem;
         var sourceType;
         var iterSpace;
-        var kernel;
         var rank;
-        var kernelName = ast.name;
-        if (!kernelName) {
-            throw new Error("Invalid ast: Function expected at top level");
-        }
         if ((construct === "comprehension") || (construct === "comprehensionScalar")) {
             // comprehensions do not have a source, so we derive the required information
             // from rank and the ast
@@ -199,49 +185,7 @@ RiverTrail.compiler.runOCL = function () {
                 resultMem = allocateAndMapResult(ast.typeInfo.result);
             }
         }
-        // build kernel
-        if (kernelString instanceof Components.interfaces.dpoIKernel) {
-            kernel = kernelString;
-        } else {
-            try {
-                if (enable64BitFloatingPoint) {
-                    // enable 64 bit extensions
-                    kernelString = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n" + kernelString;
-                }
-                kernel = RiverTrail.compiler.openCLContext.compileKernel(kernelString, "RT_" + kernelName);
-            } catch (e) {
-                try {
-                    var log = RiverTrail.compiler.openCLContext.buildLog;
-                } catch (e2) {
-                    var log = "<not available>";
-                }
-                RiverTrail.Helper.debugThrow("The OpenCL compiler failed. Log was `" + log + "'.");
-            }
-            if (reportVectorized) {
-                try {
-                    var log = RiverTrail.compiler.openCLContext.buildLog;
-                    if (log.indexOf("was successfully vectorized") !== -1) {
-                        console.log(kernelName + "was successfully vectorized");
-                    }
-                } catch (e) {
-                    // ignore
-                }
-            }
-            if (useKernelCaching && (f !== undefined)) {
-                // save ast information required for future use
-                var cacheEntry = { "ast": ast,
-                    "name": ast.name,
-                    "source": f,
-                    "paType": sourceType,
-                    "kernel": kernel,
-                    "construct": construct,
-                    "lowPrecision": lowPrecision,
-                    "argumentTypes": argumentTypes,
-                    "iterSpace": iterSpace
-                };
-                f.openCLCache.push(cacheEntry);
-            }
-        }
+
         // set arguments
         kernelArgs.reduce(function (kernel, arg, index) {
             try {
