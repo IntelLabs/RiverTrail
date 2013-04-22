@@ -497,9 +497,6 @@ var ParallelArray = function () {
                         this.data[i] = new ParallelArray(values[i]);
                     } else {
                         this.data[i] = values[i];
-                        /**
-                        this.shape = this.shape.push(values[i].length);
-                        **/
                     }
                 }
             } else { // we have a flat array.
@@ -1094,7 +1091,7 @@ var ParallelArray = function () {
 
         var len = this.length;
         var rawResult = new Array(len);
-        var privateThis;
+        var movingArg;
         var callArguments = Array.prototype.slice.call(arguments, 0); // array copy
         var ignoreLength = callArguments.unshift(0); // callArguments now has 2 free location for a and b.
         if (this.getShape().length < 2) {
@@ -1130,17 +1127,18 @@ var ParallelArray = function () {
             //      matter.
             try {
                 rawResult[0] = this.get(0);
-                privateThis = this.get(1);
+                movingArg = this.get(1);
                 callArguments[0] = rawResult[0];
-                rawResult[1] = f.apply(privateThis, callArguments);
+                callArguments[1] = movingArg;
+                rawResult[1] = f.apply(this, callArguments);
                 if ((rawResult[1].data instanceof Components.interfaces.dpoIData) && 
                     equalsShape(rawResult[0].getShape(), rawResult[1].getShape())) {
                     // this was computed by openCL and the function is shape preserving.
                     // Try to preallocate and compute the result in place!
                     // We need the real data here, so materialize it
-                    privateThis.materialize();
+                    movingArg.materialize();
                     // create a new typed array for the result and store it in updateinplace
-                    var updateInPlace = new privateThis.data.constructor(privateThis.data.length);
+                    var updateInPlace = new movingArg.data.constructor(movingArg.data.length);
                     // copy the first line into the result
                     for (i=0; i<localStride; i++) {
                         updateInPlace[i] = this.data[i];
@@ -1158,19 +1156,20 @@ var ParallelArray = function () {
                     updateInPlacePA.data = updateInPlace;
                     // set up the arguments
                     callArguments[0] = updateInPlacePA;
+                    callArguments[1] = movingArg;
                     // set the write offset and updateInPlace info
-                    privateThis.updateInPlacePA = updateInPlacePA;
-                    privateThis.updateInPlaceOffset = localStride;
-                    privateThis.updateInPlaceShape = last.shape;
+                    movingArg.updateInPlacePA = updateInPlacePA;
+                    movingArg.updateInPlaceOffset = localStride;
+                    movingArg.updateInPlaceShape = last.shape;
                     for (i=2;i<len;i++) {
-                        // Effectivey change privateThis to refer to the next element in this.
-                        privateThis.offset += localStride;
+                        // Effectivey change movingArg to refer to the next element in this.
+                        movingArg.offset += localStride;
                         updateInPlacePA.offset += localStride;
-                        privateThis.updateInPlaceOffset += localStride;
-                        privateThis.updateInPlaceUses = 0;
+                        movingArg.updateInPlaceOffset += localStride;
+                        movingArg.updateInPlaceUses = 0;
                         // i is the index in the result.
-                        result = f.apply(privateThis, callArguments);
-                        if (result.data !== privateThis.updateInPlacePA.data) {
+                        result = f.apply(this, callArguments);
+                        if (result.data !== movingArg.updateInPlacePA.data) {
                             // we failed to update in place
                             throw new CompilerAbort("speculation failed: result buffer was not used");
                         }
@@ -1181,24 +1180,25 @@ var ParallelArray = function () {
             catch (e) {
                 // clean up to continute below
                 console.log("scan: speculation failed, reverting to normal mode");
-                privateThis = this.get(1);
+                movingArg = this.get(1);
                 rawResult[0] = this.get(0);
                 callArguments[0] = rawResult[0];
             }
         } else {
             // speculation is disabled, so set up the stage
-            privateThis = this.get(1);
+            movingArg = this.get(1);
             rawResult[0] = this.get(0);
             callArguments[0] = rawResult[0];
-            rawResult[1] = f.apply(privateThis, callArguments);
+            callArguments[1] = movingArg;
+            rawResult[1] = f.apply(this, callArguments);
         }
         
         for (i=2;i<len;i++) {
-            // Effectivey change privateThis to refer to the next element in this.
-            privateThis.offset += localStride;
+            // Effectivey change movingArg to refer to the next element in this.
+            movingArg.offset += localStride;
             callArguments[0] = rawResult[i-1];
             // i is the index in the result.
-            rawResult[i] = f.apply(privateThis, callArguments);
+            rawResult[i] = f.apply(this, callArguments);
         }
         return (new ParallelArray(rawResult));
     };
@@ -1642,13 +1642,17 @@ var ParallelArray = function () {
     
     // toString()   Converts an array to a string, and returns the result
     var toString = function toString (arg1) {
-        var max = this.shape.reduce(function (v, p) { return v*p; }) + this.offset;
-        var res = "[";
-        for (var pos = this.offset; pos < max; pos++) {
-            res += ((pos === this.offset) ? "" : ", ") + this.data[pos];
+        if (this.flat) {
+            var max = this.shape.reduce(function (v, p) { return v*p; }) + this.offset;
+            var res = "[";
+            for (var pos = this.offset; pos < max; pos++) {
+                res += ((pos === this.offset) ? "" : ", ") + this.data[pos];
+            }
+            res += "]";
+            return res;
+        } else {
+            return "[" + this.data.join(", ") + "]";
         }
-        res += "]";
-        return res;
     };
     
     // unshift()    Adds new elements to the beginning of an array, and returns the new length
