@@ -514,7 +514,7 @@ RiverTrail.Typeinference = function () {
     };
 
     TEp.emitDeclarations = function (renamer) {
-        s = "";
+        var s = "";
         for (var name in this.bindings) {
             var type = this.bindings[name].type;
             // only declare variables that are actually used (and thus have a type) 
