@@ -163,10 +163,16 @@ var ParallelArray = function () {
     var useKernelCaching = true;
     // whether to use lazy communication of openCL values
     var useLazyCommunication = false;
-    // whether to cache OpenCL buffers
-    var useBufferCaching = false;
+    // whether to cache OpenCL buffers is now a property configured in driver.js!
+    // -- var useBufferCaching = false;
     // whether to do update in place in scan
-    var useUpdateInPlaceScan = true;
+    var useUpdateInPlaceScan = false;
+
+    // sanity checking
+    if (useUpdateInPlaceScan && !useLazyCommunication) {
+        console.log("RiverTrail: useUpdateInPlaceScan requires useLazyCommuniation. Disabling...");
+        useUpdateInPlaceScan = false;
+    }
 
     // For debugging purposed each parallel array I create has a fingerprint.
     var fingerprint = 0;
@@ -211,11 +217,7 @@ var ParallelArray = function () {
     var materialize = function materialize() {
         if (useFF4Interface && (this.data instanceof Components.interfaces.dpoIData)) {
             // we have to first materialise the values on the JavaScript side
-            var cachedOpenCLMem = this.data;
-            this.data = cachedOpenCLMem.getValue();
-            if (useBufferCaching) {
-                this.cachedOpenCLMem = cachedOpenCLMem;
-            }
+            this.data = this.data.getValue();
         }
     };
 
@@ -584,13 +586,13 @@ var ParallelArray = function () {
         return this;
     };
     
-    var createOpenCLMemParallelArray = function( mobj, shape, type) {
+    var createOpenCLMemParallelArray = function( mobj, shape, type, offset) {
         this.data = mobj;
         this.shape = shape;
         this.elementalType = type;
         this.strides = shapeToStrides( shape);
         this.flat = true;
-        this.offset = 0;
+        this.offset = offset | 0;
 
         return this;
     };
@@ -1131,29 +1133,33 @@ var ParallelArray = function () {
                 callArguments[0] = rawResult[0];
                 callArguments[1] = movingArg;
                 rawResult[1] = f.apply(this, callArguments);
-                if ((rawResult[1].data instanceof Components.interfaces.dpoIData) && 
-                    equalsShape(rawResult[0].getShape(), rawResult[1].getShape())) {
+                var last = rawResult[1];
+                if ((last.data instanceof Components.interfaces.dpoIData) && 
+                    equalsShape(rawResult[0].getShape(), last.getShape())) {
                     // this was computed by openCL and the function is shape preserving.
                     // Try to preallocate and compute the result in place!
                     // We need the real data here, so materialize it
-                    movingArg.materialize();
+                    last.materialize();
+                    this.materialize();
                     // create a new typed array for the result and store it in updateinplace
-                    var updateInPlace = new movingArg.data.constructor(movingArg.data.length);
+                    var updateInPlace = RiverTrail.Helper.allocateAlignedTA(last.data.constructor, this.data.length);
                     // copy the first line into the result
                     for (i=0; i<localStride; i++) {
                         updateInPlace[i] = this.data[i];
                     }
                     // copy the second line into the result
-                    var last = rawResult[1];
                     var result = undefined;
-                    last.materialize;
                     for (i=0; i <localStride; i++) {
                         updateInPlace[i+localStride] = last.data[i];
                     }
                     // create a new parallel array to pass as prev
-                    var updateInPlacePA = rawResult[0];
+                    var updateInPlacePA = this.get(0);
                     // swap the data store of the updateInPlacePA
                     updateInPlacePA.data = updateInPlace;
+                    // add a self reference in case combine is called on this argument
+                    updateInPlacePA.updateInPlacePA = updateInPlacePA;
+                    updateInPlacePA.updateInPlaceOffset = localStride;
+                    updateInPlacePA.updateInPlaceShape = last.shape;
                     // set up the arguments
                     callArguments[0] = updateInPlacePA;
                     callArguments[1] = movingArg;
@@ -1166,7 +1172,8 @@ var ParallelArray = function () {
                         movingArg.offset += localStride;
                         updateInPlacePA.offset += localStride;
                         movingArg.updateInPlaceOffset += localStride;
-                        movingArg.updateInPlaceUses = 0;
+                        updateInPlacePA.updateInPlaceOffset += localStride;
+                        updateInPlacePA.updateInPlaceUses = 0;
                         // i is the index in the result.
                         result = f.apply(this, callArguments);
                         if (result.data !== movingArg.updateInPlacePA.data) {

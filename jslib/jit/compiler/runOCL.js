@@ -81,13 +81,16 @@ RiverTrail.compiler.runOCL = function () {
                     // we already have an OpenCL value
                     args.push(object.data);
                 } else if (RiverTrail.Helper.isTypedArray(object.data)) {
-                    if ((object.cachedOpenCLMem === undefined)) {
+                    var memObj;
+                    if (object.cachedOpenCLMem) {
+                        memObj = object.cachedOpenCLMem;
+                    } else {
                         // we map this argument
-                        object.cachedOpenCLMem = RiverTrail.compiler.openCLContext.mapData(object.data);
+                        memObj = RiverTrail.compiler.openCLContext.mapData(object.data);
                     }
-                    args.push(object.cachedOpenCLMem);
-                    if (!useBufferCaching) {
-                        object.cachedOpenCLMem = undefined;
+                    args.push(memObj);
+                    if (useBufferCaching) {
+                        object.cachedOpenCLMem = memObj;
                     }
                 } else {
                     // We have a regular array as data container. There is no point trying
@@ -140,23 +143,31 @@ RiverTrail.compiler.runOCL = function () {
             // See scan for how this is supposed to work
             // first we ensure that the shape of what we compute is the shape of what is expected
             var resShape;
-            if (type.properties) {
-                resShape = iterSpace.concat(ast.typeInfo.result.getOpenCLShape());
-            } else {
+            if (ast.typeInfo.result.isScalarType()) {
                 resShape = iterSpace;
+            } else {
+                resShape = iterSpace.concat(ast.typeInfo.result.getOpenCLShape());
             }
-            if (!equalsShape(resShape, paSource.updateInPlaceShape)) {
+            if (resShape.some(function (e,i) { return e !== paSource.updateInPlaceShape[i];})) {
                 // throwing this will revert the outer scan to non-destructive mode
                 throw new Error("shape mismatch during update in place!");
             }
-            if (++paSource.updateInPlaceUses !== 1) {
+            if (++paSource.updateInPlacePA.updateInPlaceUses !== 1) {
                 throw new Error("preallocated memory used more than once!");
             }
             if (!(paSource.updateInPlacePA.data instanceof Components.interfaces.dpoIData)) {
-                paSource.updateInPlacePA.data = RiverTrail.compiler.openCLContext.mapData(paSource.updateInPlacePA.data);
+                if (paSource.updateInPlacePA.cachedOpenCLMem) {
+                    paSource.updateInPlacePA.data = paSource.updateInPlacePA.cachedOpenCLMem;
+                    delete paSource.updateInPlacePA.cachedOpenCLMem;
+                } else {
+                    paSource.updateInPlacePA.data = RiverTrail.compiler.openCLContext.mapData(paSource.updateInPlacePA.data);
+                    if (useBufferCaching) {
+                        paSource.updateInPlacePA.cachedOpenCLMem = paSource.updateInPlacePA.data;
+                    }
+                }
             }
-            resultMem = {mem: paSource.updateInPlacePA.data, shape: resShape, type: RiverTrail.Helper.stripToBaseType(type.OpenCLType)};
-            kernelArgs.push(resultMem);
+            resultMem = {mem: paSource.updateInPlacePA.data, shape: resShape, type: RiverTrail.Helper.stripToBaseType(ast.typeInfo.result.OpenCLType), offset: paSource.updateInPlaceOffset};
+            kernelArgs.push(resultMem.mem);
             kernelArgs.push(new RiverTrail.Helper.Integer(paSource.updateInPlaceOffset));
         } else {
             var allocateAndMapResult = function (type) {
@@ -172,7 +183,7 @@ RiverTrail.compiler.runOCL = function () {
                 var memObj = RiverTrail.compiler.openCLContext.allocateData(new template(1), shapeToLength(resShape));
                 kernelArgs.push(memObj);
                 kernelArgs.push(new RiverTrail.Helper.Integer(0));
-                return {mem: memObj, shape: resShape, type: resultElemType};
+                return {mem: memObj, shape: resShape, type: resultElemType, offset: 0};
             };
 
             // We allocate whatever the result type says. To ensure portability of 
@@ -273,12 +284,18 @@ RiverTrail.compiler.runOCL = function () {
         }
         if (resultMem.mem && (resultMem.mem instanceof Components.interfaces.dpoIData)) {
             // single result
-            paResult = new ParallelArray(resultMem.mem, resultMem.shape, resultMem.type);
+            paResult = new ParallelArray(resultMem.mem, resultMem.shape, resultMem.type, resultMem.offset);
+            if (useBufferCaching) {
+                paResult.cachedOpenCLMem = resultMem.mem;
+            }
         } else {
             // multiple results
             var multiPA = {};
             for (var name in resultMem) {
-                multiPA[name] = new ParallelArray(resultMem[name].mem, resultMem[name].shape, resultMem[name].type);
+                multiPA[name] = new ParallelArray(resultMem[name].mem, resultMem[name].shape, resultMem[name].type, resultMem[name].offset);
+                if (useBufferCaching) {
+                    multiPA[name].cachedOpenCLMem = resultMem[name].mem;
+                }
             }
             paResult = new IBarfAtYouUnlessYouUnzipMe(multiPA);
         }
