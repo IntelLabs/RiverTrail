@@ -51,7 +51,6 @@ NS_IMPL_CI_INTERFACE_GETTER2(dpoCKernel, dpoIKernel, nsISecurityCheckedComponent
 /* 
  * Implement the hooks for the cycle collector
  */
-NS_IMPL_CYCLE_COLLECTION_CLASS(dpoCKernel)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN(dpoCKernel)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE_SCRIPT_OBJECTS
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(parent)
@@ -260,7 +259,7 @@ NS_IMETHODIMP dpoCKernel::Run(uint32_t rank, uint32_t *shape, uint32_t *tile, ui
 			DEBUG_LOG_STATUS("Run", "allocation of global_work_size failed");
 			return NS_ERROR_OUT_OF_MEMORY;
 		}
-		for (int cnt = 0; cnt < rank; cnt++) {
+		for (uint32_t cnt = 0; cnt < rank; cnt++) {
 			global_work_size[cnt] = shape[cnt];
 		}
 	}

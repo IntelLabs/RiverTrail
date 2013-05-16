@@ -69,7 +69,6 @@ NS_IMPL_CI_INTERFACE_GETTER2(dpoCData, dpoIData, nsXPCOMCycleCollectionParticipa
 /* 
  * Implement the hooks for the cycle collector
  */
-NS_IMPL_CYCLE_COLLECTION_CLASS(dpoCData)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN(dpoCData)
     NS_IMPL_CYCLE_COLLECTION_TRAVERSE_SCRIPT_OBJECTS
     NS_IMPL_CYCLE_COLLECTION_TRAVERSE(parent)
@@ -145,6 +144,7 @@ int dpoCData::CheckFree(void) {
 		/* make sure we have not lost our parent due to CC */
 	  return ((dpoCContext *) parent.get())->CheckFree();
 	}
+	return 0;
 }
 
 inline

@@ -48,7 +48,6 @@ NS_IMPL_CI_INTERFACE_GETTER2(dpoCContext, dpoIContext, nsISecurityCheckedCompone
 /* 
  * Implement the hooks for the cycle collector
  */
-NS_IMPL_CYCLE_COLLECTION_CLASS(dpoCContext)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN(dpoCContext)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE_SCRIPT_OBJECTS
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(parent)
@@ -767,7 +766,6 @@ NS_IMETHODIMP dpoCContext::GetAlignmentSize(uint32_t *aAlignmentSize)
 NS_IMETHODIMP dpoCContext::GetAlignmentOffset(const JS::Value & source, JSContext* cx, uint32_t *_retval)
 {
 	JSObject *object;
-	nsresult result;
 	uint8_t *data;
 
 	if (JSVAL_IS_PRIMITIVE(source)) {
@@ -813,4 +811,6 @@ NS_IMETHODIMP dpoCContext::GetExtensions(nsAString & aExtensions)
 	} else {
 		result = NS_ERROR_NOT_AVAILABLE;
 	}
+
+	return result;
 }
