@@ -420,6 +420,8 @@ RiverTrail.Typeinference = function () {
         } else {
             // propagate flow information
             current.type.registerFlow(type);
+            // mark type as initialized
+            current.initialized = true;
         }
     }
     TEp.intersect = function (other) {
