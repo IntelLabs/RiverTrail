@@ -1929,7 +1929,7 @@ RiverTrail.Typeinference = function () {
             // create type info for current element argument
             var elemT = tEnv.getType("this").clone();
             if (pa.getShape().length > rank) {
-                elemT.properties.shape = elemT.properties.shape.slice(0,rank);
+                elemT.properties.shape = elemT.properties.shape.slice(rank);
             } else {
                 elemT = elemT.properties.elements;
             }
