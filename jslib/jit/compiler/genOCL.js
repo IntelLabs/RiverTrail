@@ -1828,13 +1828,14 @@ RiverTrail.compiler.codeGen = (function() {
             case INCREMENT:
             case DECREMENT:
                 var incArg = stripCasts(ast.children[0]);
-                var incType = ast.children[0].typeInfo.OpenCLType;
+                var incType = incArg.typeInfo.OpenCLType;
+                var outerType = ast.children[0].typeInfo.OpenCLType;
                 switch (incType) {
                     case "float":
                     case "double":
                         // SAH: OpenCL does not have ++/-- for float and double, so we emulate it
                         if (ast.postfix) {
-                            s = "(" + RENAME(incArg.value) + " " + ast.value.substring(0, 1) + "= ((" + incType + ") 1))";
+                            s = "((" + outerType + ") (" + RENAME(incArg.value) + " " + ast.value.substring(0, 1) + "= ((" + incType + ") 1)))";
                         } else {
                             // we would need a temp here. For now, just fail. This seems sufficiently uncommon...
                             throw new Error("prefix increment/decrement on floats is not implemented, yet.");
