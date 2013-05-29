@@ -261,8 +261,11 @@ RiverTrail.InferMem = function () {
             case RETURN:
                 // special case: if the value is an ARRAY_INIT that only contains allocation free
                 // expressions, we do not allocate space for the frame as it is directly written
+                // however, we might have to allocate memory for the expression itself.
                 if (!isArrayLiteral(ast.value)) {
                     infer(ast.value, memVars, ins, outs);
+                } else {
+                    ast.value.children.forEach(function (v) { infer(v, memVars, ins, outs); });
                 }
                 break;
             //
