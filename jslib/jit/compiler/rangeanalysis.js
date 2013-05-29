@@ -136,6 +136,10 @@ RiverTrail.RangeAnalysis = function () {
                 case GE:
                     type = GT;
                     break;
+                case EQ:
+                case STRICT_EQ:
+                    // these are handled explicitly, as there is no NEQ
+                    break;
                 default:
                     type = undefined;
             }
@@ -161,7 +165,13 @@ RiverTrail.RangeAnalysis = function () {
             case STRICT_EQ: // strict is tricky. This might actually be a bool,
                             // in which case STRICT_EQ would fail. So our approximation
                             // is inprecise
-                constraint = new Constraint(accu.range.lb, accu.range.ub);
+                if (accu.inverse) {
+                    // we do not know anything but we have to record this nonetheless to make
+                    // sure that the inverse and normal constraints cover the same indentifiers!
+                    constraint = new Constraint(undefined, undefined);
+                } else {
+                    constraint = new Constraint(accu.range.lb, accu.range.ub);
+                }
                 break;
             default:
                 constraint = undefined;
@@ -351,6 +361,9 @@ RiverTrail.RangeAnalysis = function () {
     VEp.apply = function (name, constraint) {
         var current = this.lookup(name);
         if (constraint instanceof Array) {
+            if (!((current instanceof RangeArray) || (current instanceof Array))) {
+                current = constraint.map(function () { return current; });
+            }
             if (current) {
                 this.bindings[name] = new RangeArray(current, function (val,idx) { return val.constrain(constraint[idx]); });
             } else {
