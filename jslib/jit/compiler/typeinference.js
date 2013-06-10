@@ -179,7 +179,8 @@ RiverTrail.Typeinference = function () {
     TLp.toString = function () { return "Literal: " + this.type + "<" + this.OpenCLType + ">"};
     TLp.equals = function (other) {
         return (this.constructor.prototype.equals.call(this, other) &&
-                (this.type === other.type));
+                (this.type === other.type) &&
+                (this.OpenCLType === other.OpenCLType));
     };
     TLp.clone = function (lut) {
         var result;
