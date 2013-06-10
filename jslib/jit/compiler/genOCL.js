@@ -48,7 +48,7 @@ if (RiverTrail === undefined) {
 }
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = false;
+    const verboseDebug = true;
     const checkBounds = true;
     const checkall = false;
     const conditionalInline = false;
@@ -610,6 +610,7 @@ RiverTrail.compiler.codeGen = (function() {
             s = s + declareLocalFunctions(ast.body.funDecls);
             s = s + generateLocalFunctions(ast.body.funDecls);
             s = s + "__kernel void RT_" + funDecl.name + "(";
+            //s = s + "__kernel __attribute__((vec_type_hint(float3)))  void RT_" + funDecl.name + "(";
 
             // add the special return parameter used to detect failure
             s = s + "__global int *_FAILRET, ";

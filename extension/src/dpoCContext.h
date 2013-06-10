@@ -52,7 +52,7 @@ public:
   NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(dpoCContext)
 
   dpoCContext(dpoIPlatform *parent);
-  nsresult InitContext(JSContext *cx, cl_platform_id platform);
+  nsresult InitContext(JSContext *cx, cl_uint device_index, cl_platform_id platform);
 
 #ifdef CLPROFILE
     static void CL_CALLBACK CollectTimings( cl_event event, cl_int status, void *data);
@@ -77,6 +77,7 @@ protected:
   /* additional members */
   nsCOMPtr<dpoIPlatform> parent;
   cl_context context;			/* the corresponding OpenCL context object */
+  cl_device_id deviceId;		/* the device id for the selected device */
   cl_command_queue cmdQueue;	/* command queue shared by all child objects (e.g. kernels) */
   char *buildLog;				/* shared string used to store the build log in compileKernel */
   size_t buildLogSize;			/* current size of buildLog, 0 if not yet allocated */

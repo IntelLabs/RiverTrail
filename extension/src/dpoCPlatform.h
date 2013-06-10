@@ -54,6 +54,7 @@ private:
 protected:
 	/* additional members */
 	nsresult GetPlatformPropertyHelper( cl_platform_info param, nsAString & out);
+	static nsresult loadDevicePref(long &target);
 
 	cl_platform_id platform;
 	nsCOMPtr<dpoIInterface> parent;

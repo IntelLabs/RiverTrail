@@ -30,15 +30,22 @@
 [scriptable, uuid(ad3aa2e9-247a-48db-8d46-ae12ac5708fd)]
 interface dpoIPlatform : nsISecurityCheckedComponent
 {
+	const long targetDefault = 1;
+	const long targetCPU = 2;
+	const long targetGPU = 4;
+	const long targetAccelerator = 8;
+
 	// Methods to query properties of a platform
 	readonly attribute uint32_t numberOfDevices;
+	readonly attribute AString deviceNames;
 	readonly attribute AString version;
 	readonly attribute AString name;
 	readonly attribute AString vendor;
 	readonly attribute AString profile;
 	readonly attribute AString extensions;
 
+	//nsresult getDeviceTypeAt(in uint32_t deviceId);
 	// Methods to create a context. 
 	[implicit_jscontext]
-	dpoIContext createContext();
+	dpoIContext createContext([optional] in jsval target);
 };

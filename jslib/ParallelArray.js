@@ -152,10 +152,10 @@ var ParallelArray = function () {
             var dpoP;
             var dpoC;
             try {
+                // JS: Should these be cached and reused in driver.js ?
                 dpoI = new DPOInterface();
                 dpoP = dpoI.getPlatform();
                 dpoC = dpoP.createContext();
-
                 extensions = dpoC.extensions || dpoP.extensions;
             } catch (e) {
                 console.log("Unable to query dpoInterface: "+e);

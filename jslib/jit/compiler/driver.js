@@ -57,7 +57,7 @@ RiverTrail.compiler = (function () {
     try {
         dpoInterface = new DPOInterface();
         if (dpoInterface instanceof Components.interfaces.dpoIInterface) {
-            dpoPlatform = dpoInterface.getPlatform(); 
+            dpoPlatform = dpoInterface.getPlatform();
             openCLContext = dpoPlatform.createContext();
         }
     } catch (e) {

@@ -34,8 +34,9 @@
 [scriptable, uuid(2b2f4efa-6fe4-4963-a604-f777ac9ba379)]
 interface dpoIInterface : nsISecurityCheckedComponent
 {
-	dpoIPlatform getPlatform();
+	dpoIPlatform getPlatform([optional] in jsval platform);
 	readonly attribute uint32_t version;
+	readonly attribute uint32_t numberOfPlatforms;
 	//DPO_SCOPE_TRIAL this should someday live somewhere else
 	//[implicit_jscontext]
 	//jsval searchScope( in jsval scope, in AString name);
