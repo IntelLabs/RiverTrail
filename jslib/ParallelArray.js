@@ -1015,23 +1015,27 @@ var ParallelArray = function () {
         induce reordering of the arguments passed to the elemental function's.
     ***/
 
-    var reduce = function reduce(f, optionalInit) {
+    var reduce = function reduce(f) {
         // SAH: for now we have to manually unwrap. Proxies might be a solution but they 
         //      are too underspecified as of yet
         if (f instanceof low_precision.wrapper) {
             f = f.unwrap();
         }
 
+        var callArguments = Array.prototype.slice.call(arguments, 0); // array copy
+        callArguments.unshift(0);
+
         var len = this.shape[0];
         var result;
         var i;
 
-        result = this.get(0);
+        callArguments[0] = this.get(0);
         for (i=1;i<len;i++) {
-            result = f.call(this, result, this.get(i));
+            callArguments[1] = this.get(i);
+            callArguments[0] = f.apply(this, callArguments);
         }
 
-        return result;
+        return callArguments[0];
     };
     /***
         scan
