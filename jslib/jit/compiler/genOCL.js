@@ -262,7 +262,7 @@ RiverTrail.compiler.codeGen = (function() {
             if (indexType.isObjectType("Array")) { //(formalsType === "int*") {
                 dimSizes = indexType.getOpenCLShape();
                 var idxTypeStr = RiverTrail.Helper.stripToBaseType(indexType.OpenCLType);
-                s = s + indexType.getOpenCLAddressSpace() +" const "+ idxTypeStr + " " +
+                s = s + indexType.getOpenCLAddressSpace() +" "+ idxTypeStr + " " +
                     indexName+"["+ dimSizes.toString() +"] = "; 
                 // Deal with array indices.
                 // SAH: id may _NEVER_ be changed in this process as it is required to assign the result!
@@ -279,7 +279,7 @@ RiverTrail.compiler.codeGen = (function() {
                 s = s + "};";
             } else {            
                 // this path is taken by scalar comprehensions
-                s = s + " const "+indexType.OpenCLType+" "+ indexName+" = _id_0;"; 
+                s = s + " "+indexType.OpenCLType+" "+ indexName+" = _id_0;"; 
             }
             } else if (construct === "map") {
                 // 
@@ -287,7 +287,7 @@ RiverTrail.compiler.codeGen = (function() {
                 indexName = funDecl.params[0];
                 indexType = funDecl.typeInfo.parameters[1];
                 if (indexType.isScalarType()) {
-                    s = s + "const " + indexType.OpenCLType+" "+ RENAME(indexName)+" = tempThis[_readoffset];"
+                    s = s + " " + indexType.OpenCLType+" "+ RENAME(indexName)+" = tempThis[_readoffset];"
                 } else {
                     s = s + indexType.getOpenCLAddressSpace() + " " + indexType.OpenCLType+" "+ RENAME(indexName)+" = &(tempThis[_readoffset]);"
                 }
