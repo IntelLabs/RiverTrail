@@ -182,7 +182,6 @@ function doLoad() {
     frames = 0;
     elapsed = 0;
     initKernels();
-    filters = Filters;
     $("#sepia, #lighten, #desaturate, #color_adjust, #edge_detect, #sharpen, #face_detect").removeClass("ui-state-active").button("refresh");
 
     output_canvas.addEventListener("click", function() {
@@ -252,7 +251,7 @@ function computeFrame() {
         if(!kernels[stage].enabled)
             continue;
         filterName = kernels[stage].name;
-        kernelName = filters[filterName + "_" + execution_mode];
+        kernelName = Filters[filterName + "_" + execution_mode];
         if(execution_mode === "parallel") {
             switch(filterName) {
                 case "face_detect":
@@ -316,7 +315,7 @@ function computeFrame() {
     //if(hist_on)
     //    drawHistogram(frame.data, len, w, h);
     if(frames > 0) {
-        frame_time = new Date().getTime() - start_time;
+        var frame_time = new Date().getTime() - start_time;
         elapsed += frame_time;
     }
     frames++;

@@ -46,11 +46,13 @@
 if (RiverTrail === undefined) {
     var RiverTrail = {};
 }
+var doIterationSpaceFlattening = false;
 
 RiverTrail.compiler.codeGen = (function() {
     const verboseDebug = true;
     const checkBounds = true;
     const checkall = false;
+    const disableVectorization = false;
     const conditionalInline = false;
     const verboseErrors = true;
     const parser = Narcissus.parser;
@@ -609,8 +611,10 @@ RiverTrail.compiler.codeGen = (function() {
             // We dump signatures in case there is a forward reference
             s = s + declareLocalFunctions(ast.body.funDecls);
             s = s + generateLocalFunctions(ast.body.funDecls);
-            s = s + "__kernel void RT_" + funDecl.name + "(";
-            //s = s + "__kernel __attribute__((vec_type_hint(float3)))  void RT_" + funDecl.name + "(";
+            if(disableVectorization)
+                s = s + "__kernel __attribute__((vec_type_hint(float3)))  void RT_" + funDecl.name + "(";
+            else
+                s = s + "__kernel void RT_" + funDecl.name + "(";
 
             // add the special return parameter used to detect failure
             s = s + "__global int *_FAILRET, ";
@@ -672,9 +676,17 @@ RiverTrail.compiler.codeGen = (function() {
             // add declaration of bounds checks helper variables
             s = s + "int _sel_idx_tmp; int _FAIL = 0;";
 
-            // add code to declare id_x for each iteration dimension
-            for (i = 0; i < rank; i++) {
-                s = s + "int _id_" + i + " = (int)get_global_id(" + i + ");";
+            if(doIterationSpaceFlattening && rank == 2) {
+                    s = s + "int _id_0" + " = (int)get_global_id(0);";
+                    s += "int RT_Fi = (_id_0/" + iterSpace[1] + ");"; 
+                    s += "int RT_Fj = _id_0 - (RT_Fi * " + iterSpace[1] + ");"; 
+                    s += "_id_0 = RT_Fi; int _id_1 = RT_Fj;";
+            }
+            else {
+                // add code to declare id_x for each iteration dimension
+                for (i = 0; i < rank; i++) {
+                    s = s + "int _id_" + i + " = (int)get_global_id(" + i + ");";
+                }
             }
 
             // add code to compute the offset 'writeoffset' into flat result vector

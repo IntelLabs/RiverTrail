@@ -268,9 +268,17 @@ RiverTrail.compiler.runOCL = function () {
             // The differences are to do with args to the elemental function and are dealt with there so we can use the same routine.
             // kernel.run(rank, shape, tiles)
             try {
-                // console.log("791:new:rank: "+rank+" iterSpace: "+iterSpace);
-                //console.log("driver:389 did not run.");
-                var kernelFailure = kernel.run(rank, iterSpace, iterSpace.map(function () { return 1; }));
+                var kernelFailure = false;
+                if(doIterationSpaceFlattening && rank == 2) {
+                    var redu = [1];
+                    for(var i = 0; i < rank; i++) {
+                        redu [0] *= iterSpace[i];
+                    }
+                    kernelFailure = kernel.run(1, redu, iterSpace.map(function () { return 1; }));
+                }
+                else {
+                    kernelFailure = kernel.run(rank, iterSpace, iterSpace.map(function () { return 1; }));
+                }
             } catch (e) {
                 console.log("kernel.run fails: ", e);
                 throw e;
