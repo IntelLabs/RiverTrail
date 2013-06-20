@@ -315,6 +315,34 @@ RiverTrail.InferMem = function () {
                 // both can be expressions. 
                 infer(ast.children[0], memVars, ins, outs);
                 infer(ast.children[1], memVars, ins, outs);
+                var aVar = ast.children[0];
+                var rhs = ast.children[1];
+                var allocationHelper = function (name) {
+                    "use strict";
+                    if(!ast.typeInfo.isScalarType()) {
+                        var shape = rhs.typeInfo.getOpenCLShape();
+                        var shape_len = shape.length;
+                        debug && console.log("Creating memory for " + name + " with shape: ", shape);
+                        ast.memBuffers = {size:0, list:[]};
+                        var redu = 1;
+                        for(var i = 0; i < shape_len; i++) {
+                            //var type_size = getTypeSize(i, shape, ast.typeInfo.OpenCLType);
+                            var type_size = RiverTrail.Helper.getOpenCLSize(ast.typeInfo.OpenCLType);
+                            var allocation_size = type_size*shape[i]*redu;
+                            debug && console.log("Allocating " + allocation_size + " bytes in " +  name
+                                    + "_" + i + "  for i = " + i);
+                            var memBufferName = memVars.allocate(allocation_size, name + "_" + i);
+                            ast.memBuffers.size +=1;
+                            ast.memBuffers.list.push(memBufferName);
+
+                            redu = redu*shape[i];
+                        }
+                        // Set the primary memory buffer for this node to be the
+                        // top-level buffer
+                        ast.allocatedMem = ast.memBuffers.list[0];
+                        debug && console.log("Total AST allocations: ", ast.memBuffers.size, ast.memBuffers.list.length); 
+                    }
+                };
                 switch (ast.children[0].type) {
                     case IDENTIFIER:
                         // a = expr
@@ -326,42 +354,28 @@ RiverTrail.InferMem = function () {
                         //
                         // case 2:
                         // If <expr> is in a different address space than <a>, we have to copy, too.
-                        var aVar = ast.children[0];
+                        //
+                        // case 3:
+                        // if the lhs and rhs use different floating point representations, we have to copy, too.
                         if (((ast.children[1].typeInfo.getOpenCLAddressSpace() === "__private") && // case 1
                             (ins && ins.contains(aVar.value) && outs && outs.contains(aVar.value))) ||
-                            (aVar.typeInfo.getOpenCLAddressSpace() != ast.children[1].typeInfo.getOpenCLAddressSpace())) { // case 2
-                            if(!ast.typeInfo.isScalarType()) {
-                                var shape = ast.typeInfo.getOpenCLShape();
-                                var shape_len = shape.length;
-                                debug && console.log("Creating memory for " + ast.children[0].value + " with shape: ", shape);
-                                ast.memBuffers = {size:0, list:[]};
-                                var redu = 1;
-                                for(var i = 0; i < shape_len; i++) {
-                                    //var type_size = getTypeSize(i, shape, ast.typeInfo.OpenCLType);
-                                    var type_size = RiverTrail.Helper.getOpenCLSize(ast.typeInfo.OpenCLType);
-                                    var allocation_size = type_size*shape[i]*redu;
-                                    debug && console.log("Allocating " + allocation_size + " bytes in " +  ast.children[0].value
-                                      + "_" + i + "  for i = " + i);
-                                    var memBufferName = memVars.allocate(allocation_size, ast.children[0].value + "_" + i);
-                                    ast.memBuffers.size +=1;
-                                    ast.memBuffers.list.push(memBufferName);
-
-                                    redu = redu*shape[i];
-                                }
-                                // Set the primary memory buffer for this node to be the
-                                // top-level buffer
-                                ast.allocatedMem = ast.memBuffers.list[0];
-                                debug && console.log("Total AST allocations: ", ast.memBuffers.size, ast.memBuffers.list.length); 
-                            }
+                            (aVar.typeInfo.getOpenCLAddressSpace() != ast.children[1].typeInfo.getOpenCLAddressSpace()) || // case 2
+                            (!aVar.typeInfo.equals(rhs.typeInfo, true))) { // case 3
+                            allocationHelper(ast.children[0].value);
                         }
                         break;
                     case INDEX:
                         // case of a[iv] = expr. 
+                        if ((aVar.typeInfo.getOpenCLAddressSpace() != ast.children[1].typeInfo.getOpenCLAddressSpace()) || 
+                            (!aVar.typeInfo.equals(rhs.typeInfo, true))) { 
+                            allocationHelper("INDEX");
+                        }
                         break;
                     case DOT:
                         // Support for updates on object properties.
-                        infer(ast.children[0], memVars, ins, outs);
-                        infer(ast.children[1], memVars, ins, outs);
+                        if (!aVar.typeInfo.equals(rhs.typeInfo, true)) { 
+                            allocationHelper("DOT");
+                        }
                         break;
                     default:
                         reportBug("unhandled lhs in assignment");

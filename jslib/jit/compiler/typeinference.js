@@ -90,7 +90,7 @@ RiverTrail.Typeinference = function () {
 
     var Tp = Type.prototype;
     Tp.toString = function () { return "<general type>"; };
-    Tp.equals = function(other) {
+    Tp.equals = function(other, considerStorageFormat) {
         return (this.kind === other.kind);
     };
     Tp.isArithType = function () { // type is allowed argument to arithmetic operations
@@ -177,10 +177,10 @@ RiverTrail.Typeinference = function () {
 
     var TLp = TLiteral.prototype = new Type(Type.LITERAL);
     TLp.toString = function () { return "Literal: " + this.type + "<" + this.OpenCLType + ">"};
-    TLp.equals = function (other) {
-        return (this.constructor.prototype.equals.call(this, other) &&
+    TLp.equals = function (other, considerStorageFormat) {
+        return (this.constructor.prototype.equals.call(this, other, considerStorageFormat) &&
                 (this.type === other.type) &&
-                (this.OpenCLType === other.OpenCLType));
+                (!considerStorageFormat || (this.OpenCLType === other.OpenCLType)));
     };
     TLp.clone = function (lut) {
         var result;
@@ -237,11 +237,11 @@ RiverTrail.Typeinference = function () {
         s = s + ") -> " + this.result.toString();
         return s;
     };
-    TFp.equals = function (other, argsOnly) {
-        return (this.constructor.prototype.equals.call(this, other) &&
-                (argsOnly || this.result.equals(other.result)) &&
+    TFp.equals = function (other, argsOnly, considerStorageFormat) {
+        return (this.constructor.prototype.equals.call(this, other, considerStorageFormat) &&
+                (argsOnly || this.result.equals(other.result, considerStorageFormat)) &&
                 (this.parameters.length === other.parameters.length) &&
-                this.parameters.every( function (oneP, index) { return oneP.equals(other.parameters[index]);}));
+                this.parameters.every( function (oneP, index) { return oneP.equals(other.parameters[index], considerStorageFormat);}));
     };
     TFp.clone = function (lut) {
         var result;
@@ -307,10 +307,10 @@ RiverTrail.Typeinference = function () {
         s = s + "<" + this.OpenCLType + ">";
         return s;
     };
-    TOp.equals = function (other) {
-        return (this.constructor.prototype.equals.call(this, other) &&
+    TOp.equals = function (other, considerStorageFormat) {
+        return (this.constructor.prototype.equals.call(this, other, considerStorageFormat) &&
                 (this.name === other.name) &&
-                (this.registry[this.name].equals.call(this, other)));
+                (this.registry[this.name].equals.call(this, other, considerStorageFormat)));
     };
     TOp.clone = function (lut) {
         var result;
@@ -369,7 +369,7 @@ RiverTrail.Typeinference = function () {
         this.label = labelGen();
     };
     var TBp = TBottom.prototype = new Type(Type.BOTTOM);
-    TBp.equals = function (other) { return false; };
+    TBp.equals = function (other, considerStorageFormat) { return false; };
 
     // 
     // type environment AKA symbol table
@@ -652,7 +652,7 @@ RiverTrail.Typeinference = function () {
             //this.properties.elements.setAddressSpace(val);
         },
         constructor : undefined,
-        equals : function (other) {
+        equals : function (other, considerStorageFormat) {
             if(other.kind !== "OBJECT" || other.name !== "InlineObject")
                 return false;
             var fields = this.properties.fields;
@@ -667,7 +667,7 @@ RiverTrail.Typeinference = function () {
                 //    return false;
                 if(!other_fields.hasOwnProperty(idx))
                     return false;
-                if(!fields[idx].equals(other_fields[idx]))
+                if(!fields[idx].equals(other_fields[idx], considerStorageFormat))
                     return false;
                 /*
                 if(fields[idx] === other_fields[idx])
@@ -774,10 +774,10 @@ RiverTrail.Typeinference = function () {
         getOpenCLSize : function () {
             return this.properties.shape.reduce(function (prev, curr) { return prev*curr; }, 1) * this.properties.elements.getOpenCLSize();
         },
-        equals : function (other) {
+        equals : function (other, considerStorageFormat) {
             return (this.properties.shape.length === other.properties.shape.length) &&
                    this.properties.shape.every( function (val, idx) { return val === other.properties.shape[idx]; }) &&
-                   (this.properties.elements.equals(other.properties.elements));
+                   (this.properties.elements.equals(other.properties.elements, considerStorageFormat));
         },
         setAddressSpace : function (val) {
             this.properties.addressSpace = val;
@@ -937,10 +937,10 @@ RiverTrail.Typeinference = function () {
         getOpenCLSize : function () {
             return this.properties.shape.reduce(function (prev, curr) { return prev*curr; }, 1) * this.properties.elements.getOpenCLSize();
         },
-        equals : function (other) {
+        equals : function (other, considerStorageFormat) {
             return (this.properties.shape.length === other.properties.shape.length) &&
                    this.properties.shape.every( function (val, idx) { return val === other.properties.shape[idx]; }) &&
-                   (this.properties.elements.equals(other.properties.elements));
+                   (this.properties.elements.equals(other.properties.elements, considerStorageFormat));
         },
         setAddressSpace : function (val) {
             this.properties.addressSpace = val;
@@ -1347,7 +1347,7 @@ RiverTrail.Typeinference = function () {
                             // this function has been called before. Try and find the correct specialisation
                             var found;
                             for (var cnt = 0; cnt < fun.specStore.length; cnt++) {
-                                if (argT.every(function(t, idx) { return t.equals(fun.specStore[cnt].typeInfo.parameters[idx]);})) {
+                                if (argT.every(function(t, idx) { return t.equals(fun.specStore[cnt].typeInfo.parameters[idx], true);})) {
                                     found = fun.specStore[cnt];
                                     break;
                                 }
