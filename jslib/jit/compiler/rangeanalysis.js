@@ -472,7 +472,7 @@ RiverTrail.RangeAnalysis = function () {
                 if (ast.rangeInfo instanceof RangeArray) {
                  ast.rangeInfo.setInt(range);
                 } else {
-                    ast.rangeInfo.isInt = range.isInt;
+                    ast.rangeInfo.isInt = (range instanceof RangeArray) ? range.isInt() : range.isInt;
                 }
             }
         }
