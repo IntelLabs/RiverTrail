@@ -246,7 +246,6 @@ NS_IMETHODIMP dpoCContext::CompileKernel(const nsAString & source, const nsAStri
 	cl_int err_code, err_code2;
 	cl_uint numDevices;
 	cl_device_id *devices = NULL;
-	size_t actual;
 	char *sourceStr, *optionsStr, *kernelNameStr;
 	nsCOMPtr<dpoCKernel> ret;
 	nsresult result;
@@ -278,21 +277,32 @@ NS_IMETHODIMP dpoCContext::CompileKernel(const nsAString & source, const nsAStri
 	if (err_code2 != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("CompileKernel", err_code);
 		goto FAIL;
-	} 
-	err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, buildLog, &actual);
-	if (actual > buildLogSize) {
+	}
+
+	if (buildLogSize == 0) {
 		if (buildLog != NULL) {
 			nsMemory::Free(buildLog);
 		}
-		buildLog = (char *) nsMemory::Alloc(actual * sizeof(char));
-		if (buildLog == NULL) {
-			DEBUG_LOG_STATUS("CompileKernel", "Cannot allocate buildLog");
-			buildLogSize = 0;
-			goto DONE;
-		}
-		buildLogSize = actual;
-		err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, buildLog, &actual);
+		buildLogSize = INITIAL_BUILDLOG_SIZE;
+		buildLog = (char *) nsMemory::Alloc(buildLogSize * sizeof(char));
 	}
+
+	err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, NULL, NULL);
+	while ((err_code2 == CL_INVALID_VALUE) && (buildLogSize < MAX_BUILDLOG_SIZE)) {
+		if (buildLog != NULL) {
+			nsMemory::Free(buildLog);
+			buildLogSize *= 2;
+		} 
+		buildLog = (char *) nsMemory::Alloc(buildLogSize * sizeof(char));
+		err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, NULL, NULL);
+	}
+
+	if (buildLog == NULL) {
+		DEBUG_LOG_STATUS("CompileKernel", "Cannot allocate buildLog");
+		buildLogSize = 0;
+		goto DONE;
+	}
+	err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, buildLog, NULL);
 			
 	if (err_code2 != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("CompileKernel", err_code);
