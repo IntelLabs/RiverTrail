@@ -91,6 +91,18 @@
 
 /////////////////
 
+try {
+    if ((typeof DPOInterface === 'function') && (Components.interfaces.dpoIData === undefined))
+        // great hack to check whether components still exisits
+        // if not, dom.omit_components_in_content has to be set!
+        alert("You seem to use a version of Firefox (22 or newer) where the \n" +
+              "Components object is disabled by default. To use River Trail \n" +
+              "please go to about:config and set the value for the key \n" +
+              "dom.omit_components_in_content to false and reload the page.");
+
+    }
+catch (ignore) {}
+
 
 var ParallelArray = function () {
 

@@ -56,8 +56,10 @@ RiverTrail.compiler = (function () {
     var dpoPlatform;
     try {
         dpoInterface = new DPOInterface();
-        dpoPlatform = dpoInterface.getPlatform(); 
-        openCLContext = dpoPlatform.createContext();
+        if (dpoInterface instanceof Components.interfaces.dpoIInterface) {
+            dpoPlatform = dpoInterface.getPlatform(); 
+            openCLContext = dpoPlatform.createContext();
+        }
     } catch (e) {
         console.log ("Cannot initialise OpenCL interface. Please check the whether the extension was installed and try again.");
         throw Error("Cannot initialise OpenCL Interface: " + JSON.stringify(e));
