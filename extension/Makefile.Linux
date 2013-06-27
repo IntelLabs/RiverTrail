@@ -71,7 +71,7 @@ $(OUTPUTDIR):
 	mkdir -p $(OUTPUTDIR)
 
 $(OUTPUTDIR)/$(OUTPUTNAME): $(OUTPUTDIR) $(OBJFILES)
-	$(CXX) $(OBJFILES) -shared -lOpenCL -L$(GECKODIR)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc -o $@
+	$(CXX) $(OBJFILES) -shared -lOpenCL -L$(GECKODIR)/$(GECKOLIB) -lxpcomglue_s -lnss3 -lmozalloc -o $@
 
 %.xpt: %.idl
 	$(GENTYPELIB) -o $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 

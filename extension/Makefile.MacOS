@@ -81,10 +81,10 @@ $(OUTPUTDIR):
 	mkdir -p $(OUTPUTDIR)
 
 $(OUTPUTDIR)/$(OUTPUTNAME): $(OUTPUTDIR) $(OBJFILES)
-	$(CXX) $(CCFLAGS) $(OBJFILES) -bundle -framework OpenCL -L$(GECKODIR)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR)/$(GECKOLIB)/XUL -o $@
+	$(CXX) $(CCFLAGS) $(OBJFILES) -bundle -framework OpenCL -L$(GECKODIR)/$(GECKOLIB) -lxpcomglue_s -lnss3 -lmozalloc $(GECKODIR)/$(GECKOLIB)/XUL -o $@
 
 $(OUTPUTDIR)/$(OUTPUTNAME32): $(OUTPUTDIR) $(OBJFILES32)
-	$(CXX) $(CCFLAGS) $(OBJFILES32) -bundle -framework OpenCL -L$(GECKODIR32)/$(GECKOLIB) -lxpcomglue_s -lxpcom -lnspr4 -lmozalloc $(GECKODIR32)/$(GECKOLIB)/XUL -arch i386 -o $@ 
+	$(CXX) $(CCFLAGS) $(OBJFILES32) -bundle -framework OpenCL -L$(GECKODIR32)/$(GECKOLIB) -lxpcomglue_s -lnss3 -lmozalloc $(GECKODIR32)/$(GECKOLIB)/XUL -arch i386 -o $@ 
 
 %.xpt: %.idl
 	$(GENTYPELIB) -o $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 
