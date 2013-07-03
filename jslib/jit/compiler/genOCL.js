@@ -369,7 +369,8 @@ RiverTrail.compiler.codeGen = (function() {
             s = s + " int _FAIL = 0;"; // declare local _FAIL variable for selection failures
             s = s + " int _sel_idx_tmp;"; // tmp var required for selections
             s = s + returnType + " " + boilerplate.localResultName + ";"; // tmp var for parking result
-            s = s + oclStatements(ast.body); // Generate the statements;
+            var body = oclStatements(ast.body); // Generate the statements;
+            s += tempVars.declare() + body;
             s = s + " } ";
 
             calledScope.exit(previousCalledScope);
@@ -1933,11 +1934,8 @@ RiverTrail.compiler.codeGen = (function() {
 
                 // function application
         case CALL:
-
-                reportError("CALL not yet implemented", ast);
+                s = s + oclExpression(ast);
                 break;
-                // Below is the typ
-
                 // argument lists
         case LIST:      
                 for (var i=0; i<ast.children.length;i++) {
