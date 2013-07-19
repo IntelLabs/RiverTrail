@@ -121,11 +121,11 @@ dpoCContext::dpoCContext(dpoIPlatform *aParent)
 #endif /* WINDOWS_ROUNDTRIP */
 }
 
-nsresult dpoCContext::InitContext(JSContext *cx, cl_platform_id platform)
+nsresult dpoCContext::InitContext(JSContext *cx, cl_uint device_index, cl_platform_id platform)
 {
 	cl_int err_code;
+	cl_uint ndevices;
 	cl_device_id *devices;
-	size_t cb;
 
 #ifdef INCREMENTAL_MEM_RELEASE
 	defer_list = (cl_mem *)nsMemory::Alloc(DEFER_LIST_LENGTH * sizeof(cl_mem));
@@ -134,33 +134,26 @@ nsresult dpoCContext::InitContext(JSContext *cx, cl_platform_id platform)
 #endif /* INCREMENTAL_MEM_RELEASE */
 
 	cl_context_properties context_properties[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platform, NULL};
-	
-	context = clCreateContextFromType(context_properties, CL_DEVICE_TYPE_CPU, ReportCLError, this, &err_code);
-	if (err_code != CL_SUCCESS) {
+	// Get number of devices
+	err_code = clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 0, NULL, &ndevices);
+	// Get list of devices
+	devices = (cl_device_id *)nsMemory::Alloc(sizeof(cl_device_id) * ndevices);
+	if(device_index < 0 || device_index >= ndevices) {
 		DEBUG_LOG_ERROR("InitContext", err_code);
+		nsMemory::Free(devices);
 		return NS_ERROR_NOT_AVAILABLE;
 	}
-
-	err_code = clGetContextInfo(context, CL_CONTEXT_DEVICES, 0, NULL, &cb);
-	if (err_code != CL_SUCCESS) {
-		DEBUG_LOG_ERROR("InitContext", err_code);
-		return NS_ERROR_NOT_AVAILABLE;
-	}
-
-	devices = (cl_device_id *)nsMemory::Alloc(sizeof(cl_device_id)*cb);
-	if (devices == NULL) {
-		DEBUG_LOG_STATUS("InitContext", "Cannot allocate device list");
-		return NS_ERROR_OUT_OF_MEMORY;
-	}
-
-	err_code = clGetContextInfo(context, CL_CONTEXT_DEVICES, cb, devices, NULL);
+	err_code = clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, ndevices, devices, NULL);
+	// Create context
+	context = clCreateContext(context_properties, 1, &(devices[device_index]), ReportCLError, this, &err_code);
 	if (err_code != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("InitContext", err_code);
 		nsMemory::Free(devices);
 		return NS_ERROR_NOT_AVAILABLE;
 	}
-
-	cmdQueue = clCreateCommandQueue(context, devices[0], 
+	// Cache the index of the device we are using in this context
+	deviceId = devices[device_index];
+	cmdQueue = clCreateCommandQueue(context, devices[device_index],
 #ifdef CLPROFILE 
 		CL_QUEUE_PROFILING_ENABLE |
 #endif /* CLPROFILE */
@@ -177,7 +170,7 @@ nsresult dpoCContext::InitContext(JSContext *cx, cl_platform_id platform)
 	
 	DEBUG_LOG_STATUS("InitContext", "queue is " << cmdQueue);
 
-	err_code = clGetDeviceInfo(devices[0], CL_DEVICE_MEM_BASE_ADDR_ALIGN, sizeof(alignment_size), &alignment_size, NULL);
+	err_code = clGetDeviceInfo(devices[device_index], CL_DEVICE_MEM_BASE_ADDR_ALIGN, sizeof(alignment_size), &alignment_size, NULL);
 	if (err_code != CL_SUCCESS) {
 		/* we can tolerate this, simply do not align */
 		alignment_size = 8;
@@ -246,7 +239,6 @@ NS_IMETHODIMP dpoCContext::CompileKernel(const nsAString & source, const nsAStri
 	cl_int err_code, err_code2;
 	cl_uint numDevices;
 	cl_device_id *devices = NULL;
-	size_t actual;
 	char *sourceStr, *optionsStr, *kernelNameStr;
 	nsCOMPtr<dpoCKernel> ret;
 	nsresult result;
@@ -278,21 +270,32 @@ NS_IMETHODIMP dpoCContext::CompileKernel(const nsAString & source, const nsAStri
 	if (err_code2 != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("CompileKernel", err_code);
 		goto FAIL;
-	} 
-	err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, buildLog, &actual);
-	if (actual > buildLogSize) {
+	}
+
+	if (buildLogSize == 0) {
 		if (buildLog != NULL) {
 			nsMemory::Free(buildLog);
 		}
-		buildLog = (char *) nsMemory::Alloc(actual * sizeof(char));
-		if (buildLog == NULL) {
-			DEBUG_LOG_STATUS("CompileKernel", "Cannot allocate buildLog");
-			buildLogSize = 0;
-			goto DONE;
-		}
-		buildLogSize = actual;
-		err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, buildLog, &actual);
+		buildLogSize = INITIAL_BUILDLOG_SIZE;
+		buildLog = (char *) nsMemory::Alloc(buildLogSize * sizeof(char));
 	}
+
+	err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, NULL, NULL);
+	while ((err_code2 == CL_INVALID_VALUE) && (buildLogSize < MAX_BUILDLOG_SIZE)) {
+		if (buildLog != NULL) {
+			nsMemory::Free(buildLog);
+			buildLogSize *= 2;
+		} 
+		buildLog = (char *) nsMemory::Alloc(buildLogSize * sizeof(char));
+		err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, NULL, NULL);
+	}
+
+	if (buildLog == NULL) {
+		DEBUG_LOG_STATUS("CompileKernel", "Cannot allocate buildLog");
+		buildLogSize = 0;
+		goto DONE;
+	}
+	err_code2 = clGetProgramBuildInfo(program, devices[0], CL_PROGRAM_BUILD_LOG, buildLogSize, buildLog, NULL);
 			
 	if (err_code2 != CL_SUCCESS) {
 		DEBUG_LOG_ERROR("CompileKernel", err_code);

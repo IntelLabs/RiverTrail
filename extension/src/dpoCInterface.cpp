@@ -86,61 +86,138 @@ cl_platform_id *dpoCInterface::platforms = NULL;
 nsresult dpoCInterface::InitPlatformInfo()
 {
 	cl_int err_code;
+	// |nplatforms| is used to get number of platforms
+	// |naplatforms| is used for the number of actual platforms returned into |platforms|
+	// |numSupportedPlatforms| is the number of supported platforms found
 	cl_uint nplatforms;
-	
-	err_code = clGetPlatformIDs( 0, NULL, &nplatforms);
-	if (err_code != CL_SUCCESS) {
-		DEBUG_LOG_ERROR( "InitPlatformInfo", err_code);
-		return NS_ERROR_NOT_AVAILABLE;
-	}
-
-	platforms = new cl_platform_id[nplatforms];
-
-	err_code = clGetPlatformIDs( nplatforms, platforms, &noOfPlatforms);
-
-	if (err_code != CL_SUCCESS) {
-		DEBUG_LOG_ERROR( "InitPlatformInfo", err_code);
-		return NS_ERROR_NOT_AVAILABLE;
-	}
-
-	return NS_OK;
-}
-
-
-/* dpoIPlatform getPlatform (); */
-NS_IMETHODIMP dpoCInterface::GetPlatform(dpoIPlatform **_retval)
-{
-	nsresult result = NS_OK;
-	cl_int err_code;
-	nsCOMPtr<dpoCPlatform> thePlatform;
+	cl_uint naplatforms;
+	cl_uint numSupportedPlatforms = 0;
 	const cl_uint maxNameLength = 256;
 	char name[maxNameLength];
-	
-	if (platforms == NULL) {
-		result = InitPlatformInfo();
-	}
 
-	if (NS_FAILED(result)) 
-		return result;
-		
-	for (cl_uint i = 0; i < noOfPlatforms; i++) {
-		err_code = clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, maxNameLength*sizeof(char), name, NULL);
+	err_code = clGetPlatformIDs(0, NULL, &nplatforms);
+	if (err_code != CL_SUCCESS) {
+		DEBUG_LOG_ERROR( "InitPlatformInfo", err_code);
+		return NS_ERROR_NOT_AVAILABLE;
+	}
+	// All found platforms
+	cl_platform_id * allPlatforms = new cl_platform_id[nplatforms];
+	// All supported platforms
+	platforms = new cl_platform_id[nplatforms];
+	err_code = clGetPlatformIDs( nplatforms, allPlatforms, &naplatforms);
+	if (err_code != CL_SUCCESS) {
+		DEBUG_LOG_ERROR( "InitPlatformInfo", err_code);
+		return NS_ERROR_NOT_AVAILABLE;
+	}
+	for (cl_uint i = 0; i < naplatforms; i++) {
+		err_code = clGetPlatformInfo(allPlatforms[i], CL_PLATFORM_NAME, maxNameLength*sizeof(char), name, NULL);
 		if (err_code != CL_SUCCESS) {
 			DEBUG_LOG_ERROR( "GetIntelPlatform", err_code);
 			return NS_ERROR_NOT_AVAILABLE;
 		}
 		if ((strcmp(name, "Intel(R) OpenCL") == 0) || (strcmp(name, "Apple") == 0)) {
-			thePlatform = new dpoCPlatform(this, platforms[i]);		
+			platforms[numSupportedPlatforms++] = allPlatforms[i];
+		}
+	}
+	if (err_code != CL_SUCCESS) {
+		DEBUG_LOG_ERROR( "InitPlatformInfo", err_code);
+		return NS_ERROR_NOT_AVAILABLE;
+	}
+	noOfPlatforms = numSupportedPlatforms;
+	delete[] allPlatforms;
+	return NS_OK;
+}
+
+/* readonly attribute PRUint32 numberOfPlatforms; */
+NS_IMETHODIMP dpoCInterface::GetNumberOfPlatforms(PRUint32 *aNumberOfPlatforms)
+{
+	nsresult result = NS_OK;
+
+	if (platforms == NULL) {
+		result = InitPlatformInfo();
+	}
+
+	*aNumberOfPlatforms = noOfPlatforms;
+
+    return result;
+}
+
+/* dpoIPlatform getPlatform (in PRUint32 platform_id); */
+NS_IMETHODIMP dpoCInterface::GetPlatform(const JS::Value &jPlatform_id, dpoIPlatform **_retval)
+{
+	nsresult result = NS_OK;
+	int32_t platform_id;
+	nsCOMPtr<dpoCPlatform> thePlatform;
+
+		if (platforms == NULL) {
+		result = InitPlatformInfo();
+	}
+
+	if (NS_SUCCEEDED(result)) {
+		DEBUG_LOG_STATUS("GetPlatform", "value for platform is " << platform_id);
+
+		if (jPlatform_id.isInt32()) {
+			platform_id = jPlatform_id.toInt32();
+		} else if (jPlatform_id.isNullOrUndefined()) {
+			result = loadPlatformPref(platform_id);
+		}
+	}
+
+	if (NS_SUCCEEDED(result)) {
+		if (platform_id < 0 || platform_id >= noOfPlatforms) {
+			result = NS_ERROR_ILLEGAL_VALUE;
+		} else {
+			thePlatform = new dpoCPlatform(this, platforms[platform_id]);
 			if (thePlatform == NULL) {
-				return NS_ERROR_OUT_OF_MEMORY;
+				result = NS_ERROR_OUT_OF_MEMORY;
 			} else {
-				thePlatform.forget((dpoCPlatform **) _retval);
-				return NS_OK;
+				NS_ADDREF(thePlatform);
+				*_retval = thePlatform;
 			}
 		}
 	}
 
-	return NS_ERROR_NOT_AVAILABLE;
+    return result;
+}
+
+/* dpoIPlatform getDefaultPlatform (); */
+nsresult dpoCInterface::loadPlatformPref(int32_t &platform_id)
+{
+	nsresult result;
+	nsCOMPtr<nsIServiceManager> serviceManager;
+	nsCOMPtr<nsIPrefService> prefService;
+	nsCOMPtr<nsIPrefBranch> prefBranch;
+	
+	result = NS_GetServiceManager(getter_AddRefs(serviceManager));
+	if (result != NS_OK) {
+		DEBUG_LOG_STATUS("GetDefaultPlatform", "cannot access service manager");
+		return result;
+	}
+
+	result = serviceManager->GetServiceByContractID("@mozilla.org/preferences-service;1", NS_GET_IID(nsIPrefService), getter_AddRefs(prefService));
+	if (result != NS_OK) {
+		DEBUG_LOG_STATUS("GetDefaultPlatform", "cannot access preferences manager");
+		return result;
+	}
+
+	result = prefService->GetBranch(DPO_PREFERENCE_BRANCH, getter_AddRefs(prefBranch));
+	if (result != NS_OK) {
+		DEBUG_LOG_STATUS("GetDefaultPlatform", "cannot access preference branch " DPO_PREFERENCE_BRANCH);
+		return result;
+	}
+
+	result = prefBranch->GetIntPref(DPO_DEFAULT_PLATFORM_PREFNAME, &platform_id);
+	if (result != NS_OK) {
+		DEBUG_LOG_STATUS("GetDefaultPlatform", "cannot read preference value " DPO_DEFAULT_PLATFORM_PREFNAME);
+		return result;
+	}
+
+	if (platform_id < 0) {
+		DEBUG_LOG_STATUS("GetDefaultPlatform", "value for default platform is " << platform_id);
+		return NS_ERROR_ILLEGAL_VALUE;
+	}
+
+	return result;
 }
 
 NS_IMETHODIMP dpoCInterface::GetVersion(uint32_t *aVersion) 

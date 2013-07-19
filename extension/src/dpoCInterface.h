@@ -46,7 +46,8 @@ public:
   NS_DECL_DPOIINTERFACE
   
   NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(dpoCInterface)
-
+  static cl_uint noOfPlatforms;
+  int test_flag;
   static dpoCInterface *getInstance();
 
 private:
@@ -55,8 +56,7 @@ private:
 
 protected:
   static nsCOMPtr<dpoCInterface> singleton;
-
   static cl_platform_id *platforms;
-  static cl_uint noOfPlatforms;
   static nsresult InitPlatformInfo();
+  static nsresult loadPlatformPref(int32_t &platform_id);
 };

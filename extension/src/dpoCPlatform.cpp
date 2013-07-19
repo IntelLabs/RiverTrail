@@ -100,6 +100,7 @@ NS_IMETHODIMP dpoCPlatform::GetNumberOfDevices(uint32_t *aNumberOfDevices)
     return NS_OK;
 }
 
+
 nsresult dpoCPlatform::GetPlatformPropertyHelper(cl_platform_info param, nsAString & out)
 {
 	char *rString = NULL;
@@ -121,6 +122,62 @@ nsresult dpoCPlatform::GetPlatformPropertyHelper(cl_platform_info param, nsAStri
 	}
 	
 	return result;
+}
+#define MAX_DEVICE_NAME_LENGTH 64
+/* readonly attribute AString deviceNames; */
+NS_IMETHODIMP dpoCPlatform::GetDeviceNames(nsAString & aDeviceNames)
+{
+
+	char *dString = NULL;
+	cl_uint ndevices;
+	cl_device_id * devices;
+	char *deviceNameBase;
+	char currDeviceName[MAX_DEVICE_NAME_LENGTH];
+	// Count number of devices on this platform
+	cl_int err_code = clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 0, NULL, &ndevices);
+	if (err_code != CL_SUCCESS) {
+		return NS_ERROR_NOT_AVAILABLE;
+	}
+	// Allocate memory for all the device ids
+	devices = (cl_device_id *)nsMemory::Alloc(sizeof(cl_device_id) * ndevices);
+	// Get all the device ids
+	err_code = clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, ndevices, devices, NULL);
+	if (err_code != CL_SUCCESS) {
+		return NS_ERROR_NOT_AVAILABLE;
+	}
+	unsigned int deviceNameBaseLength = sizeof(char)*MAX_DEVICE_NAME_LENGTH*(ndevices)+sizeof(char)*ndevices+1;
+
+	// Allocate memory for the result string
+	deviceNameBase = (char *)nsMemory::Alloc(deviceNameBaseLength);
+	memset(deviceNameBase, 0, deviceNameBaseLength);
+	// Iterate over devices and
+	for(int i = 0; i < ndevices; i++) {
+		size_t aDeviceNameSize;
+		memset(currDeviceName, 0, MAX_DEVICE_NAME_LENGTH);
+		// Get device name
+		err_code = clGetDeviceInfo(devices[i], CL_DEVICE_NAME,
+			MAX_DEVICE_NAME_LENGTH, currDeviceName, &aDeviceNameSize);
+		if (err_code != CL_SUCCESS) {
+			return NS_ERROR_NOT_AVAILABLE;
+		}
+		// Check if the device is supported. Currently we only support Intel devices.
+		// The device name may have leading spaces. Seek to the start of the name.
+
+		char *nameStart = currDeviceName;
+		while(*(nameStart++) == ' ') {};
+		if(strncmp(nameStart-1, "Intel(R)", 8) == 0) {
+			strncat(deviceNameBase, currDeviceName, aDeviceNameSize);
+        }
+		else {
+			strncat(deviceNameBase, "Unknown Device", 16);
+		}
+		strncat(deviceNameBase, "#", 1);
+	}
+	aDeviceNames.AssignLiteral(deviceNameBase);
+	// Free memory for device ids
+	nsMemory::Free(devices);
+	nsMemory::Free(deviceNameBase);
+	return NS_OK;
 }
 
 /* readonly attribute AString version; */
@@ -154,17 +211,72 @@ NS_IMETHODIMP dpoCPlatform::GetExtensions(nsAString & aExtensions)
 }
 
 /* dpoIContext createContext (in long target); */
-NS_IMETHODIMP dpoCPlatform::CreateContext(JSContext *cx, dpoIContext **_retval)
+NS_IMETHODIMP dpoCPlatform::CreateContext(const JS::Value &jTarget, JSContext *cx, dpoIContext **_retval)
 {
 	nsCOMPtr<dpoCContext> context;
-	nsresult result;
+	nsresult result = NS_OK;
+	long target;
 
-	context = new dpoCContext( this);
-	result = context->InitContext(cx, platform);
+	if (jTarget.isInt32()) {
+		target = jTarget.toInt32();
+	} else if (jTarget.isNullOrUndefined()) {
+		result = loadDevicePref(target);
+	} else {
+		return NS_ERROR_INVALID_ARG;
+	}
+
+	if (NS_SUCCEEDED(result)) {
+		context = new dpoCContext( this);
+		// Create a context with device index specified in |target|
+		result = context->InitContext(cx, target, platform);
+	}
 
 	if (NS_SUCCEEDED(result)) {
 		context.forget((dpoCContext **) _retval);
 	}
+
+    return result;
+}
+
+/* dpoIContext createDefaultContext (); */
+nsresult dpoCPlatform::loadDevicePref(long &target)
+{
+	nsresult result;
+	nsCOMPtr<nsIServiceManager> serviceManager;
+	nsCOMPtr<nsIPrefService> prefService;
+	nsCOMPtr<nsIPrefBranch> prefBranch;
+	int32_t defDeviceType;
+
+	result = NS_GetServiceManager(getter_AddRefs(serviceManager));
+	if (result != NS_OK) {
+		DEBUG_LOG_STATUS("GetDefaultContext", "cannot access service manager");
+		return result;
+	}
+
+	result = serviceManager->GetServiceByContractID("@mozilla.org/preferences-service;1", NS_GET_IID(nsIPrefService), getter_AddRefs(prefService));
+	if (result != NS_OK) {
+		DEBUG_LOG_STATUS("GetDefaultContext", "cannot access preferences manager");
+		return result;
+	}
+
+	result = prefService->GetBranch(DPO_PREFERENCE_BRANCH, getter_AddRefs(prefBranch));
+	if (result != NS_OK) {
+		DEBUG_LOG_STATUS("GetDefaultContext", "cannot access preference branch " DPO_PREFERENCE_BRANCH);
+		return result;
+	}
+
+	result = prefBranch->GetIntPref(DPO_DEFAULT_DEVICETYPE_PREFNAME, &defDeviceType);
+	if (result != NS_OK) {
+		DEBUG_LOG_STATUS("GetDefaultContext", "cannot read preference value " DPO_DEFAULT_DEVICETYPE_PREFNAME);
+		return result;
+	}
+
+	if (defDeviceType < 0) {
+		DEBUG_LOG_STATUS("GetDefaultContext", "value for default device type is " << defDeviceType);
+		return NS_ERROR_ILLEGAL_VALUE;
+	}
+
+	target = defDeviceType;
 
     return result;
 }

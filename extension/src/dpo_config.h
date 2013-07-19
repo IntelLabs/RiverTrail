@@ -42,8 +42,12 @@
 #define INCREMENTAL_MEM_RELEASE /* defer free of memObjs to disrtibute GC time */
 #undef DIRECT_WRITE				/* support helper function for fast write to canvas */
 
+#define INITIAL_BUILDLOG_SIZE	256							 /* initial size for buildlog */
+#define MAX_BUILDLOG_SIZE		(INITIAL_BUILDLOG_SIZE << 8) /* maxium size of buildlog in bytes */
+
 #define DPO_PREFERENCE_BRANCH "extensions.dpointerface."	/* preference branch to use */
 #define DPO_DEFAULT_PLATFORM_PREFNAME "defaultPlatform"		/* preference name for default platform */
+#define DPO_DEFAULT_DEVICETYPE_PREFNAME "defaultDeviceType"	/* preference name for default device type */
 
 #define DEFER_LIST_LENGTH 4096	/* maximum number of in flight buffers */
 #define DEFER_CHUNK_SIZE 20		/* granularity of free operation */

@@ -91,6 +91,18 @@
 
 /////////////////
 
+try {
+    if ((typeof DPOInterface === 'function') && (Components.interfaces.dpoIData === undefined))
+        // great hack to check whether components still exisits
+        // if not, dom.omit_components_in_content has to be set!
+        alert("You seem to use a version of Firefox (22 or newer) where the \n" +
+              "Components object is disabled by default. To use River Trail \n" +
+              "please go to about:config and set the value for the key \n" +
+              "dom.omit_components_in_content to false and reload the page.");
+
+    }
+catch (ignore) {}
+
 
 var ParallelArray = function () {
 
@@ -140,10 +152,10 @@ var ParallelArray = function () {
             var dpoP;
             var dpoC;
             try {
+                // JS: Should these be cached and reused in driver.js ?
                 dpoI = new DPOInterface();
                 dpoP = dpoI.getPlatform();
                 dpoC = dpoP.createContext();
-
                 extensions = dpoC.extensions || dpoP.extensions;
             } catch (e) {
                 console.log("Unable to query dpoInterface: "+e);
@@ -1015,23 +1027,27 @@ var ParallelArray = function () {
         induce reordering of the arguments passed to the elemental function's.
     ***/
 
-    var reduce = function reduce(f, optionalInit) {
+    var reduce = function reduce(f) {
         // SAH: for now we have to manually unwrap. Proxies might be a solution but they 
         //      are too underspecified as of yet
         if (f instanceof low_precision.wrapper) {
             f = f.unwrap();
         }
 
+        var callArguments = Array.prototype.slice.call(arguments, 0); // array copy
+        callArguments.unshift(0);
+
         var len = this.shape[0];
         var result;
         var i;
 
-        result = this.get(0);
+        callArguments[0] = this.get(0);
         for (i=1;i<len;i++) {
-            result = f.call(this, result, this.get(i));
+            callArguments[1] = this.get(i);
+            callArguments[0] = f.apply(this, callArguments);
         }
 
-        return result;
+        return callArguments[0];
     };
     /***
         scan

@@ -1,0 +1,119 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+ 
+<prefwindow id="dpointerface-prefs"
+     title="DPO Interface Extension Options"
+     xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+ 
+<prefpane id="dpointerface-prefs-platform" label="OpenCL Platform Settings">
+  <preferences>
+    <preference id="pref-defaultPlatform" name="extensions.dpointerface.defaultPlatform" type="int"/>
+  </preferences>
+ 
+  <groupbox>
+    <caption label="Default OpenCL Platform" />
+    <label control="ctl-defaultPlatform" value="Select the OpenCL platform you want to use by default from the list below..." />
+    <listbox id="defaultPlatform" >
+        <listhead>
+            <listheader label="Name" />
+            <listheader label="Version" />
+            <listheader label="Vendor" />
+        </listhead>
+        <listcols>
+            <listcol flex="1" />
+            <listcol flex="1" />
+            <listcol flex="1" />
+        </listcols>
+    </listbox>
+  </groupbox>
+  <groupbox>
+    <caption label="Select an OpenCL Device" />
+    <menulist id="defaultDeviceType" >
+      <menupopup id="deviceMenuPopup">
+      </menupopup>
+    </menulist>
+  </groupbox>
+</prefpane>
+ 
+<script type="text/javascript">
+    <![CDATA[
+    // load all available interfaces
+    function addPlatform(dpoI, menu, id, isHighlighted) {
+        var platform = dpoI.getPlatform(id);
+        var deviceNamesString = platform.deviceNames;
+        allPlatforms[id] = {"deviceString": deviceNamesString};
+        var row = document.createElement("listitem");
+        var item;
+        
+        item = document.createElement("listcell"); 
+        item.setAttribute("label", platform.name);
+        row.appendChild(item);
+        item = document.createElement("listcell"); 
+        item.setAttribute("label", platform.version);
+        row.appendChild(item);
+        item = document.createElement("listcell"); 
+        item.setAttribute("label", platform.vendor);
+        row.appendChild(item);
+        row.setAttribute("selected", isHighlighted);
+        menu.appendChild(row);
+    }
+    function addDevices(platformIndex) {
+        var deviceMenu = document.getElementById("defaultDeviceType");
+        var deviceMenuPopup = document.getElementById("deviceMenuPopup");
+        // Remove popup to clear everything
+        for(var i = 0; i < deviceMenu.childNodes.length; i++) {
+            deviceMenu.removeChild(deviceMenu.childNodes[i]);
+        }
+        deviceMenu.selectedIndex = 0;
+        
+        var deviceString = allPlatforms[platformIndex].deviceString.trim();
+
+        var devices = deviceString.split("#");
+        for(var i = 0; i < devices.length; i++) {
+            if(devices[i] === "Unknown Device" || devices[i] === "")
+                continue;
+            deviceMenu.appendItem(devices[i].trim(), i);
+        }
+        
+
+    }
+    var prefService = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService);  
+    var dpoIPref = prefService.getBranch("extensions.dpointerface.");
+    var defaultPlatform = dpoIPref.getIntPref("defaultPlatform");
+    var defaultDevice = dpoIPref.getIntPref("defaultDeviceType");
+    if(defaultPlatform < 0 || defaultPlatform === undefined) {
+        defaultPlatform = 0;
+    }
+    if(defaultDevice < 0 || defaultDevice === undefined) {
+        defaultDevice = 0;
+    }
+    var allPlatforms = [];
+    var mPlatform = document.getElementById("defaultPlatform");
+    var dpoI = new DPOInterface();
+    var numPlatforms = dpoI.numberOfPlatforms;
+    for (var cnt = 0; cnt < numPlatforms; cnt++) {
+        addPlatform(dpoI, mPlatform, cnt, (cnt === defaultPlatform) ? "true" : "false");
+    }
+    addDevices(defaultPlatform);
+    mPlatform.onselect = function writePlatform() {
+        if(mPlatform.selectedIndex !== defaultPlatform) {
+            mPlatform.getItemAtIndex(defaultPlatform).setAttribute("selected", "false");
+        }
+        if(mPlatform.selectedIndex > 0 && mPlatform.selectedIndex < allPlatforms.length) {
+            dpoIPref.setIntPref("defaultPlatform", mPlatform.selectedIndex);
+            // Query and populate device list
+            addDevices(mPlatform.selectedIndex);
+        }
+    }
+    var mDevice = document.getElementById("defaultDeviceType");
+    mDevice.selectedIndex = defaultDevice;
+    mDevice.onselect = function writeDevice() {
+        if (mDevice.selectedItem != null) {
+            dpoIPref.setIntPref("defaultDeviceType", mDevice.selectedItem.value);
+        }
+    }
+    ]]>
+</script>
+</prefwindow>
+
+

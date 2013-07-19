@@ -70,13 +70,13 @@ You will get the string representation of your first ParallelArray as output:<br
 <br/>
 Or you can create the same array using a comprehension:<br/>
 <br/>
-<b>var second = new ParallelArray(4, function f(idx) { return idx+1; });</b><br/>
+<b>var second = new ParallelArray(4, function (idx) { return idx+1; });</b><br/>
 <br/>
 Some more idioms to play with: <br/>
 <br />
-<i>increment: </i><b>var result = first.map(function f(val) {return val+1;})</b><br/>
-<i>add: </i><b>var result = first.combine(function f(idx,snd) {return this.get(idx)+snd.get(idx);}, second)</b><br/>
-<i>sum: </i><b>var result = first.reduce(function f(a, b) {return a + b;})</b><br/>
+<i>increment: </i><b>var result = first.map(function (val) {return val+1;})</b><br/>
+<i>add: </i><b>var result = first.combine(function (idx,snd) {return this.get(idx)+snd.get(idx);}, second)</b><br/>
+<i>sum: </i><b>var result = first.reduce(function (a, b) {return a + b;})</b><br/>
 <br/>
 Enjoy!<br/>
 <br/>
