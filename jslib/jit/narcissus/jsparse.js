@@ -54,11 +54,23 @@ Narcissus.parser = (function() {
     var lexer = Narcissus.lexer;
     var definitions = Narcissus.definitions;
 
-    const StringMap = definitions.StringMap;
+    const Dict = definitions.Dict;
     const Stack = definitions.Stack;
 
     // Set constants in the local scope.
     eval(definitions.consts);
+
+    // Banned statement types by language version.
+    const blackLists = { 160: {}, 185: {}, harmony: {} };
+    blackLists[160][IMPORT] = true;
+    blackLists[160][EXPORT] = true;
+    blackLists[160][LET] = true;
+    blackLists[160][MODULE] = true;
+    blackLists[160][YIELD] = true;
+    blackLists[185][IMPORT] = true;
+    blackLists[185][EXPORT] = true;
+    blackLists[185][MODULE] = true;
+    blackLists.harmony[WITH] = true;
 
     /*
      * pushDestructuringVarDecls :: (node, hoisting node) -> void
@@ -76,21 +88,19 @@ Narcissus.parser = (function() {
         }
     }
 
-    // NESTING_TOP: top-level
-    // NESTING_SHALLOW: nested within static forms such as { ... } or labeled statement
-    // NESTING_DEEP: nested within dynamic forms such as if, loops, etc.
-    const NESTING_TOP = 0, NESTING_SHALLOW = 1, NESTING_DEEP = 2;
-
-    function StaticContext(parentScript, parentBlock, inFunction, inForLoopInit, nesting) {
+    function StaticContext(parentScript, parentBlock, inModule, inFunction) {
         this.parentScript = parentScript;
-        this.parentBlock = parentBlock;
-        this.inFunction = inFunction;
-        this.inForLoopInit = inForLoopInit;
-        this.nesting = nesting;
+        this.parentBlock = parentBlock || parentScript;
+        this.inModule = inModule || false;
+        this.inFunction = inFunction || false;
+        this.inForLoopInit = false;
+        this.topLevel = true;
         this.allLabels = new Stack();
         this.currentLabels = new Stack();
         this.labeledTargets = new Stack();
+        this.defaultLoopTarget = null;
         this.defaultTarget = null;
+        this.blackList = blackLists[Narcissus.options.version];
         Narcissus.options.ecma3OnlyMode && (this.ecma3OnlyMode = true);
         Narcissus.options.parenFreeMode && (this.parenFreeMode = true);
     }
@@ -116,49 +126,60 @@ Narcissus.parser = (function() {
                                  allLabels: this.allLabels.push(label) });
         },
         pushTarget: function(target) {
-            var isDefaultTarget = target.isLoop || target.type === SWITCH;
+            var isDefaultLoopTarget = target.isLoop;
+            var isDefaultTarget = isDefaultLoopTarget || target.type === SWITCH;
 
             if (this.currentLabels.isEmpty()) {
-                return isDefaultTarget
-                     ? this.update({ defaultTarget: target })
-                     : this;
+                if (isDefaultLoopTarget) this.update({ defaultLoopTarget: target });
+                if (isDefaultTarget) this.update({ defaultTarget: target });
+                return this;
             }
 
-            target.labels = new StringMap();
+            target.labels = new Dict();
             this.currentLabels.forEach(function(label) {
                 target.labels.set(label, true);
             });
             return this.update({ currentLabels: new Stack(),
                                  labeledTargets: this.labeledTargets.push(target),
+                                 defaultLoopTarget: isDefaultLoopTarget
+                                                    ? target
+                                                    : this.defaultLoopTarget,
                                  defaultTarget: isDefaultTarget
                                                 ? target
                                                 : this.defaultTarget });
         },
-        nest: function(atLeast) {
-            var nesting = Math.max(this.nesting, atLeast);
-            return (nesting !== this.nesting)
-                 ? this.update({ nesting: nesting })
-                 : this;
+        nest: function() {
+            return this.topLevel ? this.update({ topLevel: false }) : this;
+        },
+        allow: function(type) {
+            switch (type) {
+              case EXPORT:
+                if (!this.inModule || this.inFunction || !this.topLevel)
+                    return false;
+                // FALL THROUGH
+
+              case IMPORT:
+                return !this.inFunction && this.topLevel;
+
+              case MODULE:
+                return !this.inFunction && this.topLevel;
+
+              default:
+                return true;
+            }
         }
     };
 
     /*
-     * Script :: (tokenizer, boolean) -> node
+     * Script :: (tokenizer, boolean, boolean) -> node
      *
-     * Parses the toplevel and function bodies.
+     * Parses the toplevel and module/function bodies.
      */
-    function Script(t, inFunction) {
+    function Script(t, inModule, inFunction) {
         var n = new Node(t, scriptInit());
-        var x = new StaticContext(n, n, inFunction, false, NESTING_TOP);
-        Statements(t, x, n);
+        Statements(t, new StaticContext(n, n, inModule, inFunction), n);
         return n;
     }
-
-    // We extend Array slightly with a top-of-stack method.
-    definitions.defineProperty(Array.prototype, "top",
-                               function() {
-                                   return this.length && this[this.length-1];
-                               }, false, false, true);
 
     /*
      * Node :: (tokenizer, optional init object) -> node
@@ -186,9 +207,71 @@ Narcissus.parser = (function() {
             this[prop] = init[prop];
     }
 
-    var Np = Node.prototype = {};
+    /*
+     * SyntheticNode :: (tokenizer, optional init object) -> node
+     */
+    function SyntheticNode(t, init) {
+        // print("SYNTHETIC NODE");
+        // if (init.type === COMMA) {
+        //     print("SYNTHETIC COMMA");
+        //     print(init);
+        // }
+        this.tokenizer = t;
+        this.children = [];
+        for (var prop in init)
+            this[prop] = init[prop];
+        this.synthetic = true;
+    }
+
+    var Np = Node.prototype = SyntheticNode.prototype = {};
     Np.constructor = Node;
-    Np.toSource = Object.prototype.toSource;
+
+    const TO_SOURCE_SKIP = {
+        type: true,
+        value: true,
+        lineno: true,
+        start: true,
+        end: true,
+        tokenizer: true,
+        assignOp: true
+    };
+    function unevalableConst(code) {
+        var token = definitions.tokens[code];
+        var constName = definitions.opTypeNames.hasOwnProperty(token)
+                      ? definitions.opTypeNames[token]
+                      : token in definitions.keywords
+                      ? token.toUpperCase()
+                      : token;
+        return { toSource: function() { return constName } };
+    }
+    Np.toSource = function toSource() {
+        var mock = {};
+        var self = this;
+        mock.type = unevalableConst(this.type);
+        // avoid infinite recursion in case of back-links
+        if (this.generatingSource)
+            return mock.toSource();
+        this.generatingSource = true;
+        if ("value" in this)
+            mock.value = this.value;
+        if ("lineno" in this)
+            mock.lineno = this.lineno;
+        if ("start" in this)
+            mock.start = this.start;
+        if ("end" in this)
+            mock.end = this.end;
+        if (this.assignOp)
+            mock.assignOp = unevalableConst(this.assignOp);
+        for (var key in this) {
+            if (this.hasOwnProperty(key) && !(key in TO_SOURCE_SKIP))
+                mock[key] = this[key];
+        }
+        try {
+            return mock.toSource();
+        } finally {
+            delete this.generatingSource;
+        }
+    };
 
     // Always use push to add operands to an expression, to update start and end.
     Np.push = function (kid) {
@@ -230,6 +313,15 @@ Narcissus.parser = (function() {
         return this.tokenizer.source.slice(this.start, this.end);
     };
 
+    Np.synth = function(init) {
+        var node = new SyntheticNode(this.tokenizer, init);
+        node.filename = this.filename;
+        node.lineno = this.lineno;
+        node.start = this.start;
+        node.end = this.end;
+        return node;
+    };
+
     /*
      * Helper init objects for common nodes.
      */
@@ -244,13 +336,16 @@ Narcissus.parser = (function() {
         return { type: SCRIPT,
                  funDecls: [],
                  varDecls: [],
-                 modDecls: [],
+                 modDefns: new Dict(),
+                 modAssns: new Dict(),
+                 modDecls: new Dict(),
+                 modLoads: new Dict(),
                  impDecls: [],
                  expDecls: [],
-                 loadDeps: [],
+                 exports: new Dict(),
                  hasEmptyReturn: false,
                  hasReturnWithValue: false,
-                 isGenerator: false };
+                 hasYield: false };
     }
 
     definitions.defineGetter(Np, "filename",
@@ -310,6 +405,102 @@ Narcissus.parser = (function() {
     const DECLARED_FORM = 0, EXPRESSED_FORM = 1, STATEMENT_FORM = 2;
 
     /*
+     * Export :: (binding node, boolean) -> Export
+     *
+     * Static semantic representation of a module export.
+     */
+    function Export(node, isDefinition) {
+        this.node = node;                 // the AST node declaring this individual export
+        this.isDefinition = isDefinition; // is the node an 'export'-annotated definition?
+        this.resolved = null;             // resolved pointer to the target of this export
+    }
+
+    /*
+     * registerExport :: (Dict, EXPORT node) -> void
+     */
+    function registerExport(exports, decl) {
+        function register(name, exp) {
+            if (exports.has(name))
+                throw new SyntaxError("multiple exports of " + name);
+            exports.set(name, exp);
+        }
+
+        switch (decl.type) {
+          case MODULE:
+          case FUNCTION:
+            register(decl.name, new Export(decl, true));
+            break;
+
+          case VAR:
+            for (var i = 0; i < decl.children.length; i++)
+                register(decl.children[i].name, new Export(decl.children[i], true));
+            break;
+
+          case LET:
+          case CONST:
+            throw new Error("NYI: " + definitions.tokens[decl.type]);
+
+          case EXPORT:
+            for (var i = 0; i < decl.pathList.length; i++) {
+                var path = decl.pathList[i];
+                switch (path.type) {
+                  case OBJECT_INIT:
+                    for (var j = 0; j < path.children.length; j++) {
+                        // init :: IDENTIFIER | PROPERTY_INIT
+                        var init = path.children[j];
+                        if (init.type === IDENTIFIER)
+                            register(init.value, new Export(init, false));
+                        else
+                            register(init.children[0].value, new Export(init.children[1], false));
+                    }
+                    break;
+
+                  case DOT:
+                    register(path.children[1].value, new Export(path, false));
+                    break;
+
+                  case IDENTIFIER:
+                    register(path.value, new Export(path, false));
+                    break;
+
+                  default:
+                    throw new Error("unexpected export path: " + definitions.tokens[path.type]);
+                }
+            }
+            break;
+
+          default:
+            throw new Error("unexpected export decl: " + definitions.tokens[exp.type]);
+        }
+    }
+
+    /*
+     * Module :: (node) -> Module
+     *
+     * Static semantic representation of a module.
+     */
+    function Module(node) {
+        var exports = node.body.exports;
+        var modDefns = node.body.modDefns;
+
+        var exportedModules = new Dict();
+
+        exports.forEach(function(name, exp) {
+            var node = exp.node;
+            if (node.type === MODULE) {
+                exportedModules.set(name, node);
+            } else if (!exp.isDefinition && node.type === IDENTIFIER && modDefns.has(node.value)) {
+                var mod = modDefns.get(node.value);
+                exportedModules.set(name, mod);
+            }
+        });
+
+        this.node = node;
+        this.exports = exports;
+        this.exportedModules = exportedModules;
+    }
+
+    /*
      * Statement :: (tokenizer, compiler context) -> node
      *
      * Parses a Statement.
@@ -317,35 +508,87 @@ Narcissus.parser = (function() {
     function Statement(t, x) {
         var i, label, n, n2, p, c, ss, tt = t.get(true), tt2, x2, x3;
 
+        var comments = t.blockComments;
+
+        if (x.blackList[tt])
+            throw t.newSyntaxError(definitions.tokens[tt] + " statements only allowed in Harmony");
+        if (!x.allow(tt))
+            throw t.newSyntaxError(definitions.tokens[tt] + " statement in illegal context");
+
         // Cases for statements ending in a right curly return early, avoiding the
         // common semicolon insertion magic after this switch.
         switch (tt) {
+          case IMPORT:
+            n = new Node(t);
+            n.pathList = ImportPathList(t, x);
+            x.parentScript.impDecls.push(n);
+            break;
+
+          case EXPORT:
+            switch (t.peek()) {
+              case MODULE:
+              case FUNCTION:
+              case LET:
+              case VAR:
+              case CONST:
+                n = Statement(t, x);
+                n.blockComments = comments;
+                n.exported = true;
+                x.parentScript.expDecls.push(n);
+                registerExport(x.parentScript.exports, n);
+                return n;
+
+              default:
+                n = new Node(t);
+                n.pathList = ExportPathList(t, x);
+                break;
+            }
+            x.parentScript.expDecls.push(n);
+            registerExport(x.parentScript.exports, n);
+            break;
+
+          case MODULE:
+            n = new Node(t);
+            n.blockComments = comments;
+            t.mustMatch(IDENTIFIER);
+            label = t.token.value;
+
+            if (t.match(LEFT_CURLY)) {
+                n.name = label;
+                n.body = Script(t, true, false);
+                n.module = new Module(n);
+                t.mustMatch(RIGHT_CURLY);
+                x.parentScript.modDefns.set(n.name, n);
+                return n;
+            }
+
+            t.unget();
+            ModuleVariables(t, x, n);
+            return n;
+
           case FUNCTION:
             // DECLARED_FORM extends funDecls of x, STATEMENT_FORM doesn't.
-            return FunctionDefinition(t, x, true,
-                                      (x.nesting !== NESTING_TOP)
-                                      ? STATEMENT_FORM
-                                      : DECLARED_FORM);
+            return FunctionDefinition(t, x, true, x.topLevel ? DECLARED_FORM : STATEMENT_FORM, comments);
 
           case LEFT_CURLY:
             n = new Node(t, blockInit());
-            Statements(t, x.update({ parentBlock: n }).pushTarget(n).nest(NESTING_SHALLOW), n);
+            Statements(t, x.update({ parentBlock: n }).pushTarget(n).nest(), n);
             t.mustMatch(RIGHT_CURLY);
             return n;
 
           case IF:
             n = new Node(t);
             n.condition = HeadExpression(t, x);
-            x2 = x.pushTarget(n).nest(NESTING_DEEP);
+            x2 = x.pushTarget(n).nest();
             n.thenPart = Statement(t, x2);
-            n.elsePart = t.match(ELSE) ? Statement(t, x2) : null;
+            n.elsePart = t.match(ELSE, true) ? Statement(t, x2) : null;
             return n;
 
           case SWITCH:
             // This allows CASEs after a DEFAULT, which is in the standard.
             n = new Node(t, { cases: [], defaultIndex: -1 });
             n.discriminant = HeadExpression(t, x);
-            x2 = x.pushTarget(n).nest(NESTING_DEEP);
+            x2 = x.pushTarget(n).nest();
             t.mustMatch(LEFT_CURLY);
             while ((tt = t.get()) !== RIGHT_CURLY) {
                 switch (tt) {
@@ -375,6 +618,7 @@ Narcissus.parser = (function() {
 
           case FOR:
             n = new Node(t, LOOP_INIT);
+            n.blockComments = comments;
             if (t.match(IDENTIFIER)) {
                 if (t.token.value === "each")
                     n.isEach = true;
@@ -383,9 +627,10 @@ Narcissus.parser = (function() {
             }
             if (!x.parenFreeMode)
                 t.mustMatch(LEFT_PAREN);
-            x2 = x.pushTarget(n).nest(NESTING_DEEP);
+            x2 = x.pushTarget(n).nest();
             x3 = x.update({ inForLoopInit: true });
-            if ((tt = t.peek()) !== SEMICOLON) {
+            n2 = null;
+            if ((tt = t.peek(true)) !== SEMICOLON) {
                 if (tt === VAR || tt === CONST) {
                     t.get();
                     n2 = Variables(t, x3);
@@ -430,15 +675,16 @@ Narcissus.parser = (function() {
                     n.iterator = n2;
                 }
             } else {
+                x3.inForLoopInit = false;
                 n.setup = n2;
                 t.mustMatch(SEMICOLON);
                 if (n.isEach)
                     throw t.newSyntaxError("Invalid for each..in loop");
-                n.condition = (t.peek() === SEMICOLON)
+                n.condition = (t.peek(true) === SEMICOLON)
                               ? null
                               : Expression(t, x3);
                 t.mustMatch(SEMICOLON);
-                tt2 = t.peek();
+                tt2 = t.peek(true);
                 n.update = (x.parenFreeMode
                             ? tt2 === LEFT_CURLY || definitions.isStatementStartCode[tt2]
                             : tt2 === RIGHT_PAREN)
@@ -452,13 +698,15 @@ Narcissus.parser = (function() {
 
           case WHILE:
             n = new Node(t, { isLoop: true });
+            n.blockComments = comments;
             n.condition = HeadExpression(t, x);
-            n.body = Statement(t, x.pushTarget(n).nest(NESTING_DEEP));
+            n.body = Statement(t, x.pushTarget(n).nest());
             return n;
 
           case DO:
             n = new Node(t, { isLoop: true });
-            n.body = Statement(t, x.pushTarget(n).nest(NESTING_DEEP));
+            n.blockComments = comments;
+            n.body = Statement(t, x.pushTarget(n).nest());
             t.mustMatch(WHILE);
             n.condition = HeadExpression(t, x);
             if (!x.ecmaStrictMode) {
@@ -473,6 +721,7 @@ Narcissus.parser = (function() {
           case BREAK:
           case CONTINUE:
             n = new Node(t);
+            n.blockComments = comments;
 
             // handle the |foo: break foo;| corner case
             x2 = x.pushTarget(n);
@@ -482,9 +731,15 @@ Narcissus.parser = (function() {
                 n.label = t.token.value;
             }
 
-            n.target = n.label
-                     ? x2.labeledTargets.find(function(target) { return target.labels.has(n.label) })
-                     : x2.defaultTarget;
+            if (n.label) {
+                n.target = x2.labeledTargets.find(function(target) {
+                    return target.labels.has(n.label)
+                });
+            } else if (tt === CONTINUE) {
+                n.target = x2.defaultLoopTarget;
+            } else {
+                n.target = x2.defaultTarget;
+            }
 
             if (!n.target)
                 throw t.newSyntaxError("Invalid " + ((tt === BREAK) ? "break" : "continue"));
@@ -495,6 +750,7 @@ Narcissus.parser = (function() {
 
           case TRY:
             n = new Node(t, { catchClauses: [] });
+            n.blockComments = comments;
             n.tryBlock = Block(t, x);
             while (t.match(CATCH)) {
                 n2 = new Node(t);
@@ -545,8 +801,9 @@ Narcissus.parser = (function() {
 
           case WITH:
             n = new Node(t);
+            n.blockComments = comments;
             n.object = HeadExpression(t, x);
-            n.body = Statement(t, x.pushTarget(n).nest(NESTING_DEEP));
+            n.body = Statement(t, x.pushTarget(n).nest());
             return n;
 
           case VAR:
@@ -555,10 +812,11 @@ Narcissus.parser = (function() {
             break;
 
           case LET:
-            if (t.peek() === LEFT_PAREN)
+            if (t.peek() === LEFT_PAREN) {
                 n = LetBlock(t, x, true);
-            else
-                n = Variables(t, x);
+                return n;
+            }
+            n = Variables(t, x);
             break;
 
           case DEBUGGER:
@@ -568,6 +826,7 @@ Narcissus.parser = (function() {
           case NEWLINE:
           case SEMICOLON:
             n = new Node(t, { type: SEMICOLON });
+            n.blockComments = comments;
             n.expression = null;
             return n;
 
@@ -581,7 +840,8 @@ Narcissus.parser = (function() {
                         throw t.newSyntaxError("Duplicate label");
                     t.get();
                     n = new Node(t, { type: LABEL, label: label });
-                    n.statement = Statement(t, x.pushLabel(label).nest(NESTING_SHALLOW));
+                    n.blockComments = comments;
+                    n.statement = Statement(t, x.pushLabel(label).nest());
                     n.target = (n.statement.type === LABEL) ? n.statement.target : n.statement;
                     return n;
                 }
@@ -591,15 +851,20 @@ Narcissus.parser = (function() {
             // We unget the current token to parse the expression as a whole.
             n = new Node(t, { type: SEMICOLON });
             t.unget();
+            n.blockComments = comments;
             n.expression = Expression(t, x);
             n.end = n.expression.end;
             break;
         }
 
+        n.blockComments = comments;
         MagicalSemicolon(t);
         return n;
     }
 
+    /*
+     * MagicalSemicolon :: (tokenizer) -> void
+     */
     function MagicalSemicolon(t) {
         var tt;
         if (t.lineno === t.token.lineno) {
@@ -610,6 +875,9 @@ Narcissus.parser = (function() {
         t.match(SEMICOLON);
     }
 
+    /*
+     * ReturnOrYield :: (tokenizer, compiler context) -> (RETURN | YIELD) node
+     */
     function ReturnOrYield(t, x) {
         var n, b, tt = t.token.type, tt2;
 
@@ -621,11 +889,11 @@ Narcissus.parser = (function() {
         } else /* if (tt === YIELD) */ {
             if (!x.inFunction)
                 throw t.newSyntaxError("Yield not in function");
-            parentScript.isGenerator = true;
+            parentScript.hasYield = true;
         }
         n = new Node(t, { value: undefined });
 
-        tt2 = t.peek(true);
+        tt2 = (tt === RETURN) ? t.peekOnSameLine(true) : t.peek(true);
         if (tt2 !== END && tt2 !== NEWLINE &&
             tt2 !== SEMICOLON && tt2 !== RIGHT_CURLY
             && (tt !== YIELD ||
@@ -641,34 +909,170 @@ Narcissus.parser = (function() {
             parentScript.hasEmptyReturn = true;
         }
 
-        // Disallow return v; in generator.
-        if (parentScript.hasReturnWithValue && parentScript.isGenerator)
-            throw t.newSyntaxError("Generator returns a value");
+        return n;
+    }
+
+    /*
+     * ModuleExpression :: (tokenizer, compiler context) -> (STRING | IDENTIFIER | DOT) node
+     */
+    function ModuleExpression(t, x) {
+        return t.match(STRING) ? new Node(t) : QualifiedPath(t, x);
+    }
+
+    /*
+     * ImportPathList :: (tokenizer, compiler context) -> Array[DOT node]
+     */
+    function ImportPathList(t, x) {
+        var a = [];
+        do {
+            a.push(ImportPath(t, x));
+        } while (t.match(COMMA));
+        return a;
+    }
+
+    /*
+     * ImportPath :: (tokenizer, compiler context) -> DOT node
+     */
+    function ImportPath(t, x) {
+        var n = QualifiedPath(t, x);
+        if (!t.match(DOT)) {
+            if (n.type === IDENTIFIER)
+                throw t.newSyntaxError("cannot import local variable");
+            return n;
+        }
+
+        var n2 = new Node(t);
+        n2.push(n);
+        n2.push(ImportSpecifierSet(t, x));
+        return n2;
+    }
+
+    /*
+     * ExplicitSpecifierSet :: (tokenizer, compiler context, (tokenizer, compiler context) -> node)
+     *                      -> OBJECT_INIT node
+     */
+    function ExplicitSpecifierSet(t, x, SpecifierRHS) {
+        var n, n2, id, tt;
+
+        n = new Node(t, { type: OBJECT_INIT });
+        t.mustMatch(LEFT_CURLY);
+
+        if (!t.match(RIGHT_CURLY)) {
+            do {
+                id = Identifier(t, x);
+                if (t.match(COLON)) {
+                    n2 = new Node(t, { type: PROPERTY_INIT });
+                    n2.push(id);
+                    n2.push(SpecifierRHS(t, x));
+                    n.push(n2);
+                } else {
+                    n.push(id);
+                }
+            } while (!t.match(RIGHT_CURLY) && t.mustMatch(COMMA));
+        }
 
         return n;
     }
 
     /*
+     * ImportSpecifierSet :: (tokenizer, compiler context) -> (IDENTIFIER | OBJECT_INIT) node
+     */
+    function ImportSpecifierSet(t, x) {
+        return t.match(MUL)
+             ? new Node(t, { type: IDENTIFIER, name: "*" })
+             : ExplicitSpecifierSet(t, x, Identifier);
+    }
+
+    /*
+     * Identifier :: (tokenizer, compiler context) -> IDENTIFIER node
+     */
+    function Identifier(t, x) {
+        t.mustMatch(IDENTIFIER);
+        return new Node(t, { type: IDENTIFIER });
+    }
+
+    /*
+     * IdentifierName :: (tokenizer) -> IDENTIFIER node
+     */
+    function IdentifierName(t) {
+        t.mustMatch(IDENTIFIER, true);
+        return new Node(t, { type: IDENTIFIER });
+    }
+
+    /*
+     * QualifiedPath :: (tokenizer, compiler context) -> (IDENTIFIER | DOT) node
+     */
+    function QualifiedPath(t, x) {
+        var n, n2;
+
+        n = Identifier(t, x);
+
+        while (t.match(DOT)) {
+            if (t.peek() !== IDENTIFIER) {
+                // Unget the '.' token, which isn't part of the QualifiedPath.
+                t.unget();
+                break;
+            }
+            n2 = new Node(t);
+            n2.push(n);
+            n2.push(Identifier(t, x));
+            n = n2;
+        }
+
+        return n;
+    }
+
+    /*
+     * ExportPath :: (tokenizer, compiler context) -> (IDENTIFIER | DOT | OBJECT_INIT) node
+     */
+    function ExportPath(t, x) {
+        if (t.peek() === LEFT_CURLY)
+            return ExplicitSpecifierSet(t, x, QualifiedPath);
+        return QualifiedPath(t, x);
+    }
+
+    /*
+     * ExportPathList :: (tokenizer, compiler context)
+     *                -> Array[(IDENTIFIER | DOT | OBJECT_INIT) node]
+     */
+    function ExportPathList(t, x) {
+        var a = [];
+        do {
+            a.push(ExportPath(t, x));
+        } while (t.match(COMMA));
+        return a;
+    }
+
+    /*
      * FunctionDefinition :: (tokenizer, compiler context, boolean,
-     *                        DECLARED_FORM or EXPRESSED_FORM or STATEMENT_FORM)
+     *                        DECLARED_FORM or EXPRESSED_FORM or STATEMENT_FORM,
+     *                        [string] or null or undefined)
      *                    -> node
      */
-    function FunctionDefinition(t, x, requireName, functionForm) {
+    function FunctionDefinition(t, x, requireName, functionForm, comments) {
         var tt;
-        var f = new Node(t, { params: [] });
+        var f = new Node(t, { params: [], paramComments: [] });
+        if (typeof comment === "undefined")
+            comment = null;
+        f.blockComments = comments;
         if (f.type !== FUNCTION)
             f.type = (f.value === "get") ? GETTER : SETTER;
-        if (t.match(IDENTIFIER))
+        if (t.match(MUL))
+            f.isExplicitGenerator = true;
+        if (t.match(IDENTIFIER, false, true))
             f.name = t.token.value;
         else if (requireName)
             throw t.newSyntaxError("missing function identifier");
 
-        var x2 = new StaticContext(null, null, true, false, NESTING_TOP);
+        var inModule = x ? x.inModule : false;
+        var x2 = new StaticContext(null, null, inModule, true);
 
         t.mustMatch(LEFT_PAREN);
         if (!t.match(RIGHT_PAREN)) {
             do {
-                switch (t.get()) {
+                tt = t.get();
+                f.paramComments.push(t.lastBlockComment());
+                switch (tt) {
                   case LEFT_BRACKET:
                   case LEFT_CURLY:
                     // Destructured formal parameters.
@@ -687,16 +1091,14 @@ Narcissus.parser = (function() {
         }
 
         // Do we have an expression closure or a normal body?
-        tt = t.get();
+        tt = t.get(true);
         if (tt !== LEFT_CURLY)
             t.unget();
 
         if (tt !== LEFT_CURLY) {
             f.body = AssignExpression(t, x2);
-            if (f.body.isGenerator)
-                throw t.newSyntaxError("Generator returns a value");
         } else {
-            f.body = Script(t, true);
+            f.body = Script(t, inModule, true);
         }
 
         if (tt === LEFT_CURLY)
@@ -706,7 +1108,36 @@ Narcissus.parser = (function() {
         f.functionForm = functionForm;
         if (functionForm === DECLARED_FORM)
             x.parentScript.funDecls.push(f);
+
+        if (Narcissus.options.version === "harmony" && !f.isExplicitGenerator && f.body.hasYield)
+            throw t.newSyntaxError("yield in non-generator function");
+
+        if (f.isExplicitGenerator || f.body.hasYield)
+            f.body = new Node(t, { type: GENERATOR, body: f.body });
+
         return f;
+    }
+
+    /*
+     * ModuleVariables :: (tokenizer, compiler context, MODULE node) -> void
+     *
+     * Parses a comma-separated list of module declarations (and maybe
+     * initializations).
+     */
+    function ModuleVariables(t, x, n) {
+        var n1, n2;
+        do {
+            n1 = Identifier(t, x);
+            if (t.match(ASSIGN)) {
+                n2 = ModuleExpression(t, x);
+                n1.initializer = n2;
+                if (n2.type === STRING)
+                    x.parentScript.modLoads.set(n1.value, n2.value);
+                else
+                    x.parentScript.modAssns.set(n1.value, n1);
+            }
+            n.push(n1);
+        } while (t.match(COMMA));
     }
 
     /*
@@ -758,6 +1189,7 @@ Narcissus.parser = (function() {
                 if (t.token.assignOp)
                     throw t.newSyntaxError("Invalid variable initialization");
 
+                n2.blockComment = t.lastBlockComment();
                 n2.initializer = AssignExpression(t, x);
 
                 continue;
@@ -773,11 +1205,15 @@ Narcissus.parser = (function() {
             s.varDecls.push(n2);
 
             if (t.match(ASSIGN)) {
+                var comment = t.lastBlockComment();
                 if (t.token.assignOp)
                     throw t.newSyntaxError("Invalid variable initialization");
 
                 n2.initializer = AssignExpression(t, x);
+            } else {
+                var comment = t.lastBlockComment();
             }
+            n2.blockComment = comment;
         } while (t.match(COMMA));
 
         return n;
@@ -989,6 +1425,8 @@ Narcissus.parser = (function() {
             return lhs;
         }
 
+        n.blockComment = t.lastBlockComment();
+
         switch (lhs.type) {
           case OBJECT_INIT:
           case ARRAY_INIT:
@@ -1001,7 +1439,7 @@ Narcissus.parser = (function() {
             break;
         }
 
-        n.assignOp = t.token.assignOp;
+        n.assignOp = lhs.assignOp = t.token.assignOp;
         n.push(lhs);
         n.push(AssignExpression(t, x));
 
@@ -1238,8 +1676,7 @@ Narcissus.parser = (function() {
               case DOT:
                 n2 = new Node(t);
                 n2.push(n);
-                t.mustMatch(IDENTIFIER);
-                n2.push(new Node(t));
+                n2.push(IdentifierName(t));
                 break;
 
               case LEFT_BRACKET:
@@ -1337,6 +1774,7 @@ Narcissus.parser = (function() {
                             throw t.newSyntaxError("Illegal property accessor");
                         n.push(FunctionDefinition(t, x, true, EXPRESSED_FORM));
                     } else {
+                        var comments = t.blockComments;
                         switch (tt) {
                           case IDENTIFIER: case NUMBER: case STRING:
                             id = new Node(t, { type: IDENTIFIER });
@@ -1356,6 +1794,7 @@ Narcissus.parser = (function() {
                             n2 = new Node(t, { type: PROPERTY_INIT });
                             n2.push(id);
                             n2.push(AssignExpression(t, x));
+                            n2.blockComments = comments;
                             n.push(n2);
                         } else {
                             // Support, e.g., |var {x, y} = o| as destructuring shorthand
@@ -1386,7 +1825,7 @@ Narcissus.parser = (function() {
             break;
 
           default:
-            throw t.newSyntaxError("missing operand");
+            throw t.newSyntaxError("missing operand; found " + definitions.tokens[tt]);
             break;
         }
 
@@ -1398,7 +1837,7 @@ Narcissus.parser = (function() {
      */
     function parse(s, f, l) {
         var t = new lexer.Tokenizer(s, f, l);
-        var n = Script(t, false);
+        var n = Script(t, false, false);
         if (!t.done)
             throw t.newSyntaxError("Syntax error");
 
@@ -1406,24 +1845,64 @@ Narcissus.parser = (function() {
     }
 
     /*
-     * parseStdin :: (source, {line number}) -> node
+     * parseStdin :: (source, {line number}, string, (string) -> boolean) -> program node
      */
-    function parseStdin(s, ln) {
+    function parseStdin(s, ln, prefix, isCommand) {
+        // the special .begin command is only recognized at the beginning
+        if (s.match(/^[\s]*\.begin[\s]*$/)) {
+            ++ln.value;
+            return parseMultiline(ln, prefix);
+        }
+
+        // commands at the beginning are treated as the entire input
+        if (isCommand(s.trim()))
+            s = "";
+
         for (;;) {
             try {
                 var t = new lexer.Tokenizer(s, "stdin", ln.value);
-                var n = Script(t, false);
+                var n = Script(t, false, false);
                 ln.value = t.lineno;
                 return n;
             } catch (e) {
                 if (!t.unexpectedEOF)
                     throw e;
-                var more = readline();
-                if (!more)
-                    throw e;
+
+                // commands in the middle are not treated as part of the input
+                var more;
+                do {
+                    if (prefix)
+                        putstr(prefix);
+                    more = readline();
+                    if (!more)
+                        throw e;
+                } while (isCommand(more.trim()));
+
                 s += "\n" + more;
             }
         }
+    }
+
+    /*
+     * parseMultiline :: ({line number}, string | null) -> program node
+     */
+    function parseMultiline(ln, prefix) {
+        var s = "";
+        for (;;) {
+            if (prefix)
+                putstr(prefix);
+            var more = readline();
+            if (more === null)
+                return null;
+            // the only command recognized in multiline mode is .end
+            if (more.match(/^[\s]*\.end[\s]*$/))
+                break;
+            s += "\n" + more;
+        }
+        var t = new lexer.Tokenizer(s, "stdin", ln.value);
+        var n = Script(t, false, false);
+        ln.value = t.lineno;
+        return n;
     }
 
     return {
@@ -1434,7 +1913,9 @@ Narcissus.parser = (function() {
         EXPRESSED_FORM: EXPRESSED_FORM,
         STATEMENT_FORM: STATEMENT_FORM,
         Tokenizer: lexer.Tokenizer,
-        FunctionDefinition: FunctionDefinition
+        FunctionDefinition: FunctionDefinition,
+        Module: Module,
+        Export: Export
     };
 
 }());

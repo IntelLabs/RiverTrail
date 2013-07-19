@@ -20,6 +20,9 @@
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
+ *   Shu-Yu Guo <shu@rfrn.org>
+ *   Bruno Jouhier
+ *   Gregor Richards
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -43,6 +46,7 @@
 
 Narcissus.decompiler = (function() {
 
+    const lexer = Narcissus.lexer;
     const parser = Narcissus.parser;
     const definitions = Narcissus.definitions;
     const tokens = definitions.tokens;
@@ -72,13 +76,33 @@ Narcissus.decompiler = (function() {
         return isBlock(n) && n.children.length > 0;
     }
 
+    function nodeStrEscape(str) {
+        return str.replace(/\\/g, "\\\\")
+                  .replace(/"/g, "\\\"")
+                  .replace(/\n/g, "\\n")
+                  .replace(/\r/g, "\\r")
+                  .replace(/</g, "\\u003C")
+                  .replace(/>/g, "\\u003E");
+    }
+
     function nodeStr(n) {
-        return '"' +
-               n.value.replace(/\\/g, "\\\\")
-                      .replace(/"/g, "\\\"")
-                      .replace(/\n/g, "\\n")
-                      .replace(/\r/g, "\\r") +
-               '"';
+        if (/[\u0000-\u001F\u0080-\uFFFF]/.test(n.value)) {
+            // use the convoluted algorithm to avoid broken low/high characters
+            var str = "";
+            for (var i = 0; i < n.value.length; i++) {
+                var c = n.value[i];
+                if (c <= "\x1F" || c >= "\x80") {
+                    var cc = c.charCodeAt(0).toString(16);
+                    while (cc.length < 4) cc = "0" + cc;
+                    str += "\\u" + cc;
+                } else {
+                    str += nodeStrEscape(c);
+                }
+            }
+            return '"' + str + '"';
+        }
+
+        return '"' + nodeStrEscape(n.value) + '"';
     }
 
     function pp(n, d, inLetHead) {
@@ -266,7 +290,7 @@ Narcissus.decompiler = (function() {
 
           case YIELD:
             p += "yield";
-            if (n.value.type)
+            if (n.value)
               p += " " + pp(n.value, d);
             break;
 
@@ -463,8 +487,15 @@ Narcissus.decompiler = (function() {
                 if (t.type === PROPERTY_INIT) {
                     var tc = t.children;
                     var l;
-                    // see if the left needs to be a string
-                    if (/[^A-Za-z0-9_$]/.test(tc[0].value)) {
+                    /*
+                      * See if the left needs to be quoted.
+                      *
+                      * N.B. If negative numeral prop names ever get converted
+                      * internally to numbers by the parser, we need to quote
+                      * those also.
+                      */
+                    var propName = tc[0].value;
+                    if (typeof propName === "string" && !lexer.isIdentifier(propName)) {
                         l = nodeStr(tc[0]);
                     } else {
                         l = pp(tc[0], d);

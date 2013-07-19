@@ -91,6 +91,18 @@
 
 /////////////////
 
+try {
+    if ((typeof DPOInterface === 'function') && (Components.interfaces.dpoIData === undefined))
+        // great hack to check whether components still exisits
+        // if not, dom.omit_components_in_content has to be set!
+        alert("You seem to use a version of Firefox (22 or newer) where the \n" +
+              "Components object is disabled by default. To use River Trail \n" +
+              "please go to about:config and set the value for the key \n" +
+              "dom.omit_components_in_content to false and reload the page.");
+
+    }
+catch (ignore) {}
+
 
 var ParallelArray = function () {
 
@@ -129,24 +141,27 @@ var ParallelArray = function () {
     // check whether the OpenCL implementation supports double
     var enable64BitFloatingPoint = false;
     if (useFF4Interface) { 
-        var dpoI; 
-        var dpoP; 
+        var extensions;
         try {
-            dpoI = new DPOInterface();
-        } catch (e) {
-            console.log("Unable to create new DPOInterface(): "+e);
-            throw e;
+            extensions = RiverTrail.compiler.openCLContext.extensions;
+        } catch (ignore) {
+            // extensions = undefined;
         }
-
-        try {
-            dpoP = dpoI.getPlatform();
-            enable64BitFloatingPoint = (dpoP.extensions.indexOf("cl_khr_fp64") !== -1);
-        } catch (e) {
-            console.log("Unable to find OpenCL platform: "+e);
-            console.log("enable64BitFloatingPoint has been disabled");
-            enable64BitFloatingPoint = false;
-            // eat the problem after you announce it to the console log.
+        if (!extensions) {
+            var dpoI;
+            var dpoP;
+            var dpoC;
+            try {
+                // JS: Should these be cached and reused in driver.js ?
+                dpoI = new DPOInterface();
+                dpoP = dpoI.getPlatform();
+                dpoC = dpoP.createContext();
+                extensions = dpoC.extensions || dpoP.extensions;
+            } catch (e) {
+                console.log("Unable to query dpoInterface: "+e);
+            }
         }
+        enable64BitFloatingPoint = (extensions.indexOf("cl_khr_fp64") !== -1);
     }
     // this is the storage that is used by default when converting arrays 
     // to typed arrays.
@@ -160,11 +175,16 @@ var ParallelArray = function () {
     var useKernelCaching = true;
     // whether to use lazy communication of openCL values
     var useLazyCommunication = false;
-    //var useLazyCommunication = false;
-    // whether to cache OpenCL buffers
-    var useBufferCaching = false;
+    // whether to cache OpenCL buffers is now a property configured in driver.js!
+    // -- var useBufferCaching = false;
     // whether to do update in place in scan
-    var useUpdateInPlaceScan = true;
+    var useUpdateInPlaceScan = false;
+
+    // sanity checking
+    if (useUpdateInPlaceScan && !useLazyCommunication) {
+        console.log("RiverTrail: useUpdateInPlaceScan requires useLazyCommuniation. Disabling...");
+        useUpdateInPlaceScan = false;
+    }
 
     // For debugging purposed each parallel array I create has a fingerprint.
     var fingerprint = 0;
@@ -209,11 +229,7 @@ var ParallelArray = function () {
     var materialize = function materialize() {
         if (useFF4Interface && (this.data instanceof Components.interfaces.dpoIData)) {
             // we have to first materialise the values on the JavaScript side
-            this.cachedOpenCLMem = this.data;
-            this.data = this.cachedOpenCLMem.getValue();
-            if (!useBufferCaching) {
-                this.cachedOpenCLMem = undefined;
-            }
+            this.data = this.data.getValue();
         }
     };
 
@@ -495,9 +511,6 @@ var ParallelArray = function () {
                         this.data[i] = new ParallelArray(values[i]);
                     } else {
                         this.data[i] = values[i];
-                        /**
-                        this.shape = this.shape.push(values[i].length);
-                        **/
                     }
                 }
             } else { // we have a flat array.
@@ -585,26 +598,13 @@ var ParallelArray = function () {
         return this;
     };
     
-    var createOpenCLMemParallelArray = function( mobj, shape, type) {
+    var createOpenCLMemParallelArray = function( mobj, shape, type, offset) {
         this.data = mobj;
         this.shape = shape;
         this.elementalType = type;
         this.strides = shapeToStrides( shape);
         this.flat = true;
-        this.offset = 0;
-
-        if (useLazyCommunication) {
-            // wrap all functions that need access to the data
-            requiresData(this, "get");
-            requiresData(this, "partition");
-            requiresData(this, "concat");
-            requiresData(this, "join");
-            requiresData(this, "slice");
-            requiresData(this, "toString");
-            requiresData(this, "getArray");
-        } else {
-            this.materialize();
-        }
+        this.offset = offset | 0;
 
         return this;
     };
@@ -748,11 +748,7 @@ var ParallelArray = function () {
         if (shapeToLength(newShape) != shapeToLength(pa.shape)) {
             throw new RangeError("Attempt to partition ParallelArray unevenly.");
         }
-        var newPA = new ParallelArray();
-        newPA.shape = newShape;
-        newPA.strides = shapeToStrides(newShape);
-        newPA.offset = pa.offset;
-        newPA.data = pa.data;
+        var newPA = new ParallelArray("reshape", pa, newShape);
         return newPA;
     };
     // Does this parallelArray have the following dimension?
@@ -814,7 +810,7 @@ var ParallelArray = function () {
         if (!this.isRegular()) {
             throw new TypeError("this is not a regular ParallelArray.");
         }
-        return (depth === undefined) ? this.shape : this.shape.slice(0, depth);
+        return (depth === undefined) ? this.shape.slice(0) : this.shape.slice(0, depth);
     };
    
     // When in the elemental function f "this" is the same as "this" in combine.
@@ -1031,23 +1027,27 @@ var ParallelArray = function () {
         induce reordering of the arguments passed to the elemental function's.
     ***/
 
-    var reduce = function reduce(f, optionalInit) {
+    var reduce = function reduce(f) {
         // SAH: for now we have to manually unwrap. Proxies might be a solution but they 
         //      are too underspecified as of yet
         if (f instanceof low_precision.wrapper) {
             f = f.unwrap();
         }
 
+        var callArguments = Array.prototype.slice.call(arguments, 0); // array copy
+        callArguments.unshift(0);
+
         var len = this.shape[0];
         var result;
         var i;
 
-        result = this.get(0);
+        callArguments[0] = this.get(0);
         for (i=1;i<len;i++) {
-            result = f.call(this, result, this.get(i));
+            callArguments[1] = this.get(i);
+            callArguments[0] = f.apply(this, callArguments);
         }
 
-        return result;
+        return callArguments[0];
     };
     /***
         scan
@@ -1109,7 +1109,7 @@ var ParallelArray = function () {
 
         var len = this.length;
         var rawResult = new Array(len);
-        var privateThis;
+        var movingArg;
         var callArguments = Array.prototype.slice.call(arguments, 0); // array copy
         var ignoreLength = callArguments.unshift(0); // callArguments now has 2 free location for a and b.
         if (this.getShape().length < 2) {
@@ -1145,47 +1145,54 @@ var ParallelArray = function () {
             //      matter.
             try {
                 rawResult[0] = this.get(0);
-                privateThis = this.get(1);
+                movingArg = this.get(1);
                 callArguments[0] = rawResult[0];
-                rawResult[1] = f.apply(privateThis, callArguments);
-                if ((rawResult[1].data instanceof Components.interfaces.dpoIData) && 
-                    equalsShape(rawResult[0].getShape(), rawResult[1].getShape())) {
+                callArguments[1] = movingArg;
+                rawResult[1] = f.apply(this, callArguments);
+                var last = rawResult[1];
+                if ((last.data instanceof Components.interfaces.dpoIData) && 
+                    equalsShape(rawResult[0].getShape(), last.getShape())) {
                     // this was computed by openCL and the function is shape preserving.
                     // Try to preallocate and compute the result in place!
                     // We need the real data here, so materialize it
-                    privateThis.materialize();
+                    last.materialize();
+                    this.materialize();
                     // create a new typed array for the result and store it in updateinplace
-                    var updateInPlace = new privateThis.data.constructor(privateThis.data.length);
+                    var updateInPlace = RiverTrail.Helper.allocateAlignedTA(last.data.constructor, this.data.length);
                     // copy the first line into the result
                     for (i=0; i<localStride; i++) {
                         updateInPlace[i] = this.data[i];
                     }
                     // copy the second line into the result
-                    var last = rawResult[1];
                     var result = undefined;
-                    last.materialize;
                     for (i=0; i <localStride; i++) {
                         updateInPlace[i+localStride] = last.data[i];
                     }
                     // create a new parallel array to pass as prev
-                    var updateInPlacePA = rawResult[0];
+                    var updateInPlacePA = this.get(0);
                     // swap the data store of the updateInPlacePA
                     updateInPlacePA.data = updateInPlace;
+                    // add a self reference in case combine is called on this argument
+                    updateInPlacePA.updateInPlacePA = updateInPlacePA;
+                    updateInPlacePA.updateInPlaceOffset = localStride;
+                    updateInPlacePA.updateInPlaceShape = last.shape;
                     // set up the arguments
                     callArguments[0] = updateInPlacePA;
+                    callArguments[1] = movingArg;
                     // set the write offset and updateInPlace info
-                    privateThis.updateInPlacePA = updateInPlacePA;
-                    privateThis.updateInPlaceOffset = localStride;
-                    privateThis.updateInPlaceShape = last.shape;
+                    movingArg.updateInPlacePA = updateInPlacePA;
+                    movingArg.updateInPlaceOffset = localStride;
+                    movingArg.updateInPlaceShape = last.shape;
                     for (i=2;i<len;i++) {
-                        // Effectivey change privateThis to refer to the next element in this.
-                        privateThis.offset += localStride;
+                        // Effectivey change movingArg to refer to the next element in this.
+                        movingArg.offset += localStride;
                         updateInPlacePA.offset += localStride;
-                        privateThis.updateInPlaceOffset += localStride;
-                        privateThis.updateInPlaceUses = 0;
+                        movingArg.updateInPlaceOffset += localStride;
+                        updateInPlacePA.updateInPlaceOffset += localStride;
+                        updateInPlacePA.updateInPlaceUses = 0;
                         // i is the index in the result.
-                        result = f.apply(privateThis, callArguments);
-                        if (result.data !== privateThis.updateInPlacePA.data) {
+                        result = f.apply(this, callArguments);
+                        if (result.data !== movingArg.updateInPlacePA.data) {
                             // we failed to update in place
                             throw new CompilerAbort("speculation failed: result buffer was not used");
                         }
@@ -1196,24 +1203,25 @@ var ParallelArray = function () {
             catch (e) {
                 // clean up to continute below
                 console.log("scan: speculation failed, reverting to normal mode");
-                privateThis = this.get(1);
+                movingArg = this.get(1);
                 rawResult[0] = this.get(0);
                 callArguments[0] = rawResult[0];
             }
         } else {
             // speculation is disabled, so set up the stage
-            privateThis = this.get(1);
+            movingArg = this.get(1);
             rawResult[0] = this.get(0);
             callArguments[0] = rawResult[0];
-            rawResult[1] = f.apply(privateThis, callArguments);
+            callArguments[1] = movingArg;
+            rawResult[1] = f.apply(this, callArguments);
         }
         
         for (i=2;i<len;i++) {
-            // Effectivey change privateThis to refer to the next element in this.
-            privateThis.offset += localStride;
+            // Effectivey change movingArg to refer to the next element in this.
+            movingArg.offset += localStride;
             callArguments[0] = rawResult[i-1];
             // i is the index in the result.
-            rawResult[i] = f.apply(privateThis, callArguments);
+            rawResult[i] = f.apply(this, callArguments);
         }
         return (new ParallelArray(rawResult));
     };
@@ -1315,7 +1323,7 @@ var ParallelArray = function () {
         ***/
     var scatter = function scatter(indices, defaultValue, conflictFunction, length) {
         var result;
-        var len = this.shape[1];
+        var len = this.shape[0];
         var hasDefault = (arguments.length >= 2);
         var hasConflictFunction = (arguments.length >=3 && arguments[2] != null);
         var newLen = (arguments.length >= 4 ? length : len);
@@ -1325,18 +1333,18 @@ var ParallelArray = function () {
         var i;
                 
         if (hasDefault) {
-            for (i = 0; i < len; i++) {
+            for (i = 0; i < newLen; i++) {
                 rawResult[i] = defaultValue;
-                conflictResult[i] = false;
             }
-        }
+        } 
     
         for (i = 0; i < indices.length; i++) {
-            var ind = indices.get(i);
+            var ind = (indices instanceof ParallelArray) ? indices.get(i) : indices[i];
+            if (ind >= newLen) throw new RangeError("Scatter index out of bounds");
             if (conflictResult[ind]) { // we have already placed a value at this location
                 if (hasConflictFunction) {
                     rawResult[ind] = 
-                        conflictFunction.call(this.get(i), rawResult[ind]); 
+                        conflictFunction.call(undefined, this.get(i), rawResult[ind]); 
                 } else {
                     throw new RangeError("Duplicate indices in scatter");
                 }
@@ -1412,6 +1420,8 @@ var ParallelArray = function () {
                 offset = this.offset;
                 var len = index.length;
                 for (i=0;i<len;i++) {
+                    // if we go out of bounds, we return undefined
+                    if (index[i] < 0 || index[i] >= this.shape[i]) return undefined;
                     offset = offset + index[i]*this.strides[i];
                 }
                 if (this.shape.length === index.length) {
@@ -1436,9 +1446,10 @@ var ParallelArray = function () {
             //  else it is flat but not (index instanceof Array) 
             if (arguments.length == 1) { 
                 // One argument that is a scalar index.
+                if ((index < 0) || (index >= this.shape[0])) return undefined;
                 if (this.shape.length == 1) {
                     // a 1D array
-                    return this.data[this.offset + index];                     
+                    return this.data[this.offset + index];
                 } else {
                     // we have a nD array and we want the first dimension so create the new array
                     offset = this.offset+this.strides[0]*index;
@@ -1465,6 +1476,8 @@ var ParallelArray = function () {
                 result = this;
                 for (i=0;i<arguments[0].length;i++) {
                     result = result.data[arguments[0][i]];
+                    // out of bounds => abort further selections
+                    if (result === undefined) return result;
                 }
                 return result;
             }
@@ -1474,6 +1487,8 @@ var ParallelArray = function () {
         result = this;
         for (i=0;i<arguments.length;i++) {
             result = result.data[arguments[i]];
+            // out of bounds => abort further selections
+            if (result === undefined) return result;
         }
         return result;
     };
@@ -1650,13 +1665,17 @@ var ParallelArray = function () {
     
     // toString()   Converts an array to a string, and returns the result
     var toString = function toString (arg1) {
-        var max = this.shape.reduce(function (v, p) { return v*p; }) + this.offset;
-        var res = "[";
-        for (var pos = this.offset; pos < max; pos++) {
-            res += ((pos === this.offset) ? "" : ", ") + this.data[pos];
+        if (this.flat) {
+            var max = this.shape.reduce(function (v, p) { return v*p; }) + this.offset;
+            var res = "[";
+            for (var pos = this.offset; pos < max; pos++) {
+                res += ((pos === this.offset) ? "" : ", ") + this.data[pos];
+            }
+            res += "]";
+            return res;
+        } else {
+            return "[" + this.data.join(", ") + "]";
         }
-        res += "]";
-        return res;
     };
     
     // unshift()    Adds new elements to the beginning of an array, and returns the new length
@@ -1667,7 +1686,6 @@ var ParallelArray = function () {
     var flatten = function flatten () {
         var len = this.length;
         var newLength = 0;
-        var result;
         var shape;
         var i;
         if (this.flat) {
@@ -1675,14 +1693,9 @@ var ParallelArray = function () {
             if (shape.length == 1) {
                 throw new TypeError("ParallelArray.flatten array is flat");
             }
-            result = new ParallelArray();
-            result.shape = shape.slice(1);
-            result.shape[0] = result.shape[0] * shape[0];
-            result.strides = this.strides.slice(1);
-            result.offset = 0;
-            result.flat = true;
-            result.data = this.data;
-            return result;
+            var newShape = shape.slice(1);
+            newShape[0] = newShape[0] * shape[0];
+            return new ParallelArray("reshape", this, newShape);
         }
         for (i=0;i<len;i++) {
             if (this.get(i) instanceof ParallelArray) {
@@ -1692,17 +1705,16 @@ var ParallelArray = function () {
             }
         }
         var resultArray = new Array(newLength);
-            var next = 0;
-            for (i=0;i<len;i++) {
-                var pa = this.get(i);
-                    for (j=0; j<pa.length; j++) {
-                        resultArray[next] = pa.get(j);
-                            next++;                
-                    }
-            }
+        var next = 0;
+        for (i=0;i<len;i++) {
+            var pa = this.get(i);
+                for (j=0; j<pa.length; j++) {
+                    resultArray[next] = pa.get(j);
+                        next++;
+                }
+        }
         
-            var res = new ParallelArray(resultArray);
-            return res;
+        return new ParallelArray(resultArray);
     };
     var flattenRegular = function flattenRegular () {
         var result;
@@ -1797,6 +1809,7 @@ var ParallelArray = function () {
                 var aLen = arguments.length;
                 if (aLen === 1) {
                     if (typeof(index) === "number") {
+                        if ((index < 0) || (index >= this.shape[0])) return undefined;
                         return this.data[this.offset + index];
                     } else {
                         /* fall back to slow mode */
@@ -1834,9 +1847,11 @@ var ParallelArray = function () {
                 var result;
                 var aLen = arguments.length;
                 if (aLen === 2) {
+                    if ((index < 0) || (index >= this.shape[0]) || (index2 < 0) || (index2 >= this.shape[1])) return undefined;
                     return this.data[this.offset + index * this.strides[0] + index2];
                 } else if (aLen === 1) {
                     if (typeof index === "number") {
+                        if ((index < 0) || (index >= this.shape[0])) return undefined;
                         result = new Fast1DPA(this);
                         result.offset = this.offset + index * this.strides[0];
                         result.elementalType = this.elementalType;
@@ -1879,8 +1894,10 @@ var ParallelArray = function () {
                 var result;
                 var aLen = arguments.length;
                 if (aLen === 3) {
-                        return this.data[this.offset + index * this.strides[0] + index2 * this.strides[1] + index3];
+                    if ((index < 0) || (index >= this.shape[0]) || (index2 < 0) || (index2 >= this.shape[1]) || (index3 < 0) || (index3 >= this.shape[2])) return undefined;
+                    return this.data[this.offset + index * this.strides[0] + index2 * this.strides[1] + index3];
                 } else if (aLen === 2) {
+                    if ((index < 0) || (index >= this.shape[0]) || (index2 < 0) || (index2 >= this.shape[1])) return undefined;
                     result = new Fast1DPA(this);
                     result.offset = this.offset + index * this.strides[0] + index2 * this.strides[1];
                     result.elementalType = this.elementalType;
@@ -1890,6 +1907,7 @@ var ParallelArray = function () {
                     return result;
                 } else if (aLen === 1) {
                     if (typeof index === "number") {
+                        if ((index < 0) || (index >= this.shape[0])) return undefined;
                         result = new Fast2DPA(this);
                         result.offset = this.offset + index * this.strides[0];
                         result.elementalType = this.elementalType;
@@ -1928,9 +1946,18 @@ var ParallelArray = function () {
         } else if ((arguments.length == 2) && (typeof(arguments[0]) == 'function')) {
             // Special case where we force the type of the result. Should only be used internally
             result = createSimpleParallelArray.call(this, arguments[1], arguments[0]);
+        } else if ((arguments.length == 3) && (arguments[0] == 'reshape')) {
+            // special constructor used internally to create a clone with different shape
+            result = this;
+            result.shape = arguments[2];
+            result.strides = shapeToStrides(arguments[2]);
+            result.offset = arguments[1].offset;
+            result.elementalType = arguments[1].elementalType;
+            result.data = arguments[1].data;
+            result.flat = arguments[1].flat;
         } else if (useFF4Interface && (arguments[0] instanceof Components.interfaces.dpoIData)) {
             result = createOpenCLMemParallelArray.apply(this, arguments);
-        } else if (typeof(arguments[1]) === 'function') {    
+        } else if (typeof(arguments[1]) === 'function' || arguments[1] instanceof low_precision.wrapper) {
             var extraArgs;
             if (arguments.length > 2) {
                 extraArgs = new Array(arguments.length -2); // skip the size vector and the function
@@ -1964,6 +1991,21 @@ var ParallelArray = function () {
             try { // for Chrome/Safari compatability
                 result = Proxy.create(makeIndexOpHandler(result), ParallelArray.prototype);
             } catch (ignore) {}
+        }
+
+        if (useFF4Interface && (result.data instanceof Components.interfaces.dpoIData)) {
+            if (useLazyCommunication) {
+                // wrap all functions that need access to the data
+                requiresData(result, "get");
+                //requiresData(result, "partition");
+                requiresData(result, "concat");
+                requiresData(result, "join");
+                requiresData(result, "slice");
+                requiresData(result, "toString");
+                requiresData(result, "getArray");
+            } else {
+                result.materialize();
+            }  
         }
 
         return result;

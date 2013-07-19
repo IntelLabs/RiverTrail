@@ -49,15 +49,17 @@ RiverTrail.compiler = (function () {
     // whether to cache OpenCL buffers
     var useBufferCaching = true;
 
-    const suppressOpenCL = false;
+    var suppressOpenCL = false;
 
     var openCLContext; 
     var dpoInterface; 
     var dpoPlatform;
     try {
         dpoInterface = new DPOInterface();
-        dpoPlatform = dpoInterface.getPlatform(); 
-        openCLContext = dpoPlatform.createContext();
+        if (dpoInterface instanceof Components.interfaces.dpoIInterface) {
+            dpoPlatform = dpoInterface.getPlatform();
+            openCLContext = dpoPlatform.createContext();
+        }
     } catch (e) {
         console.log ("Cannot initialise OpenCL interface. Please check the whether the extension was installed and try again.");
         throw Error("Cannot initialise OpenCL Interface: " + JSON.stringify(e));
@@ -89,7 +91,7 @@ RiverTrail.compiler = (function () {
         } else {
             lowPrecision = !enable64BitFloatingPoint;
         }
-        const defaultNumberType = lowPrecision ? "float": "double";
+        var defaultNumberType = lowPrecision ? "float": "double";
 
         // First convert all array arguments into suitable flat representations that can be passed to
         // the OpenCL side
@@ -135,7 +137,7 @@ RiverTrail.compiler = (function () {
                         
         try {
             ast = parse(paSource, construct, rankOrShape, f.toString(), args, lowPrecision); // parse, no code gen
-            kernelString = RiverTrail.compiler.codeGen(ast, paSource, rankOrShape, construct); // Creates an OpenCL kernel function
+            kernelString = RiverTrail.compiler.codeGen.compile(ast, paSource, rankOrShape, construct); // Creates an OpenCL kernel function
         } catch (e) {
             RiverTrail.Helper.debugThrow(e);
         }
@@ -174,7 +176,7 @@ RiverTrail.compiler = (function () {
         try {
             RiverTrail.Typeinference.analyze(ast, paSource, construct, rank, args, lowPrecision);
             RiverTrail.RangeAnalysis.analyze(ast, paSource, construct, rankOrShape, args);
-            RiverTrail.RangeAnalysis.propagate(ast);
+            RiverTrail.RangeAnalysis.propagate(ast, construct);
             RiverTrail.InferBlockFlow.infer(ast);
             RiverTrail.InferMem.infer(ast);
         } catch (e) {
@@ -201,9 +203,7 @@ RiverTrail.compiler = (function () {
                 (lowPrecision === entry.lowPrecision) &&
                 (entry.source === f) &&
                 argumentsMatch(argumentTypes, entry.argumentTypes) &&
-                ((((construct === "comprehension") || (construct === "comprehensionScalar")) && equalsShape(rankOrShape, entry.iterSpace)) || 
-                  argumentMatches(RiverTrail.Helper.inferPAType(paSource), entry.paType)
-                )
+                (((construct !== "comprehension") && (construct !== "comprehensionScalar") && argumentMatches(RiverTrail.Helper.inferPAType(paSource), entry.paType)) || equalsShape(rankOrShape, entry.iterSpace))
                ) {
                 return f.openCLCache[i];
             }

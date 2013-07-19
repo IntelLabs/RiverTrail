@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
  *
@@ -40,6 +40,7 @@ if (RiverTrail === undefined) {
 // actualArgs   - extra kernel arguments
 
 RiverTrail.compiler.runOCL = function () {
+    var reportVectorized = false;
 
     // Executes the kernel function with the ParallelArray this and the args for the elemental function
     // paSource     - 'this' inside the kernel
@@ -53,15 +54,11 @@ RiverTrail.compiler.runOCL = function () {
                                  argumentTypes, lowPrecision, enable64BitFloatingPoint, useBufferCaching, useKernelCaching) {
         var paResult;
         var kernelArgs = [];
-        var resultMemObj;
-        var resultOffset;
+        var resultMem;
         var sourceType;
         var iterSpace;
-        var resultElemType;
         var kernel;
         var rank;
-        var resShape;
-        var resSize;
         var kernelName = ast.name;
         if (!kernelName) {
             throw new Error("Invalid ast: Function expected at top level");
@@ -77,14 +74,6 @@ RiverTrail.compiler.runOCL = function () {
             rank = rankOrShape;
             iterSpace = sourceType.dimSize.slice(0, rank);
         }
-        resultElemType = RiverTrail.Helper.stripToBaseType(ast.typeInfo.result.OpenCLType);
-
-        if (ast.typeInfo.result.properties) {
-            resShape = iterSpace.concat(ast.typeInfo.result.getOpenCLShape());
-        } else {
-            resShape = iterSpace;
-        }
-        resSize = shapeToLength(resShape);
         // construct kernel arguments
         var jsObjectToKernelArg = function (args, object) {
             if (object instanceof ParallelArray) {
@@ -92,13 +81,16 @@ RiverTrail.compiler.runOCL = function () {
                     // we already have an OpenCL value
                     args.push(object.data);
                 } else if (RiverTrail.Helper.isTypedArray(object.data)) {
-                    if ((object.cachedOpenCLMem === undefined)) {
+                    var memObj;
+                    if (object.cachedOpenCLMem) {
+                        memObj = object.cachedOpenCLMem;
+                    } else {
                         // we map this argument
-                        object.cachedOpenCLMem = RiverTrail.compiler.openCLContext.mapData(object.data);
+                        memObj = RiverTrail.compiler.openCLContext.mapData(object.data);
                     }
-                    args.push(object.cachedOpenCLMem);
-                    if (!useBufferCaching) {
-                        object.cachedOpenCLMem = undefined;
+                    args.push(memObj);
+                    if (useBufferCaching) {
+                        object.cachedOpenCLMem = memObj;
                     }
                 } else {
                     // We have a regular array as data container. There is no point trying
@@ -143,31 +135,70 @@ RiverTrail.compiler.runOCL = function () {
         // SAH: We have agreed that operations are elemental type preserving, thus I reuse the type
         //      of the argument here.
         if (paSource.updateInPlacePA !== undefined) {
+            if (ast.typeInfo.result.isObjectType("InlineObject")) {
+                // we do not support a scan over multiple results
+                throw new Error("the impossible happened: in place scan operation with multiple returns!");
+            }
             // the result space has been preallocated for us! So just use/map what is there.
             // See scan for how this is supposed to work
             // first we ensure that the shape of what we compute is the shape of what is expected
-            if (!equalsShape(resShape, paSource.updateInPlaceShape)) {
+            var resShape;
+            if (ast.typeInfo.result.isScalarType()) {
+                resShape = iterSpace;
+            } else {
+                resShape = iterSpace.concat(ast.typeInfo.result.getOpenCLShape());
+            }
+            if (resShape.some(function (e,i) { return e !== paSource.updateInPlaceShape[i];})) {
                 // throwing this will revert the outer scan to non-destructive mode
                 throw new Error("shape mismatch during update in place!");
             }
-            if (++paSource.updateInPlaceUses !== 1) {
+            if (++paSource.updateInPlacePA.updateInPlaceUses !== 1) {
                 throw new Error("preallocated memory used more than once!");
             }
             if (!(paSource.updateInPlacePA.data instanceof Components.interfaces.dpoIData)) {
-                paSource.updateInPlacePA.data = RiverTrail.compiler.openCLContext.mapData(paSource.updateInPlacePA.data);
+                if (paSource.updateInPlacePA.cachedOpenCLMem) {
+                    paSource.updateInPlacePA.data = paSource.updateInPlacePA.cachedOpenCLMem;
+                    delete paSource.updateInPlacePA.cachedOpenCLMem;
+                } else {
+                    paSource.updateInPlacePA.data = RiverTrail.compiler.openCLContext.mapData(paSource.updateInPlacePA.data);
+                    if (useBufferCaching) {
+                        paSource.updateInPlacePA.cachedOpenCLMem = paSource.updateInPlacePA.data;
+                    }
+                }
             }
-            resultMemObj = paSource.updateInPlacePA.data;
-            resultOffset = paSource.updateInPlaceOffset;
+            resultMem = {mem: paSource.updateInPlacePA.data, shape: resShape, type: RiverTrail.Helper.stripToBaseType(ast.typeInfo.result.OpenCLType), offset: paSource.updateInPlaceOffset};
+            kernelArgs.push(resultMem.mem);
+            kernelArgs.push(new RiverTrail.Helper.Integer(paSource.updateInPlaceOffset));
         } else {
+            var allocateAndMapResult = function (type) {
+                var resultElemType = RiverTrail.Helper.stripToBaseType(type.OpenCLType);
+                var resShape;
+                if (type.properties) {
+                    resShape = iterSpace.concat(type.getOpenCLShape());
+                } else {
+                    resShape = iterSpace;
+                }
+                var template = RiverTrail.Helper.elementalTypeToConstructor(resultElemType);
+                if (template == undefined) throw new Error("cannot map inferred type to constructor");
+                var memObj = RiverTrail.compiler.openCLContext.allocateData(new template(1), shapeToLength(resShape));
+                kernelArgs.push(memObj);
+                kernelArgs.push(new RiverTrail.Helper.Integer(0));
+                return {mem: memObj, shape: resShape, type: resultElemType, offset: 0};
+            };
+
             // We allocate whatever the result type says. To ensure portability of 
             // the extension, we need a template typed array. So lets just create one!
-            var template = RiverTrail.Helper.elementalTypeToConstructor(resultElemType);
-            if (template == undefined) throw new Error("cannot map inferred type to constructor");
-            resultMemObj = RiverTrail.compiler.openCLContext.allocateData(new template(1), resSize);
-            resultOffset = 0;
+            if (ast.typeInfo.result.isObjectType("InlineObject")) {
+                // we have multiple return values
+                resultMem = {};
+                for (var name in ast.typeInfo.result.properties.fields) {
+                    resultMem[name] = allocateAndMapResult(ast.typeInfo.result.properties.fields[name]);
+                }
+            } else {
+                // allocate and map the single result
+                resultMem = allocateAndMapResult(ast.typeInfo.result);
+            }
         }
-        kernelArgs.push(resultMemObj);
-        kernelArgs.push(new RiverTrail.Helper.Integer(resultOffset));
         // build kernel
         if (kernelString instanceof Components.interfaces.dpoIKernel) {
             kernel = kernelString;
@@ -177,35 +208,38 @@ RiverTrail.compiler.runOCL = function () {
                     // enable 64 bit extensions
                     kernelString = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n" + kernelString;
                 }
-                kernel = RiverTrail.compiler.openCLContext.compileKernel(kernelString, kernelName);
+                kernel = RiverTrail.compiler.openCLContext.compileKernel(kernelString, "RT_" + kernelName);
             } catch (e) {
                 try {
-                    RiverTrail.Helper.debugThrow(e + RiverTrail.compiler.openCLContext.buildLog);
+                    var log = RiverTrail.compiler.openCLContext.buildLog;
                 } catch (e2) {
-                    RiverTrail.Helper.debugThrow(e + e2);
+                    var log = "<not available>";
+                }
+                RiverTrail.Helper.debugThrow("The OpenCL compiler failed. Log was `" + log + "'.");
+            }
+            if (reportVectorized) {
+                try {
+                    var log = RiverTrail.compiler.openCLContext.buildLog;
+                    if (log.indexOf("was successfully vectorized") !== -1) {
+                        console.log(kernelName + "was successfully vectorized");
+                    }
+                } catch (e) {
+                    // ignore
                 }
             }
-            try {
-                if (useKernelCaching && (f !== undefined)) {
-                    // save ast information required for future use
-                    var cacheEntry = { "ast": ast,
-                        "name": ast.name,
-                        "source": f,
-                        "paType": sourceType,
-                        "kernel": kernel,
-                        "construct": construct,
-                        "lowPrecision": lowPrecision,
-                        "argumentTypes": argumentTypes,
-                        "iterSpace": iterSpace
-                    };
-                    f.openCLCache.push(cacheEntry);
-                }
-            } catch (e) {
-                try {
-                    RiverTrail.Helper.debugThrow(e + RiverTrail.compiler.openCLContext.buildLog);
-                } catch (e2) {
-                    RiverTrail.Helper.debugThrow(e + e2);
-                }
+            if (useKernelCaching && (f !== undefined)) {
+                // save ast information required for future use
+                var cacheEntry = { "ast": ast,
+                    "name": ast.name,
+                    "source": f,
+                    "paType": sourceType,
+                    "kernel": kernel,
+                    "construct": construct,
+                    "lowPrecision": lowPrecision,
+                    "argumentTypes": argumentTypes,
+                    "iterSpace": iterSpace
+                };
+                f.openCLCache.push(cacheEntry);
             }
         }
         // set arguments
@@ -234,26 +268,79 @@ RiverTrail.compiler.runOCL = function () {
             // The differences are to do with args to the elemental function and are dealt with there so we can use the same routine.
             // kernel.run(rank, shape, tiles)
             try {
-                // console.log("791:new:rank: "+rank+" iterSpace: "+iterSpace);
-                //console.log("driver:389 did not run.");
-                var kernelFailure = kernel.run(rank, iterSpace, iterSpace.map(function () { return 1; }));
+                var kernelFailure = false;
+                if(doIterationSpaceFlattening && rank == 2) {
+                    var redu = [1];
+                    for(var i = 0; i < rank; i++) {
+                        redu [0] *= iterSpace[i];
+                    }
+                    kernelFailure = kernel.run(1, redu, iterSpace.map(function () { return 1; }));
+                }
+                else {
+                    kernelFailure = kernel.run(rank, iterSpace, iterSpace.map(function () { return 1; }));
+                }
             } catch (e) {
                 console.log("kernel.run fails: ", e);
                 throw e;
             }
             if (kernelFailure) {
                 // a more helpful error message would be nice. However, we don't know why it failed. A better exception model is asked for...
-                throw new Error("kernel execution failed, probably due to an array out of bounds access.");
+                throw new Error("kernel execution failed: " + RiverTrail.compiler.codeGen.getError(kernelFailure));
             }
         } else {
             alert("runOCL only deals with comprehensions, map and combine (so far).");
         }
-        paResult = new ParallelArray(resultMemObj, resShape, resultElemType);
+        if (resultMem.mem && (resultMem.mem instanceof Components.interfaces.dpoIData)) {
+            // single result
+            paResult = new ParallelArray(resultMem.mem, resultMem.shape, resultMem.type, resultMem.offset);
+            if (useBufferCaching) {
+                paResult.cachedOpenCLMem = resultMem.mem;
+            }
+        } else {
+            // multiple results
+            var multiPA = {};
+            for (var name in resultMem) {
+                multiPA[name] = new ParallelArray(resultMem[name].mem, resultMem[name].shape, resultMem[name].type, resultMem[name].offset);
+                if (useBufferCaching) {
+                    multiPA[name].cachedOpenCLMem = resultMem[name].mem;
+                }
+            }
+            paResult = new IBarfAtYouUnlessYouUnzipMe(multiPA);
+        }
+
         return paResult;
     };
 
-    // Finally a bunch of helper functions that know how to walk the ast.
-    
+    // unsophisticated wrapper around multiple ParallelArray objects. This wrapper will block
+    // all calls the ParallelArray API except for unzip, which returns the contained
+    // data object.
+    var IBarfAtYouUnlessYouUnzipMe = function IBarfAtYouUnlessYouUnzipMe(data) {
+        this.unzip = function () {
+            return data;
+        };
+
+        return this;
+    };
+    var barf = function barf(name) {
+        return function () {
+            throw "`" + name + "' not implemented for ParallelArray of objects. Please call `unzip' first!";
+        }
+    };
+    IBarfAtYouUnlessYouUnzipMe.prototype = {};
+    IBarfAtYouUnlessYouUnzipMe.prototype.map = barf("map");
+    IBarfAtYouUnlessYouUnzipMe.prototype.combine = barf("combine");
+    IBarfAtYouUnlessYouUnzipMe.prototype.scan = barf("scan");
+    IBarfAtYouUnlessYouUnzipMe.prototype.filter = barf("filter");
+    IBarfAtYouUnlessYouUnzipMe.prototype.scatter = barf("scatter");
+    IBarfAtYouUnlessYouUnzipMe.prototype.reduce = barf("reduce");
+    IBarfAtYouUnlessYouUnzipMe.prototype.get = barf("get");
+    IBarfAtYouUnlessYouUnzipMe.prototype.partition = barf("partition");
+    IBarfAtYouUnlessYouUnzipMe.prototype.flatten = barf("flatten");
+    IBarfAtYouUnlessYouUnzipMe.prototype.toString = barf("toString");
+    IBarfAtYouUnlessYouUnzipMe.prototype.getShape = barf("getShape");
+    IBarfAtYouUnlessYouUnzipMe.prototype.getData = barf("getData");
+    IBarfAtYouUnlessYouUnzipMe.prototype.getArray = barf("getArray");
+
     // Given the shape of an array return the number of elements. Duplicate from ParallelArray.js 
     var shapeToLength = function shapeToLength(shape) {
         var i;

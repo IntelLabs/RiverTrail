@@ -191,10 +191,10 @@ RiverTrail.Helper = function () {
         var data = this.data = new constructor(len);
         if(shape.length === 1) {
             for(var k = 0; k < shape[0]; k++) {
-                this.data[pos++] = src[k];
-                if(src[k] !== this.data[pos-1]) {
-                    throw "Error: Conversion to flat array failed!";
+                if (typeof(src[k]) !== 'number') {
+                    throw "Error: Conversion to flat array failed: not a number!";
                 }
+                this.data[pos++] = src[k];
             }
             return this;
         }
@@ -222,10 +222,10 @@ RiverTrail.Helper = function () {
                     throw "Error: Leaf length and shape are different! Flattening kernel argument failed";
                 }
                 for(var j = 0; j < node.length; j++) {
-                    this.data[pos++] = node[j];
-                    if(this.data[pos-1] !== node[j]) {
-                        throw "Error: Conversion to flat array failed!";
+                    if (typeof(node[j]) !== 'number') {
+                        throw "Error: Conversion to flat array failed: not a number!";
                     }
+                    this.data[pos++] = node[j];
                 }
             }
         }
@@ -282,6 +282,13 @@ RiverTrail.Helper = function () {
         return this;
     };
 
+    var compareObjectFields = function(f1, f2) {
+        if((f2.hasOwnProperty(idx) && f1[idx].equals(f2[idx]))) {
+            return true;
+        }
+        return false;
+    };
+
     // helper function that throws an exception and logs it if verboseDebug is on
     var debugThrow = function (e) {
         if (RiverTrail.compiler.verboseDebug) {
@@ -336,9 +343,8 @@ RiverTrail.Helper = function () {
         var t = new parser.Tokenizer(kernelJS);
         t.get(true); // grab the first token
         var ast = parser.FunctionDefinition(t, undefined, false, parser.EXPRESSED_FORM);        
-        // Ensure that the function has a unique, valid name to simplify
-        // the treatment downstream
-        ast.dispatch = nameGen(ast.name || (ast.name = "nameless"));
+        // Ensure that the function has a valid name to simplify the treatment downstream
+        if (!ast.name) ast.name = "nameless";
         return ast;
     };
 
@@ -495,6 +501,30 @@ RiverTrail.Helper = function () {
         }
     };
 
+    // used in genOCL and infermem to decide whether a return expression qualifies for
+    // allocation free copying
+    function isArrayLiteral (ast) {
+        return ((ast.type === ARRAY_INIT) &&
+                ((ast.typeInfo.getOpenCLShape().length == 1) ||
+                 ast.children.every(function (x) { return (x.type === IDENTIFIER) || isArrayLiteral(x);})));
+    };
+
+    // allocate an aligned Typed Array
+    function allocateAlignedTA(template, length) {
+        if(!RiverTrail.compiler){
+            return new template(length);
+        }
+        var alignment = RiverTrail.compiler.openCLContext.alignmentSize;
+        if (!alignment) {
+            // old extension, do not align
+            return undefined;
+            return new constructor(size);
+        }
+        var buffer = new ArrayBuffer(length * template.BYTES_PER_ELEMENT + alignment);
+        var offset = RiverTrail.compiler.openCLContext.getAlignmentOffset(buffer);
+        return new template(buffer, offset, length);
+    };
+
     return { "traverseAst" : traverseAst,
              "wrappedPP" : wrappedPP,
              "inferPAType" : inferPAType,
@@ -511,7 +541,10 @@ RiverTrail.Helper = function () {
              "parseFunction" : parseFunction,
              "reportError" : reportError,
              "reportBug" : reportBug,
-             "findSelectionRoot" : findSelectionRoot
+             "findSelectionRoot" : findSelectionRoot,
+             "isArrayLiteral" : isArrayLiteral,
+             "compareObjectFields" : compareObjectFields,
+             "allocateAlignedTA" : allocateAlignedTA
     };
 
 }();

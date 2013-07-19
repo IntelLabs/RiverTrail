@@ -255,7 +255,9 @@ RiverTrail.InferBlockFlow = function () {
                     case DOT:
                         // not allowed for now as object cannot be mutated :-)
                         // we should never get here.
-                        reportBug("objects may not be mutated!");
+                        //reportBug("objects may not be mutated!");
+                        infer(ast.children[0], ins, outs, locals);
+                        infer(ast.children[1], ins, outs, locals);
                         break;
                     default:
                         reportBug("unhandled lhs in assignment");
@@ -320,9 +322,18 @@ RiverTrail.InferBlockFlow = function () {
             case UNARY_MINUS:
             case BITWISE_NOT:
                 //fallthrough;
-
-            // misc other stuff that just requires a map
+                // misc other stuff that just requires a map
+                ast.children.forEach(function (val) { infer(val, ins, outs, locals); });
+                break;
             case CALL:
+                if(ast.children[0].type === DOT &&
+                        (ast.children[0].children[0].value === "RiverTrailUtils" ||
+                        ast.children[0].children[1].value === "createArray")) {
+                    infer(ast.children[1].children[1], ins, outs, locals);
+                    break;
+                }
+                ast.children.forEach(function (val) { infer(val, ins, outs, locals); });
+                break;
             case LIST:      
             case CAST:
             case TOINT32:
@@ -380,7 +391,13 @@ RiverTrail.InferBlockFlow = function () {
                 break;
             case NEW:
             case NEW_WITH_ARGS:
+                reportError("general objects not yet implemented", ast);
+                break;
             case OBJECT_INIT:
+                for(var idx = 0; idx < ast.children.length; idx++) {
+                    infer(ast.children[idx].children[1], ins, outs, locals);
+                }
+                break;
             case WITH:
                 reportError("general objects not yet implemented", ast);
                 break;

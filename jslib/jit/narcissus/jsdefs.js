@@ -55,13 +55,26 @@
     var narcissus = {
         options: {
             version: 185,
+            // Global variables to hide from the interpreter
+            hiddenHostGlobals: { Narcissus: true },
+            // Desugar SpiderMonkey language extensions?
+            desugarExtensions: false,
+            // Allow HTML comments?
+            allowHTMLComments: false
         },
+        hostSupportsEvalConst: (function() {
+            try {
+                return eval("(function(s) { eval(s); return x })('const x = true;')");
+            } catch (e) {
+                return false;
+            }
+        })(),
         hostGlobal: this
     };
     Narcissus = narcissus;
 })();
 
-Narcissus.definitions = (function() {
+Narcissus.definitions = (function(hostGlobal) {
 
     var tokens = [
         // End of source.
@@ -102,10 +115,10 @@ Narcissus.definitions = (function() {
         "break",
         "case", "catch", "const", "continue",
         "debugger", "default", "delete", "do",
-        "else",
+        "else", "export",
         "false", "finally", "for", "function",
-        "if", "in", "instanceof",
-        "let",
+        "if", "import", "in", "instanceof",
+        "let", "module",
         "new", "null",
         "return",
         "switch",
@@ -128,6 +141,23 @@ Narcissus.definitions = (function() {
         "yield",
         "while", "with",
     ];
+
+    // Whitespace characters (see ECMA-262 7.2)
+    var whitespaceChars = [
+        // normal whitespace:
+        "\u0009", "\u000B", "\u000C", "\u0020", "\u00A0", "\uFEFF",
+
+        // high-Unicode whitespace:
+        "\u1680", "\u180E",
+        "\u2000", "\u2001", "\u2002", "\u2003", "\u2004", "\u2005", "\u2006",
+        "\u2007", "\u2008", "\u2009", "\u200A",
+        "\u202F", "\u205F", "\u3000"
+    ];
+
+    var whitespace = {};
+    for (var i = 0; i < whitespaceChars.length; i++) {
+        whitespace[whitespaceChars[i]] = true;
+    }
 
     // Operator and punctuator mapping from token to tree node type name.
     // NB: because the lexer doesn't backtrack, all token prefixes must themselves
@@ -182,7 +212,7 @@ Narcissus.definitions = (function() {
     var tokenIds = {};
 
     // Building up a string to be eval'd in different contexts.
-    var consts = "const ";
+    var consts = Narcissus.hostSupportsEvalConst ? "const " : "var ";
     for (var i = 0, j = tokens.length; i < j; i++) {
         if (i > 0)
             consts += ", ";
@@ -217,6 +247,27 @@ Narcissus.definitions = (function() {
                               { get: fn, configurable: !dontDelete, enumerable: !dontEnum });
     }
 
+    function defineGetterSetter(obj, prop, getter, setter, dontDelete, dontEnum) {
+        Object.defineProperty(obj, prop, {
+            get: getter,
+            set: setter,
+            configurable: !dontDelete,
+            enumerable: !dontEnum
+        });
+    }
+
+    function defineMemoGetter(obj, prop, fn, dontDelete, dontEnum) {
+        Object.defineProperty(obj, prop, {
+            get: function() {
+                var val = fn();
+                defineProperty(obj, prop, val, dontDelete, true, dontEnum);
+                return val;
+            },
+            configurable: true,
+            enumerable: !dontEnum
+        });
+    }
+
     function defineProperty(obj, prop, val, dontDelete, readOnly, dontEnum) {
         Object.defineProperty(obj, prop,
                               { value: val, writable: !readOnly, configurable: !dontDelete,
@@ -229,6 +280,39 @@ Narcissus.definitions = (function() {
         return ((typeof fn) === "function") && fn.toString().match(/\[native code\]/);
     }
 
+    var Fpapply = Function.prototype.apply;
+
+    function apply(f, o, a) {
+        return Fpapply.call(f, [o].concat(a));
+    }
+
+    var applyNew;
+
+    // ES5's bind is a simpler way to implement applyNew
+    if (Function.prototype.bind) {
+        applyNew = function applyNew(f, a) {
+            return new (f.bind.apply(f, [,].concat(a)))();
+        };
+    } else {
+        applyNew = function applyNew(f, a) {
+            switch (a.length) {
+              case 0:
+                return new f();
+              case 1:
+                return new f(a[0]);
+              case 2:
+                return new f(a[0], a[1]);
+              case 3:
+                return new f(a[0], a[1], a[2]);
+              default:
+                var argStr = "a[0]";
+                for (var i = 1, n = a.length; i < n; i++)
+                    argStr += ",a[" + i + "]";
+                return eval("new f(" + argStr + ")");
+            }
+        };
+    }
+
     function getPropertyDescriptor(obj, name) {
         while (obj) {
             if (({}).hasOwnProperty.call(obj, name))
@@ -237,11 +321,141 @@ Narcissus.definitions = (function() {
         }
     }
 
+    function getPropertyNames(obj) {
+        var table = Object.create(null, {});
+        while (obj) {
+            var names = Object.getOwnPropertyNames(obj);
+            for (var i = 0, n = names.length; i < n; i++)
+                table[names[i]] = true;
+            obj = Object.getPrototypeOf(obj);
+        }
+        return Object.keys(table);
+    }
+
     function getOwnProperties(obj) {
         var map = {};
         for (var name in Object.getOwnPropertyNames(obj))
             map[name] = Object.getOwnPropertyDescriptor(obj, name);
         return map;
+    }
+
+    function blacklistHandler(target, blacklist) {
+        var mask = Object.create(null, {});
+        var redirect = Dict.create(blacklist).mapObject(function(name) { return mask; });
+        return mixinHandler(redirect, target);
+    }
+
+    function whitelistHandler(target, whitelist) {
+        var catchall = Object.create(null, {});
+        var redirect = Dict.create(whitelist).mapObject(function(name) { return target; });
+        return mixinHandler(redirect, catchall);
+    }
+
+    function mirrorHandler(target, writable) {
+        var handler = makePassthruHandler(target);
+
+        var defineProperty = handler.defineProperty;
+        handler.defineProperty = function(name, desc) {
+            if (!desc.enumerable)
+                throw new Error("mirror property must be enumerable");
+            if (!desc.configurable)
+                throw new Error("mirror property must be configurable");
+            if (desc.writable !== writable)
+                throw new Error("mirror property must " + (writable ? "" : "not ") + "be writable");
+            defineProperty(name, desc);
+        };
+
+        handler.fix = function() { };
+        handler.getOwnPropertyDescriptor = handler.getPropertyDescriptor;
+        handler.getOwnPropertyNames = getPropertyNames.bind(handler, target);
+        handler.keys = handler.enumerate;
+        handler["delete"] = function() { return false; };
+        handler.hasOwn = handler.has;
+        return handler;
+    }
+
+    /*
+     * Mixin proxies break the single-inheritance model of prototypes, so
+     * the handler treats all properties as own-properties:
+     *
+     *                  X
+     *                  |
+     *     +------------+------------+
+     *     |                 O       |
+     *     |                 |       |
+     *     |  O         O    O       |
+     *     |  |         |    |       |
+     *     |  O    O    O    O       |
+     *     |  |    |    |    |       |
+     *     |  O    O    O    O    O  |
+     *     |  |    |    |    |    |  |
+     *     +-(*)--(w)--(x)--(y)--(z)-+
+     */
+
+    function mixinHandler(redirect, catchall) {
+        function targetFor(name) {
+            return hasOwn(redirect, name) ? redirect[name] : catchall;
+        }
+
+        function getMuxPropertyDescriptor(name) {
+            var desc = getPropertyDescriptor(targetFor(name), name);
+            if (desc)
+                desc.configurable = true;
+            return desc;
+        }
+
+        function getMuxPropertyNames() {
+            var names1 = Object.getOwnPropertyNames(redirect).filter(function(name) {
+                return name in redirect[name];
+            });
+            var names2 = getPropertyNames(catchall).filter(function(name) {
+                return !hasOwn(redirect, name);
+            });
+            return names1.concat(names2);
+        }
+
+        function enumerateMux() {
+            var result = Object.getOwnPropertyNames(redirect).filter(function(name) {
+                return name in redirect[name];
+            });
+            for (name in catchall) {
+                if (!hasOwn(redirect, name))
+                    result.push(name);
+            };
+            return result;
+        }
+
+        function hasMux(name) {
+            return name in targetFor(name);
+        }
+
+        return {
+            getOwnPropertyDescriptor: getMuxPropertyDescriptor,
+            getPropertyDescriptor: getMuxPropertyDescriptor,
+            getOwnPropertyNames: getMuxPropertyNames,
+            defineProperty: function(name, desc) {
+                Object.defineProperty(targetFor(name), name, desc);
+            },
+            "delete": function(name) {
+                var target = targetFor(name);
+                return delete target[name];
+            },
+            // FIXME: ha ha ha
+            fix: function() { },
+            has: hasMux,
+            hasOwn: hasMux,
+            get: function(receiver, name) {
+                var target = targetFor(name);
+                return target[name];
+            },
+            set: function(receiver, name, val) {
+                var target = targetFor(name);
+                target[name] = val;
+                return true;
+            },
+            enumerate: enumerateMux,
+            keys: enumerateMux
+        };
     }
 
     function makePassthruHandler(obj) {
@@ -293,17 +507,30 @@ Narcissus.definitions = (function() {
         };
     }
 
-    // default function used when looking for a property in the global object
-    function noPropFound() { return undefined; }
-
     var hasOwnProperty = ({}).hasOwnProperty;
 
-    function StringMap() {
-        this.table = Object.create(null, {});
-        this.size = 0;
+    function hasOwn(obj, name) {
+        return hasOwnProperty.call(obj, name);
     }
 
-    StringMap.prototype = {
+    function Dict(table, size) {
+        this.table = table || Object.create(null, {});
+        this.size = size || 0;
+    }
+
+    Dict.create = function(table) {
+        var init = Object.create(null, {});
+        var size = 0;
+        var names = Object.getOwnPropertyNames(table);
+        for (var i = 0, n = names.length; i < n; i++) {
+            var name = names[i];
+            init[name] = table[name];
+            size++;
+        }
+        return new Dict(init, size);
+    };
+
+    Dict.prototype = {
         has: function(x) { return hasOwnProperty.call(this.table, x); },
         set: function(x, v) {
             if (!hasOwnProperty.call(this.table, x))
@@ -323,7 +550,83 @@ Narcissus.definitions = (function() {
             for (var key in table)
                 f.call(this, key, table[key]);
         },
-        toString: function() { return "[object StringMap]" }
+        map: function(f) {
+            var table1 = this.table;
+            var table2 = Object.create(null, {});
+            this.forEach(function(key, val) {
+                table2[key] = f.call(this, val, key);
+            });
+            return new Dict(table2, this.size);
+        },
+        mapObject: function(f) {
+            var table1 = this.table;
+            var table2 = Object.create(null, {});
+            this.forEach(function(key, val) {
+                table2[key] = f.call(this, val, key);
+            });
+            return table2;
+        },
+        toObject: function() {
+            return this.mapObject(function(val) { return val; });
+        },
+        choose: function() {
+            return Object.getOwnPropertyNames(this.table)[0];
+        },
+        remove: function(x) {
+            if (hasOwnProperty.call(this.table, x)) {
+                this.size--;
+                delete this.table[x];
+            }
+        },
+        copy: function() {
+            var table = Object.create(null, {});
+            for (var key in this.table)
+                table[key] = this.table[key];
+            return new Dict(table, this.size);
+        },
+        keys: function() {
+            return Object.keys(this.table);
+        },
+        toString: function() { return "[object Dict]" }
+    };
+
+    // shim for ES6 WeakMap with poor asymptotics
+    function WeakMap(array) {
+        this.array = array || [];
+    }
+
+    function searchMap(map, key, found, notFound) {
+        var a = map.array;
+        for (var i = 0, n = a.length; i < n; i++) {
+            var pair = a[i];
+            if (pair.key === key)
+                return found(pair, i);
+        }
+        return notFound();
+    }
+
+    WeakMap.prototype = {
+        has: function(x) {
+            return searchMap(this, x, function() { return true }, function() { return false });
+        },
+        set: function(x, v) {
+            var a = this.array;
+            searchMap(this, x,
+                      function(pair) { pair.value = v },
+                      function() { a.push({ key: x, value: v }) });
+        },
+        get: function(x) {
+            return searchMap(this, x,
+                             function(pair) { return pair.value },
+                             function() { return null });
+        },
+        "delete": function(x) {
+            var a = this.array;
+            searchMap(this, x,
+                      function(pair, i) { a.splice(i, 1) },
+                      function() { });
+        },
+        toString: function() { return "[object WeakMap]" }
     };
 
     // non-destructive stack
@@ -360,8 +663,26 @@ Narcissus.definitions = (function() {
         }
     };
 
+    if (!Array.prototype.copy) {
+        defineProperty(Array.prototype, "copy",
+                       function() {
+                           var result = [];
+                           for (var i = 0, n = this.length; i < n; i++)
+                               result[i] = this[i];
+                           return result;
+                       }, false, false, true);
+    }
+
+    if (!Array.prototype.top) {
+        defineProperty(Array.prototype, "top",
+                       function() {
+                           return this.length && this[this.length-1];
+                       }, false, false, true);
+    }
+
     return {
         tokens: tokens,
+        whitespace: whitespace,
         opTypeNames: opTypeNames,
         keywords: keywords,
         isStatementStartCode: isStatementStartCode,
@@ -369,11 +690,19 @@ Narcissus.definitions = (function() {
         consts: consts,
         assignOps: assignOps,
         defineGetter: defineGetter,
+        defineGetterSetter: defineGetterSetter,
+        defineMemoGetter: defineMemoGetter,
         defineProperty: defineProperty,
         isNativeCode: isNativeCode,
+        apply: apply,
+        applyNew: applyNew,
+        mirrorHandler: mirrorHandler,
+        mixinHandler: mixinHandler,
+        whitelistHandler: whitelistHandler,
+        blacklistHandler: blacklistHandler,
         makePassthruHandler: makePassthruHandler,
-        noPropFound: noPropFound,
-        StringMap: StringMap,
+        Dict: Dict,
+        WeakMap: hostGlobal.WeakMap || WeakMap,
         Stack: Stack
     };
-}());
+}(this));
