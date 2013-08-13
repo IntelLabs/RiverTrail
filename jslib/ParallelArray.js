@@ -159,6 +159,7 @@ var ParallelArray = function () {
                 extensions = dpoC.extensions || dpoP.extensions;
             } catch (e) {
                 console.log("Unable to query dpoInterface: "+e);
+                extensions = "";
             }
         }
         enable64BitFloatingPoint = (extensions.indexOf("cl_khr_fp64") !== -1);
