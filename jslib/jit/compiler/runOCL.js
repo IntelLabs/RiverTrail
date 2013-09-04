@@ -120,7 +120,7 @@ RiverTrail.compiler.runOCL = function () {
         // add memory for result
         // SAH: We have agreed that operations are elemental type preserving, thus I reuse the type
         //      of the argument here.
-        if (paSource.updateInPlacePA !== undefined) {
+        if (paSource && (paSource.updateInPlacePA !== undefined)) {
             if (ast.typeInfo.result.isObjectType("InlineObject")) {
                 // we do not support a scan over multiple results
                 throw new Error("the impossible happened: in place scan operation with multiple returns!");

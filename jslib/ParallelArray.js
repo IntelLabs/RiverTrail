@@ -588,7 +588,7 @@ var ParallelArray = function () {
         }
         // try to execute the comprehension in OpenCL
         try {
-            return RiverTrail.compiler.compileAndGo(this, theFunction, scalarIndex ? "comprehensionScalar" : "comprehension", sizeVector, extraArgs, enable64BitFloatingPoint);
+            return RiverTrail.compiler.compileAndGo(null, theFunction, scalarIndex ? "comprehensionScalar" : "comprehension", sizeVector, extraArgs, enable64BitFloatingPoint);
         } catch (e) {
             console.log("comprehension failed: " + e);
         }

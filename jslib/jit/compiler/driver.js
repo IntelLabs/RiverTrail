@@ -323,7 +323,7 @@ RiverTrail.compiler = (function () {
                 var cacheEntry = { "ast": ast,
                     "name": ast.name,
                     "source": f,
-                    "paType": RiverTrail.Helper.inferPAType(paSource),
+                    "paType": paSource ? RiverTrail.Helper.inferPAType(paSource) : undefined,
                     "kernel": [{"kernel": kernel, "spec": spec}],
                     "construct": construct,
                     "lowPrecision": lowPrecision,
@@ -460,7 +460,7 @@ RiverTrail.compiler = (function () {
             }
         }
 
-        console.log("new spec: " + specToString(result));
+        RiverTrail.compiler.debug && console.log("new spec: " + specToString(result));
 
         return (changed ? result : null);
     };
