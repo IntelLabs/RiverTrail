@@ -544,7 +544,7 @@ RiverTrail.Helper = function () {
              "findSelectionRoot" : findSelectionRoot,
              "isArrayLiteral" : isArrayLiteral,
              "compareObjectFields" : compareObjectFields,
-             "allocateAlignedTA" : allocateAlignedTA
+             "allocateAlignedTA" : allocateAlignedTA,
     };
 
 }();

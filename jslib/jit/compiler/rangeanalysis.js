@@ -1119,7 +1119,23 @@ RiverTrail.RangeAnalysis = function () {
         return result;
     }
 
-        function analyze(ast, array, construct, rankOrShape, args) {
+    function specToRange(spec) {
+        switch (spec.type) {
+            case 'number':
+                return new Range(spec.val, spec.val, (spec.val | 0) === spec.val);
+            case 'array':
+                return new RangeArray(spec.val, function (v) { return new Range(v, v, (v | 0) === v); });
+            case 'flatarray':
+                // only support 1d arrays for now
+                if (spec.val.shape.length === 1) {
+                    return new RangeArray(spec.val.data, function (v) { return new Range(v, v, (v | 0) === v); });
+                }
+            default:
+                return new Range(undefined, undefined, false);
+        }
+    };
+
+        function analyze(ast, array, construct, rankOrShape, args, spec) {
             var env = new VarEnv();
             var argoffset = 0;
 
@@ -1139,9 +1155,15 @@ RiverTrail.RangeAnalysis = function () {
                 argoffset = 1;
             }
             // add empty range info for all arguments
+            // if we have some spec information, we can use that instead
             ast.params.forEach(function (v, idx) { 
                     if (idx >= argoffset) {
-                        env.update(v, new Range(undefined, undefined, false));
+                        if (spec && spec[idx-argoffset]) {
+                            env.update(v, specToRange(spec[idx-argoffset]));
+
+                        } else {
+                            env.update(v, new Range(undefined, undefined, false));
+                        }
                     }
                 });
 
