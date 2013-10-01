@@ -29,13 +29,6 @@
  * @author: Jaswanth Sreeram
  */
 
-function endit() {
-    webcam_source.endRecording();
-    webcam_source.endSession();
-    return "Your webcam session has ended";
-}
-window.onbeforeunload = endit;
-
 var frames = 0;
 var elapsed = 0;
 var input_canvas;
@@ -45,7 +38,7 @@ var output_context;
 var webcam_on;
 var video_on;
 var video_source;
-var webcam_source = window.navigator.service.media; 
+var webCamVideo;
 var kernels;
 var execution_mode;
 var prevFrame;
@@ -53,7 +46,6 @@ var hist_canvas;
 var hist_context;
 //var hist_on = false;
 var numActiveFilters = 0;
-var chimp;
 var cached_dims = [];
 
 function toggleExecutionMode() {
@@ -78,7 +70,18 @@ function pauseWebCamInput() {
     input_canvas = document.getElementById("output");
     input_context = input_canvas.getContext("2d");
     output_context.clearRect(0, 0, output_canvas.width, output_canvas.height);
-    webcam_source.endSession();
+    //webcam_source.endSession();
+    webcam_on = false;
+    output_canvas.style.width=output_canvas.width=cached_dims[0];
+    output_canvas.style.height=output_canvas.height=cached_dims[1];
+    var outputdiv = document.getElementById("outputdiv");
+    outputdiv.style.width = output_canvas.width;
+    outputdiv.style.height = output_canvas.height;
+    if(!video_on) {
+        video_on = true;
+        video.play();
+    }
+    computeFrame();
 }
 function startWebCamInput() {
     frames = 0;
@@ -103,11 +106,8 @@ function startWebCamInput() {
 
     output_canvas.width=input_canvas.width;
     output_canvas.height=input_canvas.height;
-
-    var camera_options = {audio:false, video:true, width:input_canvas.width, height:input_canvas.height};
-    output_context.clearRect(0, 0, output_canvas.width, output_canvas.height);
+    initWebCam();
     webcam_on = true;
-    webcam_source.beginSession(camera_options, input_context, onStateChange);
 }
 
 function toggleUseWebcam() {
@@ -158,16 +158,57 @@ function initKernels() {
         ];
     numActiveFilters = 0;
 }
+
+function webCamSuccess(stream) {
+    if ('mozSrcObject' in webCamVideo) {
+        webCamVideo.mozSrcObject = stream;
+    } else if (window.webkitURL) {
+        webCamVideo.src = window.webkitURL.createObjectURL(stream);
+    } else {
+        webCamVideo.src = stream;
+    }
+    webCamVideo.play();
+}
+
+function webCamError(error) {
+    alert('Error accessing webcam ! ', error);
+}
+
+function initWebCam() {
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+    if (navigator.getUserMedia) {
+        navigator.getUserMedia({video: true}, webCamSuccess, webCamError);
+    }
+    webCamVideo = document.getElementById("webcamvideo");
+    webCamVideo.addEventListener('loadedmetadata', function () {
+            webcam_on = true;
+            output_canvas.style.width=output_canvas.width=input_canvas.width;
+            output_canvas.style.height=output_canvas.height=input_canvas.height;
+            var outputdiv = document.getElementById("outputdiv");
+            outputdiv.style.width = output_canvas.width;
+            outputdiv.style.height = output_canvas.height;
+            if(video_on) {
+                video_on = false;
+                video.pause();
+            }
+            /*
+            if(!video_on) {
+                video_on = true;
+                video.play();
+            }
+            */
+            computeFrame();;
+    });
+}
+
 function doLoad() {
+    //initWebCam();
     video = document.getElementById("video");
     output_canvas = document.getElementById("output");
     output_context = output_canvas.getContext("2d");
     input_canvas = output_canvas;
     input_context = output_context;
    
-    chimp = document.getElementsByTagName('img')[0]; 
-   
-
     hist_canvas = document.getElementById("hist");
     hist_context = hist_canvas.getContext("2d");
 
@@ -217,6 +258,12 @@ function setKernels(oldfilter, newfilter) {
 
 }
 function computeFrame() {
+    if(frames < 10) {
+        mozRequestAnimationFrame(computeFrame);
+    }
+    else {
+        setTimeout(function() {computeFrame();},0);
+    }
     var start_time;
     var frame;
     var len;
@@ -226,6 +273,9 @@ function computeFrame() {
         return;
     if(video_on) {
         output_context.drawImage(video, 0, 0, output_canvas.width, output_canvas.height);
+    }
+    else if(webcam_on) {
+        input_context.drawImage(webCamVideo, 0, 0, webCamVideo.videoWidth, webCamVideo.videoHeight, 0, 0, output_canvas.width, output_canvas.height);
     }
 
     if(frames > 0)
@@ -256,8 +306,8 @@ function computeFrame() {
             switch(filterName) {
                 case "face_detect":
                     face_pa = new ParallelArray([h, w], kernelName, stage_input, w, h);
-                    dofaceparallel(face_pa, w, h, stage_input, output_context, w, h);
-                    stage_output = stage_input;
+                    dofaceparallel(face_pa, w, h, stage_input, frame, output_context, w, h);
+                    //stage_output = stage_input;
                     break;
                 case "edge_detect":
                 case "sharpen":
@@ -301,15 +351,7 @@ function computeFrame() {
             case "face_detect":
                 break;
             default:
-                stage_output.materialize();
-                var so_data = stage_output.data;
-                var so_len = so_data.length;
-                var f_data = frame.data;
-                for(var i = 0; i < so_len; i++) {
-                    f_data[i] = so_data[i];
-                }
-                //frame.data.set(stage_output.data);
-                output_context.putImageData(frame, 0, 0);
+                writePAtoCanvasContext(stage_output, frame, output_context);
         }
     }
     //if(hist_on)
@@ -326,43 +368,16 @@ function computeFrame() {
         document.getElementById("text1").innerHTML= Math.floor((frames-1)/(elapsed/1000)) + " fps";
         //document.getElementById("text1").innerHTML= ((frames-1)/(elapsed/1000)).toFixed(1) + " fps";
     }
-    setTimeout(function () {
-        computeFrame();
-    }, 0);
     return;
 }
 
-function onStateChange(type, arg) {
-    switch (type) {
-        case "session-began":
-            webcam_on = true;
-            computeFrame();
-            break;
-        case "record-began":
-            webcam_on = true;
-            break;
-        case "record-ended":
-            webcam_source.endSession();
-            webcam_on = false;
-            break;
-        case "record-finished":
-            webcam_on = false;
-            break;
-        case "session-ended":
-            webcam_on = false;
-            output_canvas.style.width=output_canvas.width=cached_dims[0];
-            output_canvas.style.height=output_canvas.height=cached_dims[1];
-            var outputdiv = document.getElementById("outputdiv");
-            outputdiv.style.width = output_canvas.width;
-            outputdiv.style.height = output_canvas.height;
-            if(!video_on) {
-                video_on = true;
-                video.play();
-            }
-            computeFrame();
-            break;
-        case "error":
-            alert("Webcam ERROR: " + type + " " + arg);
-            break;
+function writePAtoCanvasContext(pa, frame, ctx) {
+    pa.materialize();
+    var pa_data = pa.data;
+    var pa_data_len = pa_data.length;
+    var f_data = frame.data;
+    for(var i = 0; i < pa_data_len; i++) {
+        f_data[i] = pa_data[i];
     }
+    ctx.putImageData(frame, 0, 0);
 }

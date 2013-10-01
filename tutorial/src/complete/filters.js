@@ -94,7 +94,7 @@ function isSkinYCrCb(xr, xg, xb) {
 
 }
 
-function dofaceparallel(input, w, h, image_pa, ctx, ow, oh) {
+function dofaceparallel(input, w, h, image_pa, frm, ctx, ow, oh) {
     var row_sums_pa = new ParallelArray(h, rowSum, input, w, h);
     var col_sums_pa = new ParallelArray(w, colSum, input, w, h);
 
@@ -135,8 +135,7 @@ function dofaceparallel(input, w, h, image_pa, ctx, ow, oh) {
             break;
         }
     }
-    image_pa.materialize();
-    RiverTrail.compiler.openCLContext.writeToContext2D(ctx, image_pa.data, ow, oh);
+    writePAtoCanvasContext(image_pa, frm, ctx);
     ctx.strokeStyle = "rgba(20,254,0,1)";
     ctx.lineWidth = 5;
     ctx.strokeRect(face_col_start, face_row_start, 100, 100);
