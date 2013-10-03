@@ -43,17 +43,12 @@
  */
 inline
 void dpoCData::HoldObjects() {
-	if (xpc == NULL) xpc = do_GetService(nsIXPConnect::GetCID(), NULL); 
-    if (xpc != NULL) {
-        xpc->AddJSHolder(NS_CYCLE_COLLECTION_UPCAST(this, dpoCData), NS_CYCLE_COLLECTION_PARTICIPANT(dpoCData));
-    }
+	/* don't do anything until there is an API for this again */
 }                                                                                                    
 
 inline
 void dpoCData::DropObjects() {
-    if (xpc != NULL) {
-        xpc->RemoveJSHolder(NS_CYCLE_COLLECTION_UPCAST(this, dpoCData));
-    }                                                                                                      \
+	/* don't do anything until there is an API for this again */
 }
 
 /*
@@ -111,7 +106,6 @@ dpoCData::dpoCData(dpoIContext *aParent)
 #ifdef PREALLOCATE_IN_JS_HEAP
 	mapped = false;
 #endif /* PREALLOCATE_IN_JS_HEAP */
-	xpc = NULL;
 }
 
 dpoCData::~dpoCData()
@@ -134,7 +128,6 @@ dpoCData::~dpoCData()
 		DropObjects();
     }
 	parent = NULL;
-	xpc = NULL;
 }
 
 #ifdef INCREMENTAL_MEM_RELEASE
@@ -248,11 +241,12 @@ NS_IMETHODIMP dpoCData::GetValue(JSContext *cx, jsval *aValue)
 #ifdef INCREMENTAL_MEM_RELEASE
 		CheckFree();
 #endif /* INCREMENTAL_MEM_RELEASE */
-
-		if (NS_FAILED(((dpoCContext *) parent.get())->CreateAlignedTA(type, length, &theArray, cx))) {
+		JSObject *newArray;
+		if (NS_FAILED(((dpoCContext *) parent.get())->CreateAlignedTA(type, length, &newArray, cx))) {
 			DropObjects();
 			return NS_ERROR_NOT_AVAILABLE;
 		}
+		theArray = newArray;
 		
 		if (!theArray) {
 			DEBUG_LOG_STATUS("GetValue", "Cannot create typed array");

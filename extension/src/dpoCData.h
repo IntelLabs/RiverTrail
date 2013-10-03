@@ -66,7 +66,7 @@ protected:
   uint32 type;
   uint32 length;
   uint32 size;
-  JSObject *theArray;
+  JS::Heap<JSObject*> theArray;
   JSContext *theContext;
   bool retained;
 #ifdef PREALLOCATE_IN_JS_HEAP
@@ -76,7 +76,6 @@ protected:
   int CheckFree();
   void DeferFree(cl_mem);
 #endif /* INCREMENTAL_MEM_RELEASE */
-  nsCOMPtr<nsIXPConnect> xpc;
   void HoldObjects();
   void DropObjects();
   cl_int EnqueueReadBuffer( size_t size, void *ptr);
