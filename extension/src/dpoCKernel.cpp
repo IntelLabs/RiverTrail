@@ -51,6 +51,8 @@ NS_IMPL_CI_INTERFACE_GETTER2(dpoCKernel, dpoIKernel, nsISecurityCheckedComponent
 /* 
  * Implement the hooks for the cycle collector
  */
+NS_IMPL_CYCLE_COLLECTION_CLASS(dpoCKernel)
+
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN(dpoCKernel)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE_SCRIPT_OBJECTS
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(parent)
