@@ -162,7 +162,7 @@ var pa2 = new ParallelArray(pa1);
 
 // Create a ParallelArray from several other
 // ParallelArrays
-var pa3 = new ParallelArray(<0,1>, <2,3>);
+var pa3 = new ParallelArray([0,1], [2,3]);
 // pa3 = <<0,1>,<2,3>>
 
 // Create a one-dimensional ParallelArray of length
@@ -181,7 +181,7 @@ var pa7 = new ParallelArray([3, 2],
 // This creates a PA with shape [w, h, 4],
 // corresponding to the width and height of the
 // canvas and the RGBA values for each pixel.
-var pa8 = new ParallelArray(canvas);
+var pa8 = new ParallelArray(document.createElement("canvas"));
 // pa8 = CanvasPixelArray
 
         </pre>
