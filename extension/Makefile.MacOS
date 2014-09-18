@@ -29,6 +29,7 @@ OUTPUTDIR = Release/MacOS
 OUTPUTNAME = extension.bundle
 OUTPUTNAME32 = extension.32.bundle
 EXTENSIONDIR = xpi-contents
+EXTENSIONNAME = RiverTrail.xpi
 GECKODIR = gecko-sdk
 GECKODIR32 = $(wildcard gecko-sdk-32)
 EXCLUDEFILES = src/dllmain.cpp
@@ -50,6 +51,7 @@ IDLFILES = $(filter-out $(EXCLUDEFILES),$(wildcard src/*.idl))
 CPPFILES = $(filter-out $(EXCLUDEFILES),$(wildcard src/*.cpp))
 MAKEDEPEND = $(CC) -MM
 SED = sed
+ZIP = zip
 
 TYPELIBS = $(patsubst %.idl,%.xpt,$(IDLFILES))
 HEADERS = $(patsubst %.idl,%.h,$(IDLFILES))
@@ -71,11 +73,15 @@ endif
 all: $(TYPELIBS) $(HEADERS) $(OUTPUTS)
 
 clean:
-	rm -f $(TYPELIBS) $(HEADERS) $(OBJFILES) $(OBJFILES32) $(DEPFILES) $(OUTPUTS)
+	rm -f $(TYPELIBS) $(HEADERS) $(OBJFILES) $(OBJFILES32) $(DEPFILES) $(OUTPUTS) $(EXTENSIONDIR)/components/*.xpt $(EXTENSIONDIR)/components/$(OUTPUTNAME) $(EXTENSIONDIR)/$(EXTENSIONNAME)
 
 deploy: all
 	cp $(OUTPUTS) $(EXTENSIONDIR)/components/
 	cp $(TYPELIBS) $(EXTENSIONDIR)/components/
+
+# Creates a directly installable extension file.
+xpi: deploy
+	cd $(EXTENSIONDIR); $(ZIP) -r $(EXTENSIONNAME) chrome chrome.manifest components defaults install.rdf
 
 $(OUTPUTDIR):
 	mkdir -p $(OUTPUTDIR)
@@ -99,6 +105,3 @@ $(OUTPUTDIR)/$(OUTPUTNAME32): $(OUTPUTDIR) $(OBJFILES32)
 %.32.o: %.cpp 
 	@$(MAKEDEPEND) $(GECKODEF) -I $(GECKODIR32)/$(GECKOINC) -I $(GECKODIR32)/$(GECKOINC)/nspr $(GECKOFLAGS) $< | $(SED) -e 's|.*:|$*.32.o:|' > $*.32.d
 	$(CXX) $(CCFLAGS) -c $< -o $@ -I $(dir $<) -I $(GECKODIR32)/$(GECKOINC) -I $(GECKODIR32)/$(GECKOINC)/nspr $(GECKOFLAGS) $(GECKODEF) -arch i386
-
-
-
