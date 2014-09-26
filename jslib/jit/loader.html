@@ -43,13 +43,13 @@
 <script type="application/javascript" src="compiler/genOCL.js"></script>
 <script type="application/javascript" src="compiler/runOCL.js"></script>
 <script type="application/javascript">
-var reportResult = function reportResult(s) {
+function reportResult(s) {
     var elm = document.getElementById('status');
     var node = document.createTextNode(s);
     elm.appendChild(node);
     elm.appendChild(document.createElement('br'));
 }
-var compileTextArea = function compileTextArea() {
+function compileTextArea() {
     var d = document;
     var source = d.getElementById("source").value;
     eval( source);
@@ -72,7 +72,7 @@ var compileTextArea = function compileTextArea() {
 <textarea id="source" style="width:100%; height:10em;">
 // Some JavaScript here
 var pa = new ParallelArray([1,2,3]);
-var foo = function foo(iv) { return this.get(iv); };
+function foo(iv) { return this.get(iv); };
 </textarea>
 </p>
 <p>
