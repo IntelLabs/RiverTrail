@@ -1,24 +1,6 @@
 Building the Firefox OpenCL Interface Extension
 =================================================
 
-Prerequisites
--------------
-
-Before you can start, you need to download the Gecko SDK. The latest version can
-be found at
-
-https://developer.mozilla.org/en/gecko_sdk
-
-Download the archive for your OS and extract at least the bin, lib, idl, sdk
-and include directories to the gecko-sdk directory. For MacOS and Linux, you 
-need to download the 64 bit version. 32 bit Linux is not supported.
-
-If you want your build to include support for 32 bit mode on 64 Bit MacOS,
-create a new directory named gecko-sdk-32. Download and extract the 32 bit 
-version of the Gecko SDK as described above into that newly created directory. 
-The build process will automatically pick up the 32 bit dependencies and 
-create a corresponding version of the extension.
-
 OpenCL Stack
 ------------
 
