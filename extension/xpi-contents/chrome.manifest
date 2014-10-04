@@ -24,10 +24,15 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-# register chrome/content as target for simpleextension
-# the contentaccessible=yes allows access to the files from
-# the firefox url bar, which is nice for debugging
-content	dpointerface	chrome/content/ contentaccessible=yes
+# This line specifies:
+# - the type of material within a chrome package
+# - the name of the package
+# - the location of its files
 
-# add the overlay that initialises the component
-#overlay	chrome://browser/content/browser.xul	chrome://dpoextension/content/dpo.xul
+# The contentaccessible=yes allows access to the files from
+# the Firefox URL bar, which is nice for debugging.
+content	river-trail-extension chrome/content/ contentaccessible=yes
+
+# This line tells Firefox to merge ffi.xul into
+# browser.xul when browser.xul loads.
+overlay chrome://browser/content/browser.xul chrome://river-trail-extension/content/ffi.xul

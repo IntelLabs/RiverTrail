@@ -26,11 +26,13 @@
 -->
   <RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:em="http://www.mozilla.org/2004/em-rdf#">
   <Description about="urn:mozilla:install-manifest">
-  <em:id>dpointerface@intel.com</em:id>
-    <em:version>0.25</em:version>
-    <!--
-    <em:iconURL>chrome://dpointerface/content/logo.png</em:iconURL>
-    -->
+
+    <!-- This is the extension ID.  It has to be in the format of an
+         email address, but it need not actually be an email address!
+         -->
+    <em:id>river-trail-extension@intel.com</em:id>
+    <em:version>0.3</em:version>
+
     <em:name>River Trail for Firefox</em:name>
     <em:description>
       Used by River Trail to interface with OpenCL from JavaScript. 
@@ -38,16 +40,21 @@
     <em:homepageURL>
       http://github.com/RiverTrail/RiverTrail/wiki
     </em:homepageURL>
-    <em:creator>Stephan Herhut</em:creator>
-    <em:optionsURL>chrome://dpointerface/content/options.xul</em:optionsURL>
+    <em:creator>Intel Corporation</em:creator>
+    <em:optionsURL>chrome://river-trail-extension/content/options.xul</em:optionsURL>
     <em:unpack>true</em:unpack>
-    <!-- firefox -->
     <em:type>2</em:type>
     <em:targetApplication>
       <Description>
+
+	<!-- Firefox's application ID. -->
         <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
-        <em:minVersion>25.0</em:minVersion>
-        <em:maxVersion>25.0.*</em:maxVersion>
+
+	<!-- I have no idea what the correct minimum version is.  1.5 is a guess. -->
+        <em:minVersion>1.5</em:minVersion>
+
+	<!-- 32 is the current release of Firefox, as of today. -->
+        <em:maxVersion>32.*</em:maxVersion>
       </Description>
     </em:targetApplication>
   </Description>
