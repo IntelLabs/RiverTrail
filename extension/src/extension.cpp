@@ -77,7 +77,7 @@ static const mozilla::Module::ContractIDEntry kSupportedContracts[] = {
     { NULL }
 };
 
-static const mozilla::Module::CategoryEntry kRegistetredCategories[] = {
+static const mozilla::Module::CategoryEntry kRegisteredCategories[] = {
 	{ "JavaScript-global-constructor", "DPOInterface", DPO_COMPONENT_CONTRACTID},
     { NULL }
 };
@@ -86,7 +86,7 @@ static const mozilla::Module kDPOModule = {
     mozilla::Module::kVersion,
     kContainedClasses,
 	kSupportedContracts,
-	kRegistetredCategories
+	kRegisteredCategories
 };
 
 /*
