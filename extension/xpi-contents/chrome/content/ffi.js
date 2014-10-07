@@ -110,6 +110,8 @@ var OpenCL = {
 						 cl_platform_id.ptr, // out: *platforms
 						 cl_uint.ptr); // out: *num_platforms
 
+	// TODO: declare clGetPlatformInfo
+
 	this.clGetDeviceIDs = this.lib.declare("clGetDeviceIDs",
 					       ctypes.default_abi,
 					       cl_int, // return type: error code
@@ -172,7 +174,8 @@ var PrefsPopulator = {
 	var naplatforms = new cl_uint();
 	var numSupportedPlatforms = new cl_uint(0);
 	const maxNameLength = new cl_uint(256);
-	var name = new ctypes.ArrayType(ctypes.char, maxNameLength);
+	const NameArray = new ctypes.ArrayType(ctypes.char, maxNameLength.value);
+	var name = new NameArray();
 
 	err_code = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
 
@@ -182,9 +185,11 @@ var PrefsPopulator = {
 	}
 
 	// All found platforms
-	var allPlatforms = new ctypes.ArrayType(cl_platform_id, nplatforms);
+	const PlatformsArray = new ctypes.ArrayType(cl_platform_id, nplatforms.value);
+	var allPlatforms = new PlatformsArray();
 
-	err_code = OpenCL.clGetPlatformIDs(nplatforms, allPlatforms,
+	err_code = OpenCL.clGetPlatformIDs(nplatforms.value,
+					   allPlatforms,
 					   naplatforms.address());
 
 	if (err_code != CL_SUCCESS) {
