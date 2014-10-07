@@ -64,6 +64,9 @@ const cl_device_info = ctypes.uint32_t;
 
 // Constants from cl.h (not all of them, just the ones we need):
 
+// Error codes:
+const CL_SUCCESS = 0;
+
 // cl_context_info variants (for specifying to `clGetContextInfo` what
 // we're asking for info about):
 const CL_CONTEXT_NUM_DEVICES = 0x1083;
@@ -72,6 +75,10 @@ const CL_CONTEXT_NUM_DEVICES = 0x1083;
 // we're asking for info about):
 const CL_DEVICE_TYPE_ = 0x1000;
 const CL_DEVICE_AVAILABLE = 0x1027;
+
+// cl_platform_info variants (for specifying to `clGetPlatformInfo`
+// what we're asking for info about):
+const CL_PLATFORM_NAME = 0x0902;
 
 // cl_device_type bitfield variants (returned from `CL_DEVICE_TYPE`
 // queries to `clGetDeviceInfo`):
@@ -143,6 +150,93 @@ var OpenCL = {
     shutdown: function() {
 	this.lib.close();
     },
+};
+
+var noOfPlatforms = new cl_uint(0);
+var platforms = new cl_platform_id(null);
+
+var PrefsPopulator = {
+
+    // An attempt to port some of the code from dpoCInterface.cpp.
+
+    InitPlatformInfo: function() {
+
+	OpenCL.init();
+
+	var err_code = new cl_int();
+
+	// |nplatforms| is used to get number of platforms
+	// |naplatforms| is used for the number of actual platforms returned into |platforms|
+	// |numSupportedPlatforms| is the number of supported platforms found
+	var nplatforms = new cl_uint();
+	var naplatforms = new cl_uint();
+	var numSupportedPlatforms = new cl_uint(0);
+	const maxNameLength = new cl_uint(256);
+	var name = new ctypes.ArrayType(ctypes.char, maxNameLength);
+
+	err_code = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
+
+	if (err_code != CL_SUCCESS) {
+	    console.log("InitPlatformInfo: " + err_code);
+	    throw "InitPlatformInfo: " + err_code;
+	}
+
+	// All found platforms
+	var allPlatforms = new ctypes.ArrayType(cl_platform_id, nplatforms);
+
+	err_code = OpenCL.clGetPlatformIDs(nplatforms, allPlatforms,
+					   naplatforms.address());
+
+	if (err_code != CL_SUCCESS) {
+	    console.log("InitPlatformInfo: " + err_code);
+	    throw "InitPlatformInfo: " + err_code;
+	}
+
+	for (var i = new cl_uint(0); i < naplatforms; i++) {
+	    err_code = clGetPlatformInfo(allPlatforms[i],
+					 CL_PLATFORM_NAME,
+					 maxNameLength*ctypes.char.size,
+					 name, null);
+		if (err_code != CL_SUCCESS) {
+		    // Why is this GetIntelPlatform?
+		    console.log("GetIntelPlatform: " + err_code);
+		    throw "GetIntelPlatform: " + err_code;
+		}
+		if (name == "Intel(R) OpenCL" || name == "Apple") {
+		    platforms[numSupportedPlatforms++] = allPlatforms[i];
+		}
+	}
+
+	if (err_code != CL_SUCCESS) {
+	    console.log("InitPlatformInfo: " + err_code);
+	    throw "InitPlatformInfo: " + err_code;
+	}
+	noOfPlatforms = numSupportedPlatforms;
+
+	// TODO: will allPlatforms get GC'd automatically?
+    },
+
+    // TODO: I'm not sure we really need this.  It seems to have been
+    // part of an attempt to expose a smaller amount of code via
+    // DPOInterface.  But since we're not doing the "everything talks
+    // to C++ via the DPOInterface object" thing, then maybe it's
+    // unnecessary.
+    GetNumberOfPlatforms: function(aNumberOfPlatforms) {
+
+	var result = 0;
+
+	if (platforms == null) {
+	    // Also, this doesn't make sense since I'm not having
+	    // InitPlatformInfo return a result; that doesn't seem
+	    // JS-y.
+	    result = this.InitPlatformInfo();
+	}
+
+	aNumberOfPlatforms.contents = noOfPlatforms;
+
+	return result;
+    },
+
 };
 
 var Main = {
