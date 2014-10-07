@@ -97,11 +97,31 @@ var OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
 
     init: function() {
-	this.lib = ctypes.open("/System/Library/Frameworks/OpenCL.framework/OpenCL");
+
+	// Depending what OS we're using, we need to open a different OpenCL library.
+
+	var os ="Unknown OS";
+	if (navigator.userAgent.indexOf("Win") != -1) os ="Windows";
+	if (navigator.userAgent.indexOf("Mac") != -1) os ="MacOS";
+	if (navigator.userAgent.indexOf("Linux") != -1) os ="Linux";
+	if (os == "MacOS") {
+	    this.lib = ctypes.open("/System/Library/Frameworks/OpenCL.framework/OpenCL");
+	} else if (os == "Linux") {
+	    // TODO: There's probably something more general I can
+	    // point to here.  This is where libOpenCL.so ends up when
+	    // I install the Intel OpenCL SDK.
+	    this.lib = ctypes.open("/opt/intel/opencl-1.2-4.6.0.92/lib64/libOpenCL.so");
+	} else {
+	    // TODO: we should handle Windows at some point.
+	    throw "I'm not sure what OS this is";
+	}
 
 	// Set up stubs for functions that we want to talk to from JS.
 	// These are documented at
 	// https://www.khronos.org/registry/cl/sdk/2.0/docs/man/xhtml/.
+
+	// N.B.: ctypes.default_abi should work on both Linux and Mac,
+	// but not Windows.
 
 	this.clGetPlatformIDs = this.lib.declare("clGetPlatformIDs",
 						 ctypes.default_abi,
