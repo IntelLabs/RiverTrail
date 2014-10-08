@@ -60,6 +60,9 @@
     <!-- Mark this extension as restartless. -->
     <em:bootstrap>true</em:bootstrap>
 
+    <!-- Open options in a dialog box. -->
+    <em:optionsType>1</em:optionsType>
+
   </Description>
 </RDF>
 
