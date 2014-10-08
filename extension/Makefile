@@ -32,7 +32,7 @@ ZIP = zip
 
 # Creates a directly installable extension file.
 xpi:
-	cd $(EXTENSIONDIR); $(ZIP) -r $(EXTENSIONNAME) chrome chrome.manifest defaults install.rdf
+	cd $(EXTENSIONDIR); $(ZIP) -r $(EXTENSIONNAME) chrome chrome.manifest defaults install.rdf options.xul
 
 clean:
 	rm -f $(EXTENSIONDIR)/$(EXTENSIONNAME)
