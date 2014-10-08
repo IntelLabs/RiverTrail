@@ -323,6 +323,9 @@ var Main = {
 	}
 
 	OpenCL.shutdown();
+
+	// testing...
+	PrefsPopulator.InitPlatformInfo();
     },
 };
 
