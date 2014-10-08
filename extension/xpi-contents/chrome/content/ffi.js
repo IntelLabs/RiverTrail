@@ -61,6 +61,7 @@ const cl_int = ctypes.int32_t;
 // Enum types.  I'm not really sure what type these should be...
 const cl_device_type = ctypes.uint32_t;
 const cl_device_info = ctypes.uint32_t;
+const cl_platform_info = ctypes.uint32_t;
 
 // Constants from cl.h (not all of them, just the ones we need):
 
@@ -130,7 +131,14 @@ var OpenCL = {
 						 cl_platform_id.ptr, // out: *platforms
 						 cl_uint.ptr); // out: *num_platforms
 
-	// TODO: declare clGetPlatformInfo
+	this.clGetPlatformInfo = this.lib.declare("clGetPlatformInfo",
+						  ctypes.default_abi,
+						  cl_int, // return type: error code
+						  cl_platform_id, // platform
+						  cl_platform_info, // param_name
+						  ctypes.size_t, // param_value_size
+						  ctypes.voidptr_t, // *param_value
+						  sizeptr_t); // *param_value_size_ret
 
 	this.clGetDeviceIDs = this.lib.declare("clGetDeviceIDs",
 					       ctypes.default_abi,
@@ -218,10 +226,11 @@ var PrefsPopulator = {
 	}
 
 	for (var i = new cl_uint(0); i < naplatforms; i++) {
-	    err_code = clGetPlatformInfo(allPlatforms[i],
-					 CL_PLATFORM_NAME,
-					 maxNameLength*ctypes.char.size,
-					 name, null);
+	    err_code = OpenCL.clGetPlatformInfo(allPlatforms[i],
+						CL_PLATFORM_NAME,
+						maxNameLength.value*ctypes.char.size,
+						name,
+						null);
 		if (err_code != CL_SUCCESS) {
 		    // Why is this GetIntelPlatform?
 		    console.log("GetIntelPlatform: " + err_code);
