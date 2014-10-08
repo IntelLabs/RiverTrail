@@ -128,7 +128,7 @@ var OpenCL = {
 						 ctypes.default_abi,
 						 cl_int, // return type: error code
 						 cl_uint, // in: num_entries
-						 cl_platform_id.ptr, // out: *platforms
+						 cl_platform_id.ptr, // in: *platforms
 						 cl_uint.ptr); // out: *num_platforms
 
 	this.clGetPlatformInfo = this.lib.declare("clGetPlatformInfo",
