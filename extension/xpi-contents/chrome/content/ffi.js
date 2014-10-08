@@ -35,7 +35,7 @@ Cu.import("resource://gre/modules/ctypes.jsm");
 Cu.import("resource://gre/modules/Services.jsm");
 
 // For debugging.
-let console = (Cu.import("resource://gre/modules/devtools/Console.jsm", {})).console;
+Cu.import("resource://gre/modules/devtools/Console.jsm");
 
 // Here are a few types for which we have no better alternative than
 // voidptr_t.  We have no idea how, e.g., the cl_context type is
