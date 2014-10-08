@@ -41,7 +41,6 @@
       http://github.com/RiverTrail/RiverTrail/wiki
     </em:homepageURL>
     <em:creator>Intel Corporation</em:creator>
-    <em:optionsURL>chrome://river-trail-extension/content/options.xul</em:optionsURL>
     <em:unpack>true</em:unpack>
     <em:type>2</em:type>
     <em:targetApplication>
@@ -57,6 +56,10 @@
         <em:maxVersion>32.*</em:maxVersion>
       </Description>
     </em:targetApplication>
+
+    <!-- Mark this extension as restartless. -->
+    <em:bootstrap>true</em:bootstrap>
+
   </Description>
 </RDF>
 

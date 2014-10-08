@@ -328,22 +328,3 @@ var Main = {
 	PrefsPopulator.InitPlatformInfo();
     },
 };
-
-// Code that listens for a custom DOM event.  This is how we
-// implement communication between unprivileged (web page) and
-// privileged (extension) JS code.
-var DOMListener = {
-    listener: function(evt) {
-	alert("Hello from privileged code! Event received!");
-	Main.run();
-    }
-}
-
-// The `true` argument is a Mozilla-specific value to indicate
-// untrusted content is allowed to trigger the event.
-document.addEventListener("RiverTrailExtensionCustomEvent",
-			  function(e) {
-			      DOMListener.listener(e);
-			  },
-			  false,
-			  true);
