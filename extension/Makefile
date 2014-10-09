@@ -32,7 +32,7 @@ ZIP = zip
 
 # Creates a directly installable extension file.
 xpi:
-	cd $(EXTENSIONDIR); $(ZIP) -r $(EXTENSIONNAME) chrome chrome.manifest defaults install.rdf options.xul
+	cd $(EXTENSIONDIR); $(ZIP) -r $(EXTENSIONNAME) bootstrap.js chrome chrome.manifest install.rdf
 
 clean:
 	rm -f $(EXTENSIONDIR)/$(EXTENSIONNAME)

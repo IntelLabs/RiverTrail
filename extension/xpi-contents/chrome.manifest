@@ -32,8 +32,4 @@
 # The contentaccessible=yes allows access to the files from
 # the Firefox URL bar, which is nice for debugging.
 content	river-trail-extension chrome/content/ contentaccessible=yes
-content river-trail-extension defaults/preferences/ contentaccessible=yes
 
-# This line tells Firefox to merge ffi.xul into
-# browser.xul when browser.xul loads.
-overlay chrome://browser/content/browser.xul chrome://river-trail-extension/content/ffi.xul

@@ -29,13 +29,13 @@
 // through the js-ctypes interface.
 
 // Import the ctypes library.
-Cu.import("resource://gre/modules/ctypes.jsm");
+Components.utils.import("resource://gre/modules/ctypes.jsm");
 
 // For restartlessness.
-Cu.import("resource://gre/modules/Services.jsm");
+Components.utils.import("resource://gre/modules/Services.jsm");
 
 // For debugging.
-Cu.import("resource://gre/modules/devtools/Console.jsm");
+Components.utils.import("resource://gre/modules/devtools/Console.jsm");
 
 // Here are a few types for which we have no better alternative than
 // voidptr_t.  We have no idea how, e.g., the cl_context type is
@@ -97,14 +97,14 @@ const sizeptr_t = ctypes.size_t.ptr;
 var OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
 
-    init: function() {
+    init: function(win) {
 
 	// Depending what OS we're using, we need to open a different OpenCL library.
 
 	var os ="Unknown OS";
-	if (navigator.userAgent.indexOf("Win") != -1) os ="Windows";
-	if (navigator.userAgent.indexOf("Mac") != -1) os ="MacOS";
-	if (navigator.userAgent.indexOf("Linux") != -1) os ="Linux";
+	if (win.navigator.userAgent.indexOf("Win") != -1) os ="Windows";
+	if (win.navigator.userAgent.indexOf("Mac") != -1) os ="MacOS";
+	if (win.navigator.userAgent.indexOf("Linux") != -1) os ="Linux";
 	if (os == "MacOS") {
 	    this.lib = ctypes.open("/System/Library/Frameworks/OpenCL.framework/OpenCL");
 	} else if (os == "Linux") {
@@ -189,9 +189,9 @@ var PrefsPopulator = {
 
     // An attempt to port some of the code from dpoCInterface.cpp.
 
-    InitPlatformInfo: function() {
+    InitPlatformInfo: function(win) {
 
-	OpenCL.init();
+	OpenCL.init(win);
 
 	var err_code = new cl_int();
 
@@ -225,10 +225,13 @@ var PrefsPopulator = {
 	    throw "InitPlatformInfo: " + err_code;
 	}
 
+// Turn this off for now, since I'm not sure how to call
+// clGetPlatformInfo correctly.
+/*
 	for (var i = new cl_uint(0); i < naplatforms; i++) {
 	    err_code = OpenCL.clGetPlatformInfo(allPlatforms[i],
 						CL_PLATFORM_NAME,
-						maxNameLength.value*ctypes.char.size,
+			 			maxNameLength.value*ctypes.char.size,
 						name,
 						null);
 		if (err_code != CL_SUCCESS) {
@@ -241,11 +244,13 @@ var PrefsPopulator = {
 		}
 	}
 
+
 	if (err_code != CL_SUCCESS) {
 	    console.log("InitPlatformInfo: " + err_code);
 	    throw "InitPlatformInfo: " + err_code;
 	}
 	noOfPlatforms = numSupportedPlatforms;
+*/
 
 	// TODO: will allPlatforms get GC'd automatically?
     },
@@ -255,7 +260,7 @@ var PrefsPopulator = {
     // DPOInterface.  But since we're not doing the "everything talks
     // to C++ via the DPOInterface object" thing, then maybe it's
     // unnecessary.
-    GetNumberOfPlatforms: function(aNumberOfPlatforms) {
+    GetNumberOfPlatforms: function(win, aNumberOfPlatforms) {
 
 	var result = 0;
 
@@ -263,7 +268,7 @@ var PrefsPopulator = {
 	    // Also, this doesn't make sense since I'm not having
 	    // InitPlatformInfo return a result; that doesn't seem
 	    // JS-y.
-	    result = this.InitPlatformInfo();
+	    result = this.InitPlatformInfo(win);
 	}
 
 	aNumberOfPlatforms.contents = noOfPlatforms;
@@ -275,9 +280,9 @@ var PrefsPopulator = {
 
 var Main = {
 
-    run: function() {
+    run: function(win) {
 
-	OpenCL.init();
+	OpenCL.init(win);
 
 	// A place to put all the error codes we encounter.
 	var error_code = new cl_int();
@@ -315,16 +320,17 @@ var Main = {
 					     error_code_ptr); // *errcode_ret
 
 	console.log(error_code);
-
 	console.log(context);
 
-	if (error_code == 0) {
-	    alert("Congratulations!  You've created OpenCL context " + context + ".");
-	}
+        if (error_code == 0) {
+            console.log(context);
+            win.alert("Congratulations!  You've created OpenCL context " + context + ".");
+        }
 
 	OpenCL.shutdown();
 
 	// testing...
-	PrefsPopulator.InitPlatformInfo();
+	PrefsPopulator.InitPlatformInfo(win);
+
     },
 };

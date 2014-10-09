@@ -43,6 +43,7 @@
     <em:creator>Intel Corporation</em:creator>
     <em:unpack>true</em:unpack>
     <em:type>2</em:type>
+    <em:optionsURL>chrome://river-trail-extension/content/options.xul</em:optionsURL>
     <em:targetApplication>
       <Description>
 
@@ -59,9 +60,6 @@
 
     <!-- Mark this extension as restartless. -->
     <em:bootstrap>true</em:bootstrap>
-
-    <!-- Open options in a dialog box. -->
-    <em:optionsType>1</em:optionsType>
 
   </Description>
 </RDF>
