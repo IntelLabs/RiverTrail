@@ -97,23 +97,21 @@ const sizeptr_t = ctypes.size_t.ptr;
 var OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
 
-    init: function(win) {
+    init: function() {
+
+        let os = Services.appinfo.OS;
 
 	// Depending what OS we're using, we need to open a different OpenCL library.
-
-	var os ="Unknown OS";
-	if (win.navigator.userAgent.indexOf("Win") != -1) os ="Windows";
-	if (win.navigator.userAgent.indexOf("Mac") != -1) os ="MacOS";
-	if (win.navigator.userAgent.indexOf("Linux") != -1) os ="Linux";
-	if (os == "MacOS") {
+	if (os == "Darwin") {
 	    this.lib = ctypes.open("/System/Library/Frameworks/OpenCL.framework/OpenCL");
 	} else if (os == "Linux") {
 	    // TODO: There's probably something more general I can
 	    // point to here.  This is where libOpenCL.so ends up when
 	    // I install the Intel OpenCL SDK.
 	    this.lib = ctypes.open("/opt/intel/opencl-1.2-4.6.0.92/lib64/libOpenCL.so");
-	} else {
-	    // TODO: we should handle Windows at some point.
+	} else if (os == "WINNT") {
+            throw "TODO: handle Windows";
+        } else {
 	    throw "I'm not sure what OS this is";
 	}
 
