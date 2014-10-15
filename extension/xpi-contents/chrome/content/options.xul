@@ -71,8 +71,8 @@
 
         console.log("addPlatform: platform: " + platform);
 
-        var row = document.createElement("listitem");
-        var item;
+        let row = document.createElement("listitem");
+        let item;
         
         item = document.createElement("listcell"); 
         item.setAttribute("label", platform.name);
@@ -90,36 +90,36 @@
     // Populates the drop-down list of devices.  This happens
     // individually, per platform.
     function addDevices(platform) {
-        var deviceMenu = document.getElementById("defaultDeviceType");
-        var deviceMenuPopup = document.getElementById("deviceMenuPopup");
+        let deviceMenu = document.getElementById("defaultDeviceType");
+        let deviceMenuPopup = document.getElementById("deviceMenuPopup");
         // Remove popup to clear everything
-        for(var i = 0; i < deviceMenu.childNodes.length; i++) {
+        for(let i = 0; i < deviceMenu.childNodes.length; i++) {
             deviceMenu.removeChild(deviceMenu.childNodes[i]);
         }
         deviceMenu.selectedIndex = 0;
 
-        var deviceString = platform.deviceNames.trim();
+        let deviceString = platform.deviceNames.trim();
 
-        var devices = deviceString.split("#");
-        for(var i = 0; i < devices.length; i++) {
+        let devices = deviceString.split("#");
+        for(let i = 0; i < devices.length; i++) {
             if(devices[i] === "Unknown Device" || devices[i] === "")
                 continue;
             deviceMenu.appendItem(devices[i].trim(), i);
         }
     }
 
-    var prefService = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService);  
-    var prefBranch = prefService.getBranch("extensions.river-trail-extension.");
+    let prefService = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService);
+    let prefBranch = prefService.getBranch("extensions.river-trail-extension.");
     console.log(prefBranch);
-    var defaultPlatform = prefBranch.getIntPref("defaultPlatform");
-    var defaultDevice = prefBranch.getIntPref("defaultDeviceType");
+    let defaultPlatform = prefBranch.getIntPref("defaultPlatform");
+    let defaultDevice = prefBranch.getIntPref("defaultDeviceType");
     if(defaultPlatform < 0 || defaultPlatform === undefined) {
         defaultPlatform = 0;
     }
     if(defaultDevice < 0 || defaultDevice === undefined) {
         defaultDevice = 0;
     }
-    var mPlatform = document.getElementById("defaultPlatform");
+    let mPlatform = document.getElementById("defaultPlatform");
 
     let context = {};
     Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/ffi.js",
@@ -145,7 +145,7 @@
             addDevices(allPlatforms[mPlatform.selectedIndex]);
         }
     }
-    var mDevice = document.getElementById("defaultDeviceType");
+    let mDevice = document.getElementById("defaultDeviceType");
     mDevice.selectedIndex = defaultDevice;
     mDevice.onselect = function writeDevice() {
         if (mDevice.selectedItem != null) {

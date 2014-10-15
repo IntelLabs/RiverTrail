@@ -98,7 +98,7 @@ const uint32ptr_t = ctypes.uint32_t.ptr;
 const int32ptr_t = ctypes.int32_t.ptr;
 const sizeptr_t = ctypes.size_t.ptr;
 
-var OpenCL = {
+let OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
 
     init: function() {
@@ -194,14 +194,14 @@ let Platforms = {
 
         OpenCL.init();
 
-	var err_code = new cl_int();
+	let err_code = new cl_int();
 
 	// |nplatforms| is used to get number of platforms
 	// |naplatforms| is used for the number of actual platforms returned into |platforms|
 	// |numSupportedPlatforms| is the number of supported platforms found
-	var nplatforms = new cl_uint();
-	var naplatforms = new cl_uint();
-	var numSupportedPlatforms = new cl_uint(0);
+	let nplatforms = new cl_uint();
+	let naplatforms = new cl_uint();
+	let numSupportedPlatforms = new cl_uint(0);
 
 	err_code = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
 
@@ -212,7 +212,7 @@ let Platforms = {
 
 	// All found platforms
 	const PlatformsArray = new ctypes.ArrayType(cl_platform_id, nplatforms.value);
-	var allPlatforms = new PlatformsArray();
+	let allPlatforms = new PlatformsArray();
 
 	err_code = OpenCL.clGetPlatformIDs(nplatforms.value,
 					   allPlatforms,
@@ -352,7 +352,7 @@ Platform.prototype.GetPlatformID = function(platform_id) {
     }
 };
 
-var Main = {
+let Main = {
 
     // Needs the `win` argument so it can launch an alert.
     run: function(win) {
@@ -360,14 +360,14 @@ var Main = {
 	OpenCL.init();
 
 	// A place to put all the error codes we encounter.
-	var error_code = new cl_int();
-	var error_code_ptr = error_code.address();
+	let error_code = new cl_int();
+	let error_code_ptr = error_code.address();
 
 	// First, get a list of platform IDs, one of which we'll pass
 	// to `clGetDeviceIDs`.
 	const PlatformsArray = new ctypes.ArrayType(cl_platform_id, 1);
-	var platform_list = new PlatformsArray();
-	var num_platforms_ptr = new cl_uint.ptr;
+	let platform_list = new PlatformsArray();
+	let num_platforms_ptr = new cl_uint.ptr;
 	error_code =
 	    OpenCL.clGetPlatformIDs(1, platform_list, num_platforms_ptr);
 
@@ -376,7 +376,7 @@ var Main = {
 	// Then, get a list of device IDs to pass to
 	// `clCreateContext`.
 	const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
-	var device_list = new DeviceArray();
+	let device_list = new DeviceArray();
 	error_code =
 	    OpenCL.clGetDeviceIDs(platform_list[0], // platform
 				  CL_DEVICE_TYPE_CPU, // device_type
@@ -387,7 +387,7 @@ var Main = {
 	console.log(error_code);
 
 	// Finally, we can create a context.
-	var context = OpenCL.clCreateContext(null, // *properties
+	let context = OpenCL.clCreateContext(null, // *properties
 					     1, // num_devices
 					     device_list, // *devices
 					     null, // *pfn_notify
