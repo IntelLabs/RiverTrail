@@ -69,8 +69,6 @@
     // Populates the list of platforms.
     function addPlatform(context, menu, platform, isHighlighted) {
 
-        console.log("addPlatform: platform: " + platform);
-
         let row = document.createElement("listitem");
         let item;
         
@@ -110,7 +108,6 @@
 
     let prefService = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService);
     let prefBranch = prefService.getBranch("extensions.river-trail-extension.");
-    console.log(prefBranch);
     let defaultPlatform = prefBranch.getIntPref("defaultPlatform");
     let defaultDevice = prefBranch.getIntPref("defaultDeviceType");
     if(defaultPlatform < 0 || defaultPlatform === undefined) {
@@ -127,7 +124,6 @@
     context.Platforms.init();
     let allPlatforms = context.Platforms.jsPlatforms;
     let numPlatforms = context.Platforms.numPlatforms.value;
-    console.log("numPlatforms: " + numPlatforms);
     for (let i = 0; i < numPlatforms; i++) {
         addPlatform(context,
                     mPlatform,
