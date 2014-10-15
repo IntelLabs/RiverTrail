@@ -95,7 +95,7 @@ function startup(data, reason) {
     // Load default preferences for the extension.
     var defaultBranch = Services.prefs.getDefaultBranch(null);
     function setDefaultPref(prefName, prefValue) {
-        defaultBranch.setBoolPref(prefName, prefValue);
+        defaultBranch.setIntPref(prefName, prefValue);
     }
     Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/defaults.js",
                                         {pref:setDefaultPref} );
