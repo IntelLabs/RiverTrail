@@ -27,7 +27,7 @@
 
 /* Entry point for the extension. */
 
-Components.utils.import('resource://gre/modules/Services.jsm');
+Components.utils.import("resource://gre/modules/Services.jsm");
 
 // Code that listens for a custom DOM event.  This is how we
 // implement communication between unprivileged (web page) and
@@ -42,7 +42,7 @@ function load(win) {
                                   let context = {};
                                   Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/ffi.js",
                                                                      context);
-                                  
+
                                   context.Main.run(win);
                               },
                               false,
@@ -99,7 +99,6 @@ function startup(data, reason) {
     }
     Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/defaults.js",
                                         {pref:setDefaultPref} );
-
 }
 
 function shutdown(data, reason) {

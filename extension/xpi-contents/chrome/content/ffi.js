@@ -31,7 +31,7 @@
 // Import the ctypes library.
 Components.utils.import("resource://gre/modules/ctypes.jsm");
 
-// For restartlessness.
+// For restartlessness and other services.
 Components.utils.import("resource://gre/modules/Services.jsm");
 
 // For debugging.
@@ -171,12 +171,6 @@ var OpenCL = {
 						 
     },
 
-    // pfn_notify's signature:
-    // void ( CL_CALLBACK  *pfn_notify) (const char *errinfo,
-    //                                   const void *private_info,
-    //                                   size_t cb,
-    //                                   void *user_data)
-
     shutdown: function() {
 	this.lib.close();
     },
@@ -280,6 +274,7 @@ var PrefsPopulator = {
 
 var Main = {
 
+    // Needs the `win` argument so it can launch an alert.
     run: function(win) {
 
 	OpenCL.init(win);
@@ -328,9 +323,6 @@ var Main = {
         }
 
 	OpenCL.shutdown();
-
-	// testing...
-	PrefsPopulator.InitPlatformInfo(win);
 
     },
 };
