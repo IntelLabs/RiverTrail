@@ -63,7 +63,7 @@ function unload(win) {
 
 // Listener to make sure that stuff happens in future windows.  Not to
 // be confused with our custom event listener, above.
-var listener = {
+let listener = {
     onOpenWindow: function(aWindow) {
         // Wait for the window to finish loading
         let win = aWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowInternal);
@@ -93,7 +93,7 @@ function startup(data, reason) {
     Services.wm.addListener(listener);
 
     // Load default preferences for the extension.
-    var defaultBranch = Services.prefs.getDefaultBranch(null);
+    let defaultBranch = Services.prefs.getDefaultBranch(null);
     function setDefaultPref(prefName, prefValue) {
         defaultBranch.setIntPref(prefName, prefValue);
     }
