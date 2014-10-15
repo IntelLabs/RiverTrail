@@ -63,6 +63,8 @@
  
 <script type="text/javascript">
     <![CDATA[
+    "use strict";
+
     Components.utils.import("resource://gre/modules/devtools/Console.jsm");
     Components.utils.import("resource://gre/modules/Services.jsm");
 

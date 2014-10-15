@@ -28,6 +28,8 @@
 // This code makes OpenCL API functions available to JavaScript
 // through the js-ctypes interface.
 
+"use strict";
+
 // Import the ctypes library.
 Components.utils.import("resource://gre/modules/ctypes.jsm");
 

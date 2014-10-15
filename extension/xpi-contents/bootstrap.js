@@ -27,6 +27,8 @@
 
 /* Entry point for the extension. */
 
+"use strict";
+
 Components.utils.import("resource://gre/modules/Services.jsm");
 
 // Code that listens for a custom DOM event.  This is how we
