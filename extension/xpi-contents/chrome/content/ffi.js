@@ -79,7 +79,11 @@ const CL_DEVICE_AVAILABLE = 0x1027;
 
 // cl_platform_info variants (for specifying to `clGetPlatformInfo`
 // what we're asking for info about):
-const CL_PLATFORM_NAME = 0x0902;
+const CL_PLATFORM_PROFILE =    0x0900;
+const CL_PLATFORM_VERSION =    0x0901;
+const CL_PLATFORM_NAME =       0x0902;
+const CL_PLATFORM_VENDOR =     0x0903;
+const CL_PLATFORM_EXTENSIONS = 0x0904;
 
 // cl_device_type bitfield variants (returned from `CL_DEVICE_TYPE`
 // queries to `clGetDeviceInfo`):
@@ -174,16 +178,21 @@ var OpenCL = {
     },
 };
 
-var noOfPlatforms = new cl_uint(0);
-var platforms = new cl_platform_id(null);
+// Info about all OpenCL platforms.
+let Platforms = {
+    numPlatforms: new cl_uint(0),
 
-var PrefsPopulator = {
+    // A pointer to a ctypes array of platform IDs of supported
+    // platforms.  (Should this be a ctypes.ArrayType?  Probably.)
+    platforms: new cl_platform_id(null),
 
-    // An attempt to port some of the code from dpoCInterface.cpp.
+    // A JS array of Platform objects.
+    jsPlatforms: new Array(),
 
-    InitPlatformInfo: function(win) {
+    // Initializes numPlatforms and platforms.
+    init: function() {
 
-	OpenCL.init(win);
+        OpenCL.init();
 
 	var err_code = new cl_int();
 
@@ -193,15 +202,12 @@ var PrefsPopulator = {
 	var nplatforms = new cl_uint();
 	var naplatforms = new cl_uint();
 	var numSupportedPlatforms = new cl_uint(0);
-	const maxNameLength = new cl_uint(256);
-	const NameArray = new ctypes.ArrayType(ctypes.char, maxNameLength.value);
-	var name = new NameArray();
 
 	err_code = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
 
 	if (err_code != CL_SUCCESS) {
-	    console.log("InitPlatformInfo: " + err_code);
-	    throw "InitPlatformInfo: " + err_code;
+	    console.log("Platforms.init: " + err_code);
+	    throw "Platforms.init: " + err_code;
 	}
 
 	// All found platforms
@@ -213,61 +219,137 @@ var PrefsPopulator = {
 					   naplatforms.address());
 
 	if (err_code != CL_SUCCESS) {
-	    console.log("InitPlatformInfo: " + err_code);
-	    throw "InitPlatformInfo: " + err_code;
+	    console.log("Platforms.init: " + err_code);
+	    throw "Platforms.init: " + err_code;
 	}
 
-// Turn this off for now, since I'm not sure how to call
-// clGetPlatformInfo correctly.
-/*
-	for (var i = new cl_uint(0); i < naplatforms; i++) {
-	    err_code = OpenCL.clGetPlatformInfo(allPlatforms[i],
-						CL_PLATFORM_NAME,
-			 			maxNameLength.value*ctypes.char.size,
-						name,
-						null);
-		if (err_code != CL_SUCCESS) {
-		    // Why is this GetIntelPlatform?
-		    console.log("GetIntelPlatform: " + err_code);
-		    throw "GetIntelPlatform: " + err_code;
-		}
-		if (name == "Intel(R) OpenCL" || name == "Apple") {
-		    platforms[numSupportedPlatforms++] = allPlatforms[i];
-		}
-	}
+	for (let i = 0; i < naplatforms.value; i++) {
 
+            let platform = new Platform(allPlatforms[i]);
 
-	if (err_code != CL_SUCCESS) {
-	    console.log("InitPlatformInfo: " + err_code);
-	    throw "InitPlatformInfo: " + err_code;
-	}
-	noOfPlatforms = numSupportedPlatforms;
-*/
+            if (this.isSupported(platform.name)) {
 
-	// TODO: will allPlatforms get GC'd automatically?
+		this.platforms[numSupportedPlatforms.value] = allPlatforms[i];
+                numSupportedPlatforms.value++;
+
+                this.jsPlatforms.push(platform);
+            }
+        }
+	this.numPlatforms = numSupportedPlatforms;
+
+        OpenCL.shutdown();
     },
 
-    // TODO: I'm not sure we really need this.  It seems to have been
-    // part of an attempt to expose a smaller amount of code via
-    // DPOInterface.  But since we're not doing the "everything talks
-    // to C++ via the DPOInterface object" thing, then maybe it's
-    // unnecessary.
-    GetNumberOfPlatforms: function(win, aNumberOfPlatforms) {
+    isSupported: function(platformName) {
+	return (platformName == "Intel(R) OpenCL" || platformName == "Apple");
+    }
 
-	var result = 0;
+};
 
-	if (platforms == null) {
-	    // Also, this doesn't make sense since I'm not having
-	    // InitPlatformInfo return a result; that doesn't seem
-	    // JS-y.
-	    result = this.InitPlatformInfo(win);
-	}
+function Platform(platform_id) {
+    this.platform_id = this.GetPlatformID(platform_id);
+    this.version = this.GetVersion();
+    this.name = this.GetName();
+    this.vendor = this.GetVendor();
+    this.profile = this.GetProfile();
+    this.extensions = this.GetExtensions();
+    this.deviceNames = this.GetDeviceNames();
+}
 
-	aNumberOfPlatforms.contents = noOfPlatforms;
+// paramName: one of the cl_platform_info variants
+Platform.prototype.GetPlatformPropertyHelper = function(paramName) {
 
-	return result;
-    },
+    let err_code = new cl_int();
+    let length = new ctypes.size_t();
 
+    // This first call to `clGetPlatformInfo` is just to find out
+    // what the appropriate length is.
+    err_code = OpenCL.clGetPlatformInfo(this.platform_id,
+                                        paramName,
+                                        0,
+                                        null,
+                                        length.address());
+
+    if (err_code != CL_SUCCESS) {
+	console.log("GetPlatformPropertyHelper: " + err_code);
+	throw "GetPlatformPropertyHelper: " + err_code;
+    }
+
+    // Now that we have a length, we can allocate space for the
+    // actual results of the call, and call it for real.
+
+    const PropertyArray = new ctypes.ArrayType(ctypes.char, length.value);
+    let propertyBuf = new PropertyArray();
+    const SizeTArray = new ctypes.ArrayType(ctypes.size_t, 1);
+    let paramValueSizeRet = new SizeTArray();
+
+    err_code = OpenCL.clGetPlatformInfo(this.platform_id,
+                                        paramName,
+                                        length.value*ctypes.char.size,
+                                        propertyBuf,
+                                        paramValueSizeRet);
+
+    if (err_code != CL_SUCCESS) {
+        console.log("GetPlatformPropertyHelper: " + err_code);
+        throw "GetPlatformPropertyHelper: " + err_code;
+    }
+
+    // Return the property as a JS string.
+    let jsProperty = propertyBuf.readString();
+    return jsProperty;
+
+};
+
+Platform.prototype.GetDeviceNames = function() {
+
+    // TODO: port dpoCPlatform::GetDeviceNames.  Maybe the results
+    // could be returned in some nicer way, too...
+
+    return "devicename1#devicename2";
+
+};
+
+Platform.prototype.GetVersion = function() {
+    return this.GetPlatformPropertyHelper(CL_PLATFORM_VERSION);
+};
+
+Platform.prototype.GetName = function() {
+    return this.GetPlatformPropertyHelper(CL_PLATFORM_NAME);
+};
+
+Platform.prototype.GetVendor = function() {
+    return this.GetPlatformPropertyHelper(CL_PLATFORM_VENDOR);
+};
+
+Platform.prototype.GetProfile = function() {
+    return this.GetPlatformPropertyHelper(CL_PLATFORM_PROFILE);
+};
+
+Platform.prototype.GetExtensions = function() {
+    return this.GetPlatformPropertyHelper(CL_PLATFORM_EXTENSIONS);
+};
+
+// Tries to look up the platform ID from the default prefs, unless
+// one was passed as an argument.
+Platform.prototype.GetPlatformID = function(platform_id) {
+
+    let retval;
+
+    // If we were passed a platform_id, use that.
+    if (platform_id !== undefined) {
+        retval = platform_id;
+    }
+    // Otherwise, look up the default pref setting and use it.
+    else {
+        let prefs = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService).getBranch("extensions.river-trail-extension.");
+        retval = prefs.getIntPref("defaultPlatform");
+    }
+
+    if (retval < 0 || retval >= Platforms.numPlatforms.value) {
+        throw "GetPlatformID: Illegal platform_id";
+    } else {
+        return retval;
+    }
 };
 
 var Main = {
@@ -275,7 +357,7 @@ var Main = {
     // Needs the `win` argument so it can launch an alert.
     run: function(win) {
 
-	OpenCL.init(win);
+	OpenCL.init();
 
 	// A place to put all the error codes we encounter.
 	var error_code = new cl_int();

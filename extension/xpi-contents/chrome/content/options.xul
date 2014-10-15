@@ -63,11 +63,14 @@
  
 <script type="text/javascript">
     <![CDATA[
-    // load all available interfaces
-    function addPlatform(dpoI, menu, id, isHighlighted) {
-        var platform = dpoI.getPlatform(id);
-        var deviceNamesString = platform.deviceNames;
-        allPlatforms[id] = {"deviceString": deviceNamesString};
+    Components.utils.import("resource://gre/modules/devtools/Console.jsm");
+    Components.utils.import("resource://gre/modules/Services.jsm");
+
+    // Populates the list of platforms.
+    function addPlatform(context, menu, platform, isHighlighted) {
+
+        console.log("addPlatform: platform: " + platform);
+
         var row = document.createElement("listitem");
         var item;
         
@@ -83,7 +86,10 @@
         row.setAttribute("selected", isHighlighted);
         menu.appendChild(row);
     }
-    function addDevices(platformIndex) {
+
+    // Populates the drop-down list of devices.  This happens
+    // individually, per platform.
+    function addDevices(platform) {
         var deviceMenu = document.getElementById("defaultDeviceType");
         var deviceMenuPopup = document.getElementById("deviceMenuPopup");
         // Remove popup to clear everything
@@ -91,8 +97,8 @@
             deviceMenu.removeChild(deviceMenu.childNodes[i]);
         }
         deviceMenu.selectedIndex = 0;
-        
-        var deviceString = allPlatforms[platformIndex].deviceString.trim();
+
+        var deviceString = platform.deviceNames.trim();
 
         var devices = deviceString.split("#");
         for(var i = 0; i < devices.length; i++) {
@@ -100,42 +106,50 @@
                 continue;
             deviceMenu.appendItem(devices[i].trim(), i);
         }
-        
-
     }
+
     var prefService = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService);  
-    var dpoIPref = prefService.getBranch("extensions.dpointerface.");
-    var defaultPlatform = dpoIPref.getIntPref("defaultPlatform");
-    var defaultDevice = dpoIPref.getIntPref("defaultDeviceType");
+    var prefBranch = prefService.getBranch("extensions.river-trail-extension.");
+    console.log(prefBranch);
+    var defaultPlatform = prefBranch.getIntPref("defaultPlatform");
+    var defaultDevice = prefBranch.getIntPref("defaultDeviceType");
     if(defaultPlatform < 0 || defaultPlatform === undefined) {
         defaultPlatform = 0;
     }
     if(defaultDevice < 0 || defaultDevice === undefined) {
         defaultDevice = 0;
     }
-    var allPlatforms = [];
     var mPlatform = document.getElementById("defaultPlatform");
-    var dpoI = new DPOInterface();
-    var numPlatforms = dpoI.numberOfPlatforms;
-    for (var cnt = 0; cnt < numPlatforms; cnt++) {
-        addPlatform(dpoI, mPlatform, cnt, (cnt === defaultPlatform) ? "true" : "false");
+
+    let context = {};
+    Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/ffi.js",
+                                        context);
+    context.Platforms.init();
+    let allPlatforms = context.Platforms.jsPlatforms;
+    let numPlatforms = context.Platforms.numPlatforms.value;
+    console.log("numPlatforms: " + numPlatforms);
+    for (let i = 0; i < numPlatforms; i++) {
+        addPlatform(context,
+                    mPlatform,
+                    context.Platforms.jsPlatforms[i],
+                    (i === defaultPlatform) ? "true" : "false");
     }
-    addDevices(defaultPlatform);
+    addDevices(allPlatforms[defaultPlatform]);
     mPlatform.onselect = function writePlatform() {
         if(mPlatform.selectedIndex !== defaultPlatform) {
             mPlatform.getItemAtIndex(defaultPlatform).setAttribute("selected", "false");
         }
         if(mPlatform.selectedIndex > 0 && mPlatform.selectedIndex < allPlatforms.length) {
-            dpoIPref.setIntPref("defaultPlatform", mPlatform.selectedIndex);
+            prefBranch.setIntPref("defaultPlatform", mPlatform.selectedIndex);
             // Query and populate device list
-            addDevices(mPlatform.selectedIndex);
+            addDevices(allPlatforms[mPlatform.selectedIndex]);
         }
     }
     var mDevice = document.getElementById("defaultDeviceType");
     mDevice.selectedIndex = defaultDevice;
     mDevice.onselect = function writeDevice() {
         if (mDevice.selectedItem != null) {
-            dpoIPref.setIntPref("defaultDeviceType", mDevice.selectedItem.value);
+            prefBranch.setIntPref("defaultDeviceType", mDevice.selectedItem.value);
         }
     }
     ]]>
