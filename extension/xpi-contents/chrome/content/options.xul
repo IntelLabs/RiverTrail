@@ -98,9 +98,7 @@
         }
         deviceMenu.selectedIndex = 0;
 
-        let deviceString = platform.deviceNames.trim();
-
-        let devices = deviceString.split("#");
+        let devices = platform.deviceNames;
         for(let i = 0; i < devices.length; i++) {
             if(devices[i] === "Unknown Device" || devices[i] === "")
                 continue;

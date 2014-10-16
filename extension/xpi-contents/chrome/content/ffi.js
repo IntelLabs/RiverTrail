@@ -28,8 +28,6 @@
 // This code makes OpenCL API functions available to JavaScript
 // through the js-ctypes interface.
 
-"use strict";
-
 // Import the ctypes library.
 Components.utils.import("resource://gre/modules/ctypes.jsm");
 
@@ -78,6 +76,7 @@ const CL_CONTEXT_NUM_DEVICES = 0x1083;
 // we're asking for info about):
 const CL_DEVICE_TYPE_ = 0x1000;
 const CL_DEVICE_AVAILABLE = 0x1027;
+const CL_DEVICE_NAME = 0x102B;
 
 // cl_platform_info variants (for specifying to `clGetPlatformInfo`
 // what we're asking for info about):
@@ -94,11 +93,26 @@ const CL_DEVICE_TYPE_CPU =                         (1 << 1);
 const CL_DEVICE_TYPE_GPU =                         (1 << 2);
 const CL_DEVICE_TYPE_ACCELERATOR =                 (1 << 3);
 const CL_DEVICE_TYPE_CUSTOM =                      (1 << 4);
-const CL_DEVICE_TYPE_ALL =                         0xFFFFFFFF; // not supported, apparently
+const CL_DEVICE_TYPE_ALL =                         0xFFFFFFFF;
+
+// Other handy constants.
+const MAX_DEVICE_NAME_LENGTH = 64;
 
 const uint32ptr_t = ctypes.uint32_t.ptr;
 const int32ptr_t = ctypes.int32_t.ptr;
 const sizeptr_t = ctypes.size_t.ptr;
+
+// A handy thing to have, since we're going to be checking a lot of
+// error codes after calls to js-ctypes-declared functions.
+function check(errorCode) {
+    if (errorCode != CL_SUCCESS) {
+        errorString = arguments.callee.caller.name +
+            " called a function that returned with error code " +
+            errorCode;
+        console.log(errorString);
+        throw errorString;
+    }
+}
 
 let OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
@@ -107,76 +121,75 @@ let OpenCL = {
 
         let os = Services.appinfo.OS;
 
-	// Depending what OS we're using, we need to open a different OpenCL library.
-	if (os == "Darwin") {
-	    this.lib = ctypes.open("/System/Library/Frameworks/OpenCL.framework/OpenCL");
-	} else if (os == "Linux") {
-	    // TODO: There's probably something more general I can
-	    // point to here.  This is where libOpenCL.so ends up when
-	    // I install the Intel OpenCL SDK.
-	    this.lib = ctypes.open("/opt/intel/opencl-1.2-4.6.0.92/lib64/libOpenCL.so");
-	} else if (os == "WINNT") {
+        // Depending what OS we're using, we need to open a different OpenCL library.
+        if (os == "Darwin") {
+            this.lib = ctypes.open("/System/Library/Frameworks/OpenCL.framework/OpenCL");
+        } else if (os == "Linux") {
+            // TODO: There's probably something more general I can
+            // point to here.  This is where libOpenCL.so ends up when
+            // I install the Intel OpenCL SDK.
+            this.lib = ctypes.open("/opt/intel/opencl-1.2-4.6.0.92/lib64/libOpenCL.so");
+        } else if (os == "WINNT") {
             throw "TODO: handle Windows";
         } else {
-	    throw "I'm not sure what OS this is";
-	}
+            throw "I'm not sure what OS this is";
+        }
 
-	// Set up stubs for functions that we want to talk to from JS.
-	// These are documented at
-	// https://www.khronos.org/registry/cl/sdk/2.0/docs/man/xhtml/.
+        // Set up stubs for functions that we want to talk to from JS.
+        // These are documented at
+        // https://www.khronos.org/registry/cl/sdk/2.0/docs/man/xhtml/.
 
-	// N.B.: ctypes.default_abi should work on both Linux and Mac,
-	// but not Windows.
+        // N.B.: ctypes.default_abi should work on both Linux and Mac,
+        // but not Windows.
 
-	this.clGetPlatformIDs = this.lib.declare("clGetPlatformIDs",
-						 ctypes.default_abi,
-						 cl_int, // return type: error code
-						 cl_uint, // in: num_entries
-						 cl_platform_id.ptr, // in: *platforms
-						 cl_uint.ptr); // out: *num_platforms
+        this.clGetPlatformIDs = this.lib.declare("clGetPlatformIDs",
+                                                 ctypes.default_abi,
+                                                 cl_int, // return type: error code
+                                                 cl_uint, // in: num_entries
+                                                 cl_platform_id.ptr, // in: *platforms
+                                                 cl_uint.ptr); // out: *num_platforms
 
-	this.clGetPlatformInfo = this.lib.declare("clGetPlatformInfo",
-						  ctypes.default_abi,
-						  cl_int, // return type: error code
-						  cl_platform_id, // platform
-						  cl_platform_info, // param_name
-						  ctypes.size_t, // param_value_size
-						  ctypes.voidptr_t, // *param_value
-						  sizeptr_t); // *param_value_size_ret
+        this.clGetPlatformInfo = this.lib.declare("clGetPlatformInfo",
+                                                  ctypes.default_abi,
+                                                  cl_int, // return type: error code
+                                                  cl_platform_id, // platform
+                                                  cl_platform_info, // param_name
+                                                  ctypes.size_t, // param_value_size
+                                                  ctypes.voidptr_t, // *param_value
+                                                  sizeptr_t); // *param_value_size_ret
 
-	this.clGetDeviceIDs = this.lib.declare("clGetDeviceIDs",
-					       ctypes.default_abi,
-					       cl_int, // return type: error code
-					       cl_platform_id, // platform
-					       cl_device_type, // device_type
-					       cl_uint, // num_entries
-					       cl_device_id, // *devices
-					       uint32ptr_t); // *num_devices
+        this.clGetDeviceIDs = this.lib.declare("clGetDeviceIDs",
+                                               ctypes.default_abi,
+                                               cl_int, // return type: error code
+                                               cl_platform_id, // platform
+                                               cl_device_type, // device_type
+                                               cl_uint, // num_entries
+                                               cl_device_id, // *devices
+                                               uint32ptr_t); // *num_devices
 
-	this.clGetDeviceInfo = this.lib.declare("clGetDeviceInfo",
-					       ctypes.default_abi,
-					       cl_int, // return type
-					       cl_device_id, // device
-					       cl_device_info, // param_name
-					       ctypes.size_t, // param_value_size
-					       ctypes.voidptr_t, // *param_value
-					       sizeptr_t); // *param_value_size_ret
+        this.clGetDeviceInfo = this.lib.declare("clGetDeviceInfo",
+                                               ctypes.default_abi,
+                                               cl_int, // return type
+                                               cl_device_id, // device
+                                               cl_device_info, // param_name
+                                               ctypes.size_t, // param_value_size
+                                               ctypes.voidptr_t, // *param_value
+                                               sizeptr_t); // *param_value_size_ret
 
 
-	this.clCreateContext = this.lib.declare("clCreateContext",
-						ctypes.default_abi,
-						cl_context, // return type
-						cl_context_properties, // *properties
-						cl_uint, // num_devices
-						cl_device_id, // *devices
-						ctypes.voidptr_t, // *pfn_notify
-						ctypes.voidptr_t, // *user_data
-						int32ptr_t); // *errcode_ret
-						 
+        this.clCreateContext = this.lib.declare("clCreateContext",
+                                                ctypes.default_abi,
+                                                cl_context, // return type
+                                                cl_context_properties, // *properties
+                                                cl_uint, // num_devices
+                                                cl_device_id, // *devices
+                                                ctypes.voidptr_t, // *pfn_notify
+                                                ctypes.voidptr_t, // *user_data
+                                                int32ptr_t); // *errcode_ret
     },
 
     shutdown: function() {
-	this.lib.close();
+        this.lib.close();
     },
 };
 
@@ -192,58 +205,50 @@ let Platforms = {
     jsPlatforms: new Array(),
 
     // Initializes numPlatforms and platforms.
-    init: function() {
+    init: function init() {
 
         OpenCL.init();
 
-	let err_code = new cl_int();
+        let err_code = new cl_int();
 
-	// |nplatforms| is used to get number of platforms
-	// |naplatforms| is used for the number of actual platforms returned into |platforms|
-	// |numSupportedPlatforms| is the number of supported platforms found
-	let nplatforms = new cl_uint();
-	let naplatforms = new cl_uint();
-	let numSupportedPlatforms = new cl_uint(0);
+        // |nplatforms| is used to get number of platforms
+        // |naplatforms| is used for the number of actual platforms returned into |platforms|
+        // |numSupportedPlatforms| is the number of supported platforms found
+        let nplatforms = new cl_uint();
+        let naplatforms = new cl_uint();
+        let numSupportedPlatforms = new cl_uint(0);
 
-	err_code = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
+        err_code = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
+        check(err_code);
 
-	if (err_code != CL_SUCCESS) {
-	    console.log("Platforms.init: " + err_code);
-	    throw "Platforms.init: " + err_code;
-	}
+        // All found platforms
+        const PlatformsArray = new ctypes.ArrayType(cl_platform_id, nplatforms.value);
+        let allPlatforms = new PlatformsArray();
 
-	// All found platforms
-	const PlatformsArray = new ctypes.ArrayType(cl_platform_id, nplatforms.value);
-	let allPlatforms = new PlatformsArray();
+        err_code = OpenCL.clGetPlatformIDs(nplatforms.value,
+                                           allPlatforms,
+                                           naplatforms.address());
+        check(err_code);
 
-	err_code = OpenCL.clGetPlatformIDs(nplatforms.value,
-					   allPlatforms,
-					   naplatforms.address());
-
-	if (err_code != CL_SUCCESS) {
-	    console.log("Platforms.init: " + err_code);
-	    throw "Platforms.init: " + err_code;
-	}
-
-	for (let i = 0; i < naplatforms.value; i++) {
+        for (let i = 0; i < naplatforms.value; i++) {
 
             let platform = new Platform(allPlatforms[i]);
 
             if (this.isSupported(platform.name)) {
 
-		this.platforms[numSupportedPlatforms.value] = allPlatforms[i];
+                this.platforms[numSupportedPlatforms.value] = allPlatforms[i];
                 numSupportedPlatforms.value++;
 
                 this.jsPlatforms.push(platform);
             }
         }
-	this.numPlatforms = numSupportedPlatforms;
+        this.numPlatforms = numSupportedPlatforms;
 
         OpenCL.shutdown();
     },
 
     isSupported: function(platformName) {
-	return (platformName == "Intel(R) OpenCL" || platformName == "Apple");
+        return (platformName == "Intel(R) OpenCL" || platformName == "Apple");
     }
 
 };
@@ -259,7 +264,7 @@ function Platform(platform_id) {
 }
 
 // paramName: one of the cl_platform_info variants
-Platform.prototype.GetPlatformPropertyHelper = function(paramName) {
+Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelper(paramName) {
 
     let err_code = new cl_int();
     let length = new ctypes.size_t();
@@ -271,11 +276,7 @@ Platform.prototype.GetPlatformPropertyHelper = function(paramName) {
                                         0,
                                         null,
                                         length.address());
-
-    if (err_code != CL_SUCCESS) {
-	console.log("GetPlatformPropertyHelper: " + err_code);
-	throw "GetPlatformPropertyHelper: " + err_code;
-    }
+    check(err_code);
 
     // Now that we have a length, we can allocate space for the
     // actual results of the call, and call it for real.
@@ -290,11 +291,7 @@ Platform.prototype.GetPlatformPropertyHelper = function(paramName) {
                                         length.value*ctypes.char.size,
                                         propertyBuf,
                                         paramValueSizeRet);
-
-    if (err_code != CL_SUCCESS) {
-        console.log("GetPlatformPropertyHelper: " + err_code);
-        throw "GetPlatformPropertyHelper: " + err_code;
-    }
+    check(err_code);
 
     // Return the property as a JS string.
     let jsProperty = propertyBuf.readString();
@@ -302,13 +299,59 @@ Platform.prototype.GetPlatformPropertyHelper = function(paramName) {
 
 };
 
-Platform.prototype.GetDeviceNames = function() {
+Platform.prototype.GetDeviceNames = function GetDeviceNames() {
 
-    // TODO: port dpoCPlatform::GetDeviceNames.  Maybe the results
-    // could be returned in some nicer way, too...
+    let err_code = new cl_int();
+    let ndevices = new cl_uint();
 
-    return "devicename1#devicename2";
+    // First, find out how many devices there are on this platform.
+    err_code = OpenCL.clGetDeviceIDs(this.platform_id,
+                                     CL_DEVICE_TYPE_ALL,
+                                     0,
+                                     null,
+                                     ndevices.address());
+    check(err_code);
 
+    // Next, get all the device IDs.
+    const DeviceIDArray = new ctypes.ArrayType(cl_device_id, ndevices.value);
+    let deviceIDs = new DeviceIDArray();
+
+    err_code = OpenCL.clGetDeviceIDs(this.platform_id,
+                                     CL_DEVICE_TYPE_ALL,
+                                     ndevices,
+                                     deviceIDs,
+                                     null);
+    check(err_code);
+
+    // Get device names.
+    let jsDeviceNames = new Array();
+
+    // N.B.: This is enough space for *one* device name.
+    const DeviceNameArray = new ctypes.ArrayType(ctypes.char, MAX_DEVICE_NAME_LENGTH);
+
+    for (let i = 0; i < ndevices.value; i++) {
+        let deviceNameBuf = new DeviceNameArray();
+        let deviceNameSize = new ctypes.size_t();
+        err_code = OpenCL.clGetDeviceInfo(deviceIDs[i],
+                                          CL_DEVICE_NAME,
+                                          MAX_DEVICE_NAME_LENGTH,
+                                          deviceNameBuf,
+                                          deviceNameSize.address());
+        check(err_code);
+
+        let jsDeviceName = deviceNameBuf.readString();
+
+        // Check if the device is supported.  Currently we only
+        // support Intel devices.
+        if (jsDeviceName.indexOf("Intel(R)") > -1) {
+            jsDeviceNames[i] = jsDeviceName;
+        } else {
+            jsDeviceNames[i] = "Unknown Device";
+        }
+    }
+
+    // Return all the device names as a JS array of strings.
+    return jsDeviceNames;
 };
 
 Platform.prototype.GetVersion = function() {
@@ -357,54 +400,48 @@ Platform.prototype.GetPlatformID = function(platform_id) {
 let Main = {
 
     // Needs the `win` argument so it can launch an alert.
-    run: function(win) {
+    run: function run(win) {
 
-	OpenCL.init();
+        OpenCL.init();
 
-	// A place to put all the error codes we encounter.
-	let error_code = new cl_int();
-	let error_code_ptr = error_code.address();
+        // A place to put all the error codes we encounter.
+        let err_code = new cl_int();
+        let err_code_address = err_code.address();
 
-	// First, get a list of platform IDs, one of which we'll pass
-	// to `clGetDeviceIDs`.
-	const PlatformsArray = new ctypes.ArrayType(cl_platform_id, 1);
-	let platform_list = new PlatformsArray();
-	let num_platforms_ptr = new cl_uint.ptr;
-	error_code =
-	    OpenCL.clGetPlatformIDs(1, platform_list, num_platforms_ptr);
+        // First, get a list of platform IDs, one of which we'll pass
+        // to `clGetDeviceIDs`.
+        let num_platforms = new cl_uint();
+        const PlatformsArray = new ctypes.ArrayType(cl_platform_id, 1);
+        let platform_list = new PlatformsArray();
+        err_code = OpenCL.clGetPlatformIDs(1, platform_list, num_platforms.address());
+        check(err_code);
 
-	console.log(error_code);
+        // Then, get a list of device IDs to pass to
+        // `clCreateContext`.
+        const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
+        let device_list = new DeviceArray();
+        err_code = OpenCL.clGetDeviceIDs(platform_list[0], // platform
+                                         CL_DEVICE_TYPE_CPU, // device_type
+                                         1, // num_entries
+                                         device_list, // *devices
+                                         null); // *num_devices
+        check(err_code);
 
-	// Then, get a list of device IDs to pass to
-	// `clCreateContext`.
-	const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
-	let device_list = new DeviceArray();
-	error_code =
-	    OpenCL.clGetDeviceIDs(platform_list[0], // platform
-				  CL_DEVICE_TYPE_CPU, // device_type
-				  1, // num_entries
-				  device_list, // *devices
-				  null); // *num_devices
+        // Finally, we can create a context.
+        let context = OpenCL.clCreateContext(null, // *properties
+                                             1, // num_devices
+                                             device_list, // *devices
+                                             null, // *pfn_notify
+                                             null, // *user_data
+                                             err_code_address); // *errcode_ret
+        check(err_code);
 
-	console.log(error_code);
-
-	// Finally, we can create a context.
-	let context = OpenCL.clCreateContext(null, // *properties
-					     1, // num_devices
-					     device_list, // *devices
-					     null, // *pfn_notify
-					     null, // *user_data
-					     error_code_ptr); // *errcode_ret
-
-	console.log(error_code);
-	console.log(context);
-
-        if (error_code == 0) {
+        if (err_code == CL_SUCCESS) {
             console.log(context);
             win.alert("Congratulations!  You've created OpenCL context " + context + ".");
         }
 
-	OpenCL.shutdown();
+        OpenCL.shutdown();
 
     },
 };
