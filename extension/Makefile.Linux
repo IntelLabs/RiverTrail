@@ -27,8 +27,10 @@
 OUTPUTDIR = Release/Linux
 OUTPUTNAME = extension.so
 EXTENSIONDIR = xpi-contents
+EXTENSIONNAME = RiverTrail.xpi
 GECKODIR = gecko-sdk
 EXCLUDEFILES = src/dllmain.cpp
+INTELOPENCLPATH = /opt/intel/opencl-1.2-4.6.0.92/lib64/
 
 #
 # nothing to configure below this line
@@ -46,6 +48,7 @@ IDLFILES = $(filter-out $(EXCLUDEFILES),$(wildcard src/*.idl))
 CPPFILES = $(filter-out $(EXCLUDEFILES),$(wildcard src/*.cpp))
 MAKEDEPEND = $(CC) -MM
 SED = sed
+ZIP = zip
 
 TYPELIBS = $(patsubst %.idl,%.xpt,$(IDLFILES))
 HEADERS = $(patsubst %.idl,%.h,$(IDLFILES))
@@ -61,17 +64,21 @@ OUTPUTS = $(OUTPUTDIR)/$(OUTPUTNAME)
 all: $(TYPELIBS) $(HEADERS) $(OUTPUTS)
 
 clean:
-	rm -f $(TYPELIBS) $(HEADERS) $(OBJFILES) $(DEPFILES) $(OUTPUTS)
+	rm -f $(TYPELIBS) $(HEADERS) $(OBJFILES) $(DEPFILES) $(OUTPUTS) $(EXTENSIONDIR)/components/*.xpt $(EXTENSIONDIR)/components/$(OUTPUTNAME) $(EXTENSIONDIR)/$(EXTENSIONNAME)
 
 deploy: all
 	cp $(OUTPUTS) $(EXTENSIONDIR)/components/
 	cp $(TYPELIBS) $(EXTENSIONDIR)/components/
 
+# Creates a directly installable extension file.
+xpi: deploy
+	cd $(EXTENSIONDIR); $(ZIP) -r $(EXTENSIONNAME) chrome chrome.manifest components defaults install.rdf
+
 $(OUTPUTDIR):
 	mkdir -p $(OUTPUTDIR)
 
 $(OUTPUTDIR)/$(OUTPUTNAME): $(OUTPUTDIR) $(OBJFILES)
-	$(CXX) $(OBJFILES) -shared -lOpenCL -L$(GECKODIR)/$(GECKOLIB) -lxpcomglue_s -lnss3 -lmozalloc -o $@
+	$(CXX) $(OBJFILES) -shared -lOpenCL -L$(INTELOPENCLPATH) -L$(GECKODIR)/$(GECKOLIB) -lxpcomglue_s -lnss3 -lmozalloc -o $@
 
 %.xpt: %.idl
 	$(GENTYPELIB) -o $@ -I $(GECKODIR)/$(IDLDIR) -I $(dir $<) $< 

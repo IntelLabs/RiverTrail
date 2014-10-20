@@ -72,13 +72,17 @@ To create an XPI file, which can be directly installed as an extension in
 Firefox, add the contents of the xpi-contents directory to a new zip archive.
 Next, change the extension of the newly created file from zip to xpi.
 
-On MacOS, you can accomplish this automatically by running the following command
-from the extension subdirectory:
+On MacOS and Linux, you can accomplish this automatically by running
 
 make -f Makefile.MacOS xpi
 
-The resulting .xpi file can be directly installed in Firefox.  Further details
-on extension packaging can be found at
+or
+
+make -f Makefile.Linux xpi
+
+from the extension subdirectory, respectively.  The resulting .xpi
+file can be directly installed in Firefox.  Further details on
+extension packaging can be found at
 
 https://developer.mozilla.org/en/extension_packaging
 
