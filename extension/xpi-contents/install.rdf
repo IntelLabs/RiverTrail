@@ -31,7 +31,7 @@
          email address, but it need not actually be an email address!
          -->
     <em:id>river-trail-extension@intel.com</em:id>
-    <em:version>0.3</em:version>
+    <em:version>0.33</em:version>
 
     <em:name>River Trail for Firefox</em:name>
     <em:description>
