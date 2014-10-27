@@ -106,6 +106,9 @@ catch (ignore) {}
 
 var ParallelArray = function () {
 
+    // See if we can call a function provided via exportFunction.
+    hello();
+
 
 //    The array object has the following prototype methods that are also implemented
 //    for ParallelArray.

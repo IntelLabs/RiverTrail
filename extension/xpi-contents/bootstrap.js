@@ -31,36 +31,38 @@
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 
-// Code that listens for a custom DOM event.  This is how we
-// implement communication between unprivileged (web page) and
-// privileged (extension) JS code.
-function load(win) {
-    let document = win.document;
-    document.addEventListener("RiverTrailExtensionCustomEvent",
-                              function(e) {
-                                  win.alert("Hello from privileged code! Event received!");
 
-                                  // Load the main extension code and run it.
-                                  let context = {};
-                                  Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/ffi.js",
-                                                                     context);
-
-                                  context.Main.run(win);
-                              },
-                              false,
-                              true // Mozilla-specific argument,
-                                   // "wantUntrusted", that says that
-                                   // this listener should listen for
-                                   // events coming from unprivileged
-                                   // code, which is what we want.
-                             );
+function myObserver() {
+  this.register();
 }
 
-function unload(win) {
-    let document = win.document;
-    document.removeEventListener("RiverTrailExtensionCustomEvent",
-                                 arguments.callee,
-                                 false);
+myObserver.prototype = {
+  observe: function(subject, topic, data) {
+
+      let o = {};
+      Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/ffi.js",
+                                          o);
+
+      var window = Components.utils.waiveXrays(subject);
+
+      // All the functions we want to export.
+      Components.utils.exportFunction(o.hello, window, {defineAs: "hello"});
+  },
+  register: function() {
+    var observerService = Components.classes["@mozilla.org/observer-service;1"].getService(Components.interfaces.nsIObserverService);
+    observerService.addObserver(this, "content-document-global-created", false);
+  },
+  unregister: function() {
+    var observerService = Components.classes["@mozilla.org/observer-service;1"].getService(Components.interfaces.nsIObserverService);
+    observerService.removeObserver(this, "content-document-global-created");
+  }
+}
+
+function load(win) {
+    console.log("load() is running...");
+
+    observer = new myObserver();
+
 }
 
 // Listener to make sure that stuff happens in future windows.  Not to
@@ -105,15 +107,6 @@ function startup(data, reason) {
 
 function shutdown(data, reason) {
 
-    Services.wm.removeListener(listener);
-    if (reason == APP_SHUTDOWN)
-        return;
-
-    let enumerator = Services.wm.getEnumerator("navigator:browser");
-    while(enumerator.hasMoreElements()) {
-        let win = enumerator.getNext();
-        unload(win);
-    }
 }
 
 function install(data, reason) {

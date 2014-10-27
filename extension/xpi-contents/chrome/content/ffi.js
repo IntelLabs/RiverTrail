@@ -114,6 +114,10 @@ function check(errorCode) {
     }
 }
 
+function hello() {
+    console.log("Hello!");
+}
+
 let OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
 
