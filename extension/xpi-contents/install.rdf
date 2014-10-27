@@ -53,8 +53,8 @@
 	<!-- I have no idea what the correct minimum version is.  1.5 is a guess. -->
         <em:minVersion>1.5</em:minVersion>
 
-	<!-- 32 is the current release of Firefox, as of today. -->
-        <em:maxVersion>32.*</em:maxVersion>
+	<!-- 33 is the current release of Firefox, as of today. -->
+        <em:maxVersion>33.*</em:maxVersion>
       </Description>
     </em:targetApplication>
 
