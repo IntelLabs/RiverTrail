@@ -69,7 +69,7 @@
     Components.utils.import("resource://gre/modules/Services.jsm");
 
     // Populates the list of platforms.
-    function addPlatform(context, menu, platform, isHighlighted) {
+    function addPlatform(menu, platform, isHighlighted) {
 
         let row = document.createElement("listitem");
         let item;
@@ -125,8 +125,7 @@
     let allPlatforms = context.Platforms.jsPlatforms;
     let numPlatforms = context.Platforms.numPlatforms.value;
     for (let i = 0; i < numPlatforms; i++) {
-        addPlatform(context,
-                    mPlatform,
+        addPlatform(mPlatform,
                     context.Platforms.jsPlatforms[i],
                     (i === defaultPlatform) ? "true" : "false");
     }
