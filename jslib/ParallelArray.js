@@ -139,7 +139,9 @@ var ParallelArray = function () {
         if (is64BitFloatingPointEnabled !== undefined) {
             useFF4Interface = true;
         }
-    } catch (ignore) {  } // extension isn't installed
+    } catch (ignore) {
+        console.log("It looks like the extension isn't installed.")
+    }
     console.log("useFF4Interface: " + useFF4Interface);
 
     // check whether the OpenCL implementation supports double
@@ -148,7 +150,9 @@ var ParallelArray = function () {
         if (is64BitFloatingPointEnabled !== undefined) {
             enable64BitFloatingPoint = is64BitFloatingPointEnabled();
         }
-    } catch (ignore) { } // 64-bit floating point isn't supported
+    } catch (ignore) {
+        console.log("It looks like 64-bit floating point isn't supported.")
+    }
     console.log("enable64BitFloatingPoint: " + enable64BitFloatingPoint);
 
     // this is the storage that is used by default when converting arrays 
