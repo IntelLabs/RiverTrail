@@ -114,10 +114,6 @@ const CL_DEVICE_TYPE_ALL =                         0xFFFFFFFF;
 // Other handy constants.
 const MAX_DEVICE_NAME_LENGTH = 64;
 
-const uint32ptr_t = ctypes.uint32_t.ptr;
-const int32ptr_t = ctypes.int32_t.ptr;
-const sizeptr_t = ctypes.size_t.ptr;
-
 // A handy thing to have, since we're going to be checking a lot of
 // error codes after calls to js-ctypes-declared functions.
 function check(errorCode) {
@@ -199,7 +195,7 @@ let OpenCL = {
                                                   cl_platform_info, // param_name
                                                   ctypes.size_t, // param_value_size
                                                   ctypes.voidptr_t, // *param_value
-                                                  sizeptr_t); // *param_value_size_ret
+                                                  ctypes.size_t.ptr); // *param_value_size_ret
 
         this.clGetDeviceIDs = this.lib.declare("clGetDeviceIDs",
                                                ctypes.default_abi,
@@ -208,7 +204,7 @@ let OpenCL = {
                                                cl_device_type, // device_type
                                                cl_uint, // num_entries
                                                cl_device_id, // *devices
-                                               uint32ptr_t); // *num_devices
+                                               cl_uint.ptr); // *num_devices
 
         this.clGetDeviceInfo = this.lib.declare("clGetDeviceInfo",
                                                ctypes.default_abi,
@@ -217,7 +213,7 @@ let OpenCL = {
                                                cl_device_info, // param_name
                                                ctypes.size_t, // param_value_size
                                                ctypes.voidptr_t, // *param_value
-                                               sizeptr_t); // *param_value_size_ret
+                                               ctypes.size_t.ptr); // *param_value_size_ret
 
 
         this.clCreateContext = this.lib.declare("clCreateContext",
@@ -228,7 +224,7 @@ let OpenCL = {
                                                 cl_device_id, // *devices
                                                 ctypes.voidptr_t, // *pfn_notify
                                                 ctypes.voidptr_t, // *user_data
-                                                int32ptr_t); // *errcode_ret
+                                                cl_int.ptr); // *errcode_ret
 
         this.clCreateProgramWithSource = this.lib.declare(
             "clCreateProgramWithSource",
