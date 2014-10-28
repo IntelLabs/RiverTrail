@@ -46,7 +46,8 @@ myObserver.prototype = {
       var window = Components.utils.waiveXrays(subject);
 
       // All the functions we want to export.
-      Components.utils.exportFunction(o.hello, window, {defineAs: "hello"});
+      Components.utils.exportFunction(o.ParallelArrayFFI.is64BitFloatingPointEnabled, window,
+                                      {defineAs: "is64BitFloatingPointEnabled"});
   },
   register: function() {
     var observerService = Components.classes["@mozilla.org/observer-service;1"].getService(Components.interfaces.nsIObserverService);

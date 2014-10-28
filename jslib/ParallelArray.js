@@ -91,6 +91,7 @@
 
 /////////////////
 
+// LK: TODO: I think this can be gotten rid of.
 try {
     if ((typeof DPOInterface === 'function') && (Components.interfaces.dpoIData === undefined))
         // great hack to check whether components still exisits
@@ -105,10 +106,6 @@ catch (ignore) {}
 
 
 var ParallelArray = function () {
-
-    // See if we can call a function provided via exportFunction.
-    hello();
-
 
 //    The array object has the following prototype methods that are also implemented
 //    for ParallelArray.
@@ -134,39 +131,26 @@ var ParallelArray = function () {
 
     // check whether the new extension is installed.
     var useFF4Interface = false;
+    // LK: What do we mean by "the new extension", exactly?  I'm going
+    // to assume that my extension is also "the new extension".
     try {
-        if (Components.interfaces.dpoIInterface !== undefined) {
+        // Just see if we have one of the functions provided by the
+        // new interface.
+        if (is64BitFloatingPointEnabled !== undefined) {
             useFF4Interface = true;
         }
-    } catch (ignore) {
-        // useFF4Interface = false;
-    }
+    } catch (ignore) {  } // extension isn't installed
+    console.log("useFF4Interface: " + useFF4Interface);
+
     // check whether the OpenCL implementation supports double
     var enable64BitFloatingPoint = false;
-    if (useFF4Interface) { 
-        var extensions;
-        try {
-            extensions = RiverTrail.compiler.openCLContext.extensions;
-        } catch (ignore) {
-            // extensions = undefined;
+    try {
+        if (is64BitFloatingPointEnabled !== undefined) {
+            enable64BitFloatingPoint = is64BitFloatingPointEnabled();
         }
-        if (!extensions) {
-            var dpoI;
-            var dpoP;
-            var dpoC;
-            try {
-                // JS: Should these be cached and reused in driver.js ?
-                dpoI = new DPOInterface();
-                dpoP = dpoI.getPlatform();
-                dpoC = dpoP.createContext();
-                extensions = dpoC.extensions || dpoP.extensions;
-            } catch (e) {
-                console.log("Unable to query dpoInterface: "+e);
-                extensions = "";
-            }
-        }
-        enable64BitFloatingPoint = (extensions.indexOf("cl_khr_fp64") !== -1);
-    }
+    } catch (ignore) { } // 64-bit floating point isn't supported
+    console.log("enable64BitFloatingPoint: " + enable64BitFloatingPoint);
+
     // this is the storage that is used by default when converting arrays 
     // to typed arrays.
     var defaultTypedArrayConstructor 

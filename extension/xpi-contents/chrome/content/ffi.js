@@ -114,9 +114,17 @@ function check(errorCode) {
     }
 }
 
-function hello() {
-    console.log("Hello!");
-}
+// Stuff that ParallelArray.js needs to call.
+let ParallelArrayFFI = {
+
+    is64BitFloatingPointEnabled: function() {
+        // TODO: implement
+
+        return true;
+
+    },
+
+};
 
 let OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
