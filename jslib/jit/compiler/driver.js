@@ -74,15 +74,21 @@ RiverTrail.compiler = (function () {
         }
     } catch (e) {
         console.log ("Cannot initialise OpenCL interface. Please check the whether the extension was installed and try again.");
-        throw Error("Cannot initialise OpenCL Interface: " + JSON.stringify(e));
+
+        // TODO (LK): this is commented out for the time being so I
+        // can keep working.
+        //throw Error("Cannot initialise OpenCL Interface: " + JSON.stringify(e));
     }
 
     // check whether we have the right version of the extension; as the user has some extension installed, he probably wants to use
     // the right one for this library, so we alert him
-    if (dpoInterface.version !== 2) {
-        alert("This webpage requires a newer version of the RiverTrail Firefox extension. Please visit http://github.com/rivertrail/rivertrail/downloads.");
-        throw Error("RiverTrail extension out of date");
-    }
+
+    // TODO (LK): this is commented out for the time being so I can
+    // keep working.
+    // if (dpoInterface.version !== 2) {
+    //     alert("This webpage requires a newer version of the RiverTrail Firefox extension. Please visit http://github.com/rivertrail/rivertrail/downloads.");
+    //     throw Error("RiverTrail extension out of date");
+    // }
 
     var isTypedArray = RiverTrail.Helper.isTypedArray;
 
