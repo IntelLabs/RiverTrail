@@ -118,12 +118,27 @@ function check(errorCode) {
 let ParallelArrayFFI = {
 
     is64BitFloatingPointEnabled: function() {
-        // TODO: implement
 
-        return true;
+        let prefService = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService);
+        let prefBranch = prefService.getBranch("extensions.river-trail-extension.");
+        let defaultPlatform = prefBranch.getIntPref("defaultPlatform");
+        if (defaultPlatform < 0 || defaultPlatform === undefined) {
+            defaultPlatform = 0;
+        }
 
+        Platforms.init();
+        let allPlatforms = Platforms.jsPlatforms;
+
+        // A string of all supported extensions on the current default
+        // platform.
+        let defaultPlatform = allPlatforms[defaultPlatform];
+        let defaultPlatformExtensions = defaultPlatform.extensions;
+        console.log("defaultPlatformExtensions: " + defaultPlatformExtensions);
+
+        // Check if 64-bit floating point extension is turned on.
+        let retval = defaultPlatformExtensions.indexOf("cl_khr_fp64") !== -1;
+        return retval;
     },
-
 };
 
 let OpenCL = {
