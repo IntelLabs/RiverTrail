@@ -49,7 +49,9 @@ const cl_context = ctypes.voidptr_t;
 const cl_context_properties = ctypes.voidptr_t;
 const cl_context_info = ctypes.voidptr_t;
 const cl_device_id = ctypes.voidptr_t;
+const cl_kernel = ctypes.voidptr_t;
 const cl_platform_id = ctypes.voidptr_t;
+const cl_program = ctypes.voidptr_t;
 
 // Types that have existing ctypes counterparts:
 
@@ -62,11 +64,16 @@ const cl_int = ctypes.int32_t;
 const cl_device_type = ctypes.uint32_t;
 const cl_device_info = ctypes.uint32_t;
 const cl_platform_info = ctypes.uint32_t;
+const cl_program_info = ctypes.uint32_t;
+const cl_program_build_info = ctypes.uint32_t;
 
 // Constants from cl.h (not all of them, just the ones we need):
 
 // Error codes:
-const CL_SUCCESS = 0;
+const CL_SUCCESS =                                  0;
+const CL_MEM_OBJECT_ALLOCATION_FAILURE =           -4;
+const CL_OUT_OF_RESOURCES =                        -5;
+const CL_OUT_OF_HOST_MEMORY =                      -6;
 
 // cl_context_info variants (for specifying to `clGetContextInfo` what
 // we're asking for info about):
@@ -85,6 +92,15 @@ const CL_PLATFORM_VERSION =    0x0901;
 const CL_PLATFORM_NAME =       0x0902;
 const CL_PLATFORM_VENDOR =     0x0903;
 const CL_PLATFORM_EXTENSIONS = 0x0904;
+
+// cl_program_info variants (for specifying to `clGetProgramInfo`
+// what we're asking for info about):
+const CL_PROGRAM_NUM_DEVICES = 0x1162;
+const CL_PROGRAM_DEVICES =     0x1163;
+
+// cl_program_build_info variants (for specifying to
+// `clGetProgramBuildInfo` what we're asking for info about):
+const CL_PROGRAM_BUILD_LOG =   0x1183;
 
 // cl_device_type bitfield variants (returned from `CL_DEVICE_TYPE`
 // queries to `clGetDeviceInfo`):
@@ -213,6 +229,68 @@ let OpenCL = {
                                                 ctypes.voidptr_t, // *pfn_notify
                                                 ctypes.voidptr_t, // *user_data
                                                 int32ptr_t); // *errcode_ret
+
+        this.clCreateProgramWithSource = this.lib.declare(
+            "clCreateProgramWithSource",
+            ctypes.default_abi,
+            cl_program, // return type: "a valid non-zero program object" or NULL
+            cl_context, // context
+            cl_uint, // count (length of the strings array)
+            ctypes.char.ptr.ptr, // **strings (array of pointers to strings that make up the code)
+            ctypes.size_t.ptr, // *lengths (array with length of each string)
+            cl_int.ptr); // *errcode_ret
+
+        this.clBuildProgram = this.lib.declare(
+            "clBuildProgram",
+            ctypes.default_abi,
+            cl_int, // return type: error code
+            cl_program, // program: the program object
+            cl_uint, // num_devices: the number of devices listed in device_list
+            cl_device_id, // *device_list
+            ctypes.char.ptr, // *options
+            ctypes.voidptr_t, // *pfn_notify
+            ctypes.voidptr_t); // *user_data
+
+        this.clGetProgramInfo = this.lib.declare(
+            "clGetProgramInfo",
+            ctypes.default_abi,
+            cl_int, // return type: error code
+            cl_program, // program
+            cl_program_info, // param_name
+            ctypes.size_t, // param_value_size
+            ctypes.voidptr_t, // *param_value
+            ctypes.size_t.ptr); // *param_value_size_ret
+
+        this.clGetProgramBuildInfo = this.lib.declare(
+            "clGetProgramBuildInfo",
+            ctypes.default_abi,
+            cl_int, // return type: error code
+            cl_program, // program
+            cl_device_id, // device
+            cl_program_build_info, // param_name
+            ctypes.size_t, // param_value_size
+            ctypes.voidptr_t, // *param_value
+            ctypes.size_t.ptr); // *param_value_size_ret
+
+        this.clCreateKernel = this.lib.declare(
+            "clCreateKernel",
+            ctypes.default_abi,
+            cl_kernel, // return type: kernel object or NULL
+            cl_program, // program
+            ctypes.char.ptr, // *kernel_name
+            cl_int.ptr); // *errcode_ret
+
+        this.clReleaseProgram = this.lib.declare(
+            "clReleaseProgram",
+            ctypes.default_abi,
+            cl_int, // return type: error code
+            cl_program); // program
+
+        this.clReleaseKernel = this.lib.declare(
+            "clReleaseKernel",
+            ctypes.default_abi,
+            cl_int, // return type: error code
+            cl_kernel); // kernel
     },
 
     shutdown: function() {
