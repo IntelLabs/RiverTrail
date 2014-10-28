@@ -500,8 +500,7 @@ Platform.prototype.GetPlatformID = function(platform_id) {
 
 let Main = {
 
-    // Needs the `win` argument so it can launch an alert.
-    run: function run(win) {
+    run: function run() {
 
         OpenCL.init();
 
@@ -539,7 +538,7 @@ let Main = {
 
         if (err_code == CL_SUCCESS) {
             console.log(context);
-            win.alert("Congratulations!  You've created OpenCL context " + context + ".");
+            console.log("Congratulations!  You've created OpenCL context " + context + ".");
         }
 
         OpenCL.shutdown();

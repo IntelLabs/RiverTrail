@@ -30,26 +30,9 @@
 -->
 <title>River Trail Firefox extension test page</title>
 
-<script type="text/javascript">
-
-  function run() {
-      alert("Hello from unprivileged code!");
-
-      var element = document.createElement("RiverTrailExtensionCustomElement");
-      // If we wanted to pass arguments, we could do so here by setting
-      // attributes on a custom element, as described in
-      // https://developer.mozilla.org/en-US/Add-ons/Code_snippets/Interaction_between_privileged_and_non-privileged_pages
-      document.documentElement.appendChild(element);
-
-      var evt = document.createEvent("Events");
-      evt.initEvent("RiverTrailExtensionCustomEvent", true, false);
-      element.dispatchEvent(evt);
-}
-</script>
-
 </head>
 
 <body>
-<div><button type="button" onclick="run();">Click me</button></div>
+<div><button type="button" onclick="alert('Hello from unprivileged code!'); run();">Click me</button></div>
 </body>
 </html>

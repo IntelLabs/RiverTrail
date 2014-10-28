@@ -50,6 +50,9 @@ myObserver.prototype = {
       // All the functions we want to export.
       Components.utils.exportFunction(o.ParallelArrayFFI.is64BitFloatingPointEnabled, window,
                                       {defineAs: "is64BitFloatingPointEnabled"});
+
+      Components.utils.exportFunction(o.Main.run, window,
+                                      {defineAs: "run"});
   },
   register: function() {
     var observerService = Components.classes["@mozilla.org/observer-service;1"].getService(Components.interfaces.nsIObserverService);
@@ -68,8 +71,7 @@ function load(win) {
 
 }
 
-// Listener to make sure that stuff happens in future windows.  Not to
-// be confused with our custom event listener, above.
+// Listener to make sure that stuff happens in future windows.
 let listener = {
     onOpenWindow: function(aWindow) {
         // Wait for the window to finish loading
