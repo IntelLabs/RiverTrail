@@ -33,6 +33,8 @@ if (RiverTrail === undefined) {
 RiverTrail.compiler.runOCL = function () {
     // Executes the kernel function with the ParallelArray this and the args for the elemental function
     // paSource     - 'this' inside the kernel
+
+    // FIXME: what will kernel's type be now?  just CData?
     // kernel       - a precompiled kernel (dpoIKernel object)
     // ast          - result from parsing
     // construct    - outer construct in {combine,map,comprehension,comprehensionScalar}
@@ -63,6 +65,7 @@ RiverTrail.compiler.runOCL = function () {
         // construct kernel arguments
         var jsObjectToKernelArg = function (args, object) {
             if (object instanceof ParallelArray) {
+                // FIXME: figure out what this instanceof check should really be
                 if (object.data instanceof Components.interfaces.dpoIData) {
                     // we already have an OpenCL value
                     args.push(object.data);
@@ -72,7 +75,7 @@ RiverTrail.compiler.runOCL = function () {
                         memObj = object.cachedOpenCLMem;
                     } else {
                         // we map this argument
-                        memObj = RiverTrail.compiler.openCLContext.mapData(object.data);
+                        memObj = mapData(object.data, RiverTrail.compiler.openCLContext);
                     }
                     args.push(memObj);
                     if (useBufferCaching) {
@@ -87,10 +90,10 @@ RiverTrail.compiler.runOCL = function () {
                 args.push(new RiverTrail.Helper.Integer(object.offset));
             } else if (object instanceof RiverTrail.Helper.FlatArray) {
                 // these are based on a flat array, so we can just push the data over
-                args.push(RiverTrail.compiler.openCLContext.mapData(object.data));
+                args.push(mapData(object.data, RiverTrail.compiler.openCLContext));
             } else if (object instanceof Array) {
                 // we have an ordinary JS array, which has passed the uniformity checks and thus can be mapped
-                args.push(RiverTrail.compiler.openCLContext.mapData(object));
+                args.push(mapData(object, RiverTrail.compiler.openCLContext));
             } else if (typeof (object) === "number") {
                 // Scalar numbers are passed directly, as doubles.
                 args.push(object);
@@ -104,7 +107,7 @@ RiverTrail.compiler.runOCL = function () {
                 args.push(object);
             } else if (RiverTrail.Helper.isTypedArray(object)) {
                 // map the typed array
-                args.push(RiverTrail.compiler.openCLContext.mapData(object));
+                args.push(mapData(object, RiverTrail.compiler.openCLContext));
             } else {
                 throw new Error("only typed arrays and scalars are currently supported as OpenCL kernel arguments");
             }
@@ -141,12 +144,16 @@ RiverTrail.compiler.runOCL = function () {
             if (++paSource.updateInPlacePA.updateInPlaceUses !== 1) {
                 throw new Error("preallocated memory used more than once!");
             }
+
+            // FIXME: figure out what this instanceof check should
+            // really be
             if (!(paSource.updateInPlacePA.data instanceof Components.interfaces.dpoIData)) {
                 if (paSource.updateInPlacePA.cachedOpenCLMem) {
                     paSource.updateInPlacePA.data = paSource.updateInPlacePA.cachedOpenCLMem;
                     delete paSource.updateInPlacePA.cachedOpenCLMem;
                 } else {
-                    paSource.updateInPlacePA.data = RiverTrail.compiler.openCLContext.mapData(paSource.updateInPlacePA.data);
+                    paSource.updateInPlacePA.data = mapData(paSource.updateInPlacePA.data,
+                                                            RiverTrail.compiler.openCLContext);
                     if (useBufferCaching) {
                         paSource.updateInPlacePA.cachedOpenCLMem = paSource.updateInPlacePA.data;
                     }
@@ -166,7 +173,8 @@ RiverTrail.compiler.runOCL = function () {
                 }
                 var template = RiverTrail.Helper.elementalTypeToConstructor(resultElemType);
                 if (template == undefined) throw new Error("cannot map inferred type to constructor");
-                var memObj = RiverTrail.compiler.openCLContext.allocateData(new template(1), shapeToLength(resShape));
+                var memObj = allocateData(new template(1), shapeToLength(resShape),
+                                          RiverTrail.compiler.openCLContext);
                 kernelArgs.push(memObj);
                 kernelArgs.push(new RiverTrail.Helper.Integer(0));
                 return {mem: memObj, shape: resShape, type: resultElemType, offset: 0};
@@ -196,6 +204,9 @@ RiverTrail.compiler.runOCL = function () {
                     // console.log("index: ", index, " arg.value: ", arg.value);
                     kernel.setScalarArgument(index, arg.value, true, false);
                     // console.log("good");
+
+                    // FIXME: figure out what this instanceof check
+                    // should really be
                 } else if (arg instanceof Components.interfaces.dpoIData) {
                     kernel.setArgument(index, arg);
                 } else {
@@ -234,6 +245,9 @@ RiverTrail.compiler.runOCL = function () {
         } else {
             alert("runOCL only deals with comprehensions, map and combine (so far).");
         }
+
+        // FIXME: figure out what this instanceof check should really
+        // be
         if (resultMem.mem && (resultMem.mem instanceof Components.interfaces.dpoIData)) {
             // single result
             paResult = new ParallelArray(resultMem.mem, resultMem.shape, resultMem.type, resultMem.offset);

@@ -31,6 +31,9 @@
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 
+let o = {};
+Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/ffi.js", o);
+
 // Global observer object
 let observer;
 
@@ -41,15 +44,14 @@ function myObserver() {
 myObserver.prototype = {
   observe: function(subject, topic, data) {
 
-      let o = {};
-      Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/ffi.js",
-                                          o);
-
       var window = Components.utils.waiveXrays(subject);
 
       // All the functions we want to export.
       Components.utils.exportFunction(o.ParallelArrayFFI.is64BitFloatingPointEnabled, window,
                                       {defineAs: "is64BitFloatingPointEnabled"});
+
+      Components.utils.exportFunction(o.DriverFFI.initContext, window,
+                                      {defineAs: "initContext"});
 
       Components.utils.exportFunction(o.DriverFFI.canBeMapped, window,
                                       {defineAs: "canBeMapped"});
@@ -59,6 +61,12 @@ myObserver.prototype = {
 
       Components.utils.exportFunction(o.DriverFFI.getBuildLog, window,
                                       {defineAs: "getBuildLog"});
+
+      Components.utils.exportFunction(o.RunOCLFFI.mapData, window,
+                                      {defineAs: "mapData"});
+
+      Components.utils.exportFunction(o.RunOCLFFI.allocateData, window,
+                                      {defineAs: "allocateData"});
 
       Components.utils.exportFunction(o.Main.run, window,
                                       {defineAs: "run"});
@@ -121,6 +129,7 @@ function startup(data, reason) {
 
 function shutdown(data, reason) {
 
+    o.OpenCL.shutdown();
 }
 
 function install(data, reason) {

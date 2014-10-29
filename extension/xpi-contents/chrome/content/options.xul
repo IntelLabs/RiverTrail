@@ -121,6 +121,7 @@
     let context = {};
     Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/ffi.js",
                                         context);
+    context.OpenCL.init();
     context.Platforms.init();
     let allPlatforms = context.Platforms.jsPlatforms;
     let numPlatforms = context.Platforms.numPlatforms.value;

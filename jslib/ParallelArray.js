@@ -92,17 +92,17 @@
 /////////////////
 
 // LK: TODO: I think this can be gotten rid of.
-try {
-    if ((typeof DPOInterface === 'function') && (Components.interfaces.dpoIData === undefined))
-        // great hack to check whether components still exisits
-        // if not, dom.omit_components_in_content has to be set!
-        alert("You seem to use a version of Firefox (22 or newer) where the \n" +
-              "Components object is disabled by default. To use River Trail \n" +
-              "please go to about:config and set the value for the key \n" +
-              "dom.omit_components_in_content to false and reload the page.");
+// try {
+//     if ((typeof DPOInterface === 'function') && (Components.interfaces.dpoIData === undefined))
+//         // great hack to check whether components still exisits
+//         // if not, dom.omit_components_in_content has to be set!
+//         alert("You seem to use a version of Firefox (22 or newer) where the \n" +
+//               "Components object is disabled by default. To use River Trail \n" +
+//               "please go to about:config and set the value for the key \n" +
+//               "dom.omit_components_in_content to false and reload the page.");
 
-    }
-catch (ignore) {}
+//     }
+// catch (ignore) {}
 
 
 var ParallelArray = function () {
@@ -219,6 +219,7 @@ var ParallelArray = function () {
     // If this.data is a OpenCL memory object, grab the values and store the OpenCL memory 
     // object in the cache for later use.
     var materialize = function materialize() {
+        // FIXME: figure out what this instanceof check should really be
         if (useFF4Interface && (this.data instanceof Components.interfaces.dpoIData)) {
             // we have to first materialise the values on the JavaScript side
             this.data = this.data.getValue();
@@ -1142,6 +1143,9 @@ var ParallelArray = function () {
                 callArguments[1] = movingArg;
                 rawResult[1] = f.apply(this, callArguments);
                 var last = rawResult[1];
+
+                // FIXME: figure out what this instanceof check should
+                // really be
                 if ((last.data instanceof Components.interfaces.dpoIData) && 
                     equalsShape(rawResult[0].getShape(), last.getShape())) {
                     // this was computed by openCL and the function is shape preserving.
@@ -1494,6 +1498,9 @@ var ParallelArray = function () {
             var currImage = context.getImageData(0, 0, canvas.width, canvas.height);
             var imageData = context.createImageData(currImage.width, currImage.height);
             var data = imageData.data;
+
+        // FIXME: figure out what this instanceof check should really
+        // be
             if (useFF4Interface && (this.data instanceof Components.interfaces.dpoIData)) {
                 this.data.writeTo(data);
             } else {
@@ -1947,6 +1954,8 @@ var ParallelArray = function () {
             result.elementalType = arguments[1].elementalType;
             result.data = arguments[1].data;
             result.flat = arguments[1].flat;
+
+        // FIXME: figure out what this instanceof check should really be
         } else if (useFF4Interface && (arguments[0] instanceof Components.interfaces.dpoIData)) {
             result = createOpenCLMemParallelArray.apply(this, arguments);
         } else if (typeof(arguments[1]) === 'function' || arguments[1] instanceof low_precision.wrapper) {
@@ -1985,6 +1994,7 @@ var ParallelArray = function () {
             } catch (ignore) {}
         }
 
+        // FIXME: figure out what this instanceof check should really be
         if (useFF4Interface && (result.data instanceof Components.interfaces.dpoIData)) {
             if (useLazyCommunication) {
                 // wrap all functions that need access to the data
