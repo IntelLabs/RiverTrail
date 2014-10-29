@@ -153,6 +153,82 @@ let ParallelArrayFFI = {
     },
 };
 
+// Stuff that Driver.js needs to call.
+let DriverFFI = {
+
+    canBeMapped: function(obj) {
+        // In the original code, this checked to see if obj was a
+        // nested dense array of floats.  However, it doesn't seem
+        // like we support mapping arrays at all now, so this just
+        // returns false.
+        return false;
+
+    },
+
+    compileKernel: function(source, kernelName) {
+        // TODO (LK) Can't figure out where the "options" argument
+        // would come from.
+
+        // It's possible that this stuff should happen when the extension first starts up.
+        Platforms.init();
+        let allPlatforms = Platforms.jsPlatforms;
+        let defaultPlatform = allPlatforms[defaultPlatform];
+        let defaultPlatformID = defaultPlatform.platform_id;
+
+        // A place to put all the error codes we encounter.
+        let err_code = new cl_int();
+
+        // Then, get a list of device IDs to pass to
+        // `clCreateContext`.
+        const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
+        let deviceList = new DeviceArray();
+        err_code = OpenCL.clGetDeviceIDs(defaultPlatformID, // platform
+                                         CL_DEVICE_TYPE_ALL, // device_type
+                                         1, // num_entries
+                                         deviceList, // *devices
+                                         null); // *num_devices
+        check(err_code);
+
+        let context = OpenCL.clCreateContext(null, // *properties
+                                             1, // num_devices
+                                             deviceList, // *devices
+                                             null, // *pfn_notify
+                                             null, // *user_data
+                                             err_code.address()); // *errcode_ret
+        check(err_code);
+
+        // `source` is a JS string; we change it to a C string.
+        let sourceCString = ctypes.char.array()(source);
+        // It's all one line, but an array of pointers to strings, one
+        // for each line, is expected.  So we need a pointer to a
+        // pointer to a string.
+
+        let program = OpenCL.clCreateProgramWithSource(context,
+                                                       1,
+                                                       sourceCString.address().address(),
+                                                       null,
+                                                       err_code_address());
+        check(err_code);
+
+        let options = "";
+        let optionsCString = ctypes.char.array()(options);
+
+        err_code = OpenCL.clBuildProgram(program, 0, null, options, null, null);
+        check(err_code);
+
+        // TODO: finish writing this...
+
+    },
+
+    getBuildLog: function() {
+
+        // TODO
+        return "here's a string";
+
+    },
+
+};
+
 let OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
 

@@ -51,6 +51,15 @@ myObserver.prototype = {
       Components.utils.exportFunction(o.ParallelArrayFFI.is64BitFloatingPointEnabled, window,
                                       {defineAs: "is64BitFloatingPointEnabled"});
 
+      Components.utils.exportFunction(o.DriverFFI.canBeMapped, window,
+                                      {defineAs: "canBeMapped"});
+
+      Components.utils.exportFunction(o.DriverFFI.compileKernel, window,
+                                      {defineAs: "compileKernel"});
+
+      Components.utils.exportFunction(o.DriverFFI.getBuildLog, window,
+                                      {defineAs: "getBuildLog"});
+
       Components.utils.exportFunction(o.Main.run, window,
                                       {defineAs: "run"});
   },
