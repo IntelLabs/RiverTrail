@@ -50,6 +50,7 @@ const cl_context_properties = ctypes.voidptr_t;
 const cl_context_info = ctypes.voidptr_t;
 const cl_device_id = ctypes.voidptr_t;
 const cl_kernel = ctypes.voidptr_t;
+const cl_mem = ctypes.voidptr_t;
 const cl_platform_id = ctypes.voidptr_t;
 const cl_program = ctypes.voidptr_t;
 
@@ -63,6 +64,7 @@ const cl_int = ctypes.int32_t;
 // Enum types.  I'm not really sure what type these should be...
 const cl_device_type = ctypes.uint32_t;
 const cl_device_info = ctypes.uint32_t;
+const cl_mem_flags = ctypes.uint32_t;
 const cl_platform_info = ctypes.uint32_t;
 const cl_program_info = ctypes.uint32_t;
 const cl_program_build_info = ctypes.uint32_t;
@@ -110,6 +112,12 @@ const CL_DEVICE_TYPE_GPU =                         (1 << 2);
 const CL_DEVICE_TYPE_ACCELERATOR =                 (1 << 3);
 const CL_DEVICE_TYPE_CUSTOM =                      (1 << 4);
 const CL_DEVICE_TYPE_ALL =                         0xFFFFFFFF;
+
+// cl_mem_flags bitfield variants:
+const CL_MEM_READ_WRITE =                          (1 << 0);
+const CL_MEM_READ_ONLY =                           (1 << 2);
+const CL_MEM_USE_HOST_PTR =                        (1 << 3);
+const CL_MEM_COPY_HOST_PTR =                       (1 << 5);
 
 // Other handy constants.
 const MAX_DEVICE_NAME_LENGTH = 64;
@@ -363,6 +371,16 @@ let OpenCL = {
             ctypes.default_abi,
             cl_int, // return type: error code
             cl_kernel); // kernel
+
+        this.clCreateBuffer = this.lib.declare(
+            "clCreateBuffer",
+            ctypes.default_abi,
+            cl_mem, // return type: buffer object or NULL
+            cl_context, // context
+            cl_mem_flags, // flags
+            ctypes.size_t, // size
+            ctypes.voidptr_t, // *host_ptr,
+            cl_int.ptr); // *errcode_ret
     },
 
     shutdown: function() {
