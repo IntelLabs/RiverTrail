@@ -585,7 +585,7 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
 
     err_code = OpenCL.clGetPlatformInfo(this.platform_id,
                                         paramName,
-                                        length.value*ctypes.char.size,
+                                        length.value*ctypes.char.size, // size of propertyBuf
                                         propertyBuf,
                                         paramValueSizeRet);
     check(err_code);

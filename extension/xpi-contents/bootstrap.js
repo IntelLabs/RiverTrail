@@ -44,6 +44,7 @@ function myObserver() {
 myObserver.prototype = {
   observe: function(subject, topic, data) {
 
+      // TODO (LK): explain what's happening here
       var window = Components.utils.waiveXrays(subject);
 
       // All the functions we want to export.
@@ -106,6 +107,10 @@ let listener = {
 
 /* Bootstrap functions */
 
+
+// FIXME (LK): there's a weird behavior where the extension has to be
+// disabled/enabled in order for web page code to realize that the
+// extension is installed.  Figure out why this is happening
 function startup(data, reason) {
 
     // Load in existing windows.
