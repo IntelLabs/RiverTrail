@@ -121,6 +121,7 @@ const CL_MEM_COPY_HOST_PTR =                       (1 << 5);
 
 // Other handy constants.
 const MAX_DEVICE_NAME_LENGTH = 64;
+const BUILDLOG_SIZE  = 4096;
 
 // A handy thing to have, since we're going to be checking a lot of
 // error codes after calls to js-ctypes-declared functions.
@@ -165,6 +166,8 @@ let ParallelArrayFFI = {
 
 // Stuff that Driver.js needs to call.
 let DriverFFI = {
+
+    buildLog: ctypes.char.array()(""),
 
     initContext: function() {
 
@@ -219,9 +222,6 @@ let DriverFFI = {
     },
 
     compileKernel: function(source, kernelName, context) {
-        // TODO (LK): Can't figure out where the "options" argument
-        // would come from.
-
         OpenCL.init();
 
         // A place to put all the error codes we encounter.
@@ -241,11 +241,45 @@ let DriverFFI = {
                                                        err_code_address());
         check(err_code);
 
+        // Apparently, the options argument to `clBuildProgram` is
+        // always an empty string.
         let options = "";
         let optionsCString = ctypes.char.array()(options);
 
         err_code = OpenCL.clBuildProgram(program, 0, null, options, null, null);
         check(err_code);
+
+
+        // Figure out how many devices there are...
+        let numDevices = new cl_uint();
+        err_code = OpenCL.clGetProgramInfo(program,
+                                           CL_PROGRAM_NUM_DEVICES,
+                                           cl_uint.size,
+                                           numDevices.address(),
+                                           null);
+        check(err_code);
+
+        // ...so we can get info about them
+        const DeviceIDArray = new ctypes.ArrayType(cl_device_id, numDevices.value);
+        let deviceIDs = new DeviceIDArray();
+        err_code = OpenCL.clGetProgramInfo(program,
+                                           CL_PROGRAM_DEVICES,
+                                           numDevices.value*cl_device_id.size, // size of deviceIDs
+                                           deviceIDs,
+                                           null);
+        check(err_code);
+
+        // LK: `deviceIDs[0]` is copied from the original code -- I'm
+        // not sure how we know we want that one.
+        let buildLogSize = BUILDLOG_SIZE;
+        err_code = OpenCL.clGetProgramBuildInfo(program,
+                                                deviceIDs[0],
+                                                CL_PROGRAM_BUILD_LOG,
+                                                buildLogSize,
+                                                null,
+                                                null);
+        check(err_code);
+
 
         // TODO: finish writing this...it should return a compiled
         // kernel of some kind.
@@ -256,8 +290,7 @@ let DriverFFI = {
 
     getBuildLog: function() {
 
-        // TODO
-        return "here's a string";
+        return this.buildLog;
 
     },
 
@@ -271,6 +304,28 @@ let RunOCLFFI = {
         // TODO: figure out what exactly this is supposed to do.  It
         // calls CreateBuffer and InitCData.  I *think* it should
         // return the result of clCreateBuffer.
+
+        OpenCL.init();
+
+        // A place to put all the error codes we encounter.
+        let err_code = new cl_int();
+        let err_code_address = err_code.address();
+
+
+        // Result of a call to ExtractArray.
+        let tArray;
+
+        // Result of a call to JS_GetTypedArrayByteLength(tArray).
+        let arraySize;
+
+        // Result of a call to GetPointerFromTA.
+        let arrayPointer;
+
+
+
+        OpenCL.clCreateBuffer(context, CL_MEM_READ_ONLY, arraySize,
+                              arrayPointer, err_code_address);
+        check(err_code);
 
     },
 
