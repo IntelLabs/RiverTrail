@@ -73,7 +73,7 @@ RiverTrail.Helper = function () {
         [Uint8Array, "unsigned char"],
         [Uint8ClampedArray, "unsigned /* clamped */ char"],
         [Int16Array, "short"],
-        [Uint16Array, "unsigend short"],
+        [Uint16Array, "unsigned short"],
         [Int32Array, "int"],
         [Uint32Array, "unsigned int"],
         [Float32Array, "float"],
