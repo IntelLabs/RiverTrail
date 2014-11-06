@@ -75,7 +75,7 @@ RiverTrail.compiler.runOCL = function () {
                         memObj = object.cachedOpenCLMem;
                     } else {
                         // we map this argument
-                        memObj = mapData(object.data, RiverTrail.compiler.openCLContext);
+                        memObj = mapData(object.data);
                     }
                     args.push(memObj);
                     if (useBufferCaching) {
@@ -90,10 +90,10 @@ RiverTrail.compiler.runOCL = function () {
                 args.push(new RiverTrail.Helper.Integer(object.offset));
             } else if (object instanceof RiverTrail.Helper.FlatArray) {
                 // these are based on a flat array, so we can just push the data over
-                args.push(mapData(object.data, RiverTrail.compiler.openCLContext));
+                args.push(mapData(object.data));
             } else if (object instanceof Array) {
                 // we have an ordinary JS array, which has passed the uniformity checks and thus can be mapped
-                args.push(mapData(object, RiverTrail.compiler.openCLContext));
+                args.push(mapData(object));
             } else if (typeof (object) === "number") {
                 // Scalar numbers are passed directly, as doubles.
                 args.push(object);
@@ -107,7 +107,7 @@ RiverTrail.compiler.runOCL = function () {
                 args.push(object);
             } else if (RiverTrail.Helper.isTypedArray(object)) {
                 // map the typed array
-                args.push(mapData(object, RiverTrail.compiler.openCLContext));
+                args.push(mapData(object));
             } else {
                 throw new Error("only typed arrays and scalars are currently supported as OpenCL kernel arguments");
             }
@@ -152,8 +152,7 @@ RiverTrail.compiler.runOCL = function () {
                     paSource.updateInPlacePA.data = paSource.updateInPlacePA.cachedOpenCLMem;
                     delete paSource.updateInPlacePA.cachedOpenCLMem;
                 } else {
-                    paSource.updateInPlacePA.data = mapData(paSource.updateInPlacePA.data,
-                                                            RiverTrail.compiler.openCLContext);
+                    paSource.updateInPlacePA.data = mapData(paSource.updateInPlacePA.data);
                     if (useBufferCaching) {
                         paSource.updateInPlacePA.cachedOpenCLMem = paSource.updateInPlacePA.data;
                     }
@@ -173,8 +172,7 @@ RiverTrail.compiler.runOCL = function () {
                 }
                 var template = RiverTrail.Helper.elementalTypeToConstructor(resultElemType);
                 if (template == undefined) throw new Error("cannot map inferred type to constructor");
-                var memObj = allocateData(new template(1), shapeToLength(resShape),
-                                          RiverTrail.compiler.openCLContext);
+                var memObj = allocateData(new template(1), shapeToLength(resShape));
                 kernelArgs.push(memObj);
                 kernelArgs.push(new RiverTrail.Helper.Integer(0));
                 return {mem: memObj, shape: resShape, type: resultElemType, offset: 0};

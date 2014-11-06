@@ -54,22 +54,22 @@ myObserver.prototype = {
       Components.utils.exportFunction(o.ParallelArrayFFI.is64BitFloatingPointEnabled, window,
                                       {defineAs: "is64BitFloatingPointEnabled"});
 
-      Components.utils.exportFunction(o.DriverFFI.initContext, window,
+      Components.utils.exportFunction(o.exportableInitContext, window,
                                       {defineAs: "initContext"});
 
       Components.utils.exportFunction(o.DriverFFI.canBeMapped, window,
                                       {defineAs: "canBeMapped"});
 
-      Components.utils.exportFunction(o.DriverFFI.compileKernel, window,
+      Components.utils.exportFunction(o.exportableCompileKernel, window,
                                       {defineAs: "compileKernel"});
 
-      Components.utils.exportFunction(o.DriverFFI.getBuildLog, window,
+      Components.utils.exportFunction(o.exportableGetBuildLog, window,
                                       {defineAs: "getBuildLog"});
 
-      Components.utils.exportFunction(o.RunOCLFFI.mapData, window,
+      Components.utils.exportFunction(o.exportableMapData, window,
                                       {defineAs: "mapData"});
 
-      Components.utils.exportFunction(o.RunOCLFFI.allocateData, window,
+      Components.utils.exportFunction(o.DriverFFI.allocateData, window,
                                       {defineAs: "allocateData"});
 
       Components.utils.exportFunction(o.Main.run, window,

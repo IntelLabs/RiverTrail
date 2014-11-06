@@ -63,7 +63,8 @@ RiverTrail.compiler = (function () {
 
     var reportVectorized = false;
 
-    var openCLContext = initContext();
+    // Create an OpenCL context on the extension side.
+    initContext();
 
     // check whether we have the right version of the extension; as the user has some extension installed, he probably wants to use
     // the right one for this library, so we alert him
@@ -288,7 +289,7 @@ RiverTrail.compiler = (function () {
                 // enable 64 bit extensions
                 kernelString = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n" + kernelString;
             }
-            kernel = compileKernel(kernelString, "RT_" + kernelName, openCLContext);
+            kernel = compileKernel(kernelString, "RT_" + kernelName);
             console.log(kernel);
         } catch (e) {
             try {
@@ -562,7 +563,6 @@ RiverTrail.compiler = (function () {
         verboseDebug: false,
         debug: false,
         compileAndGo: compileAndGo,
-        openCLContext: openCLContext,
     };
 }());
 

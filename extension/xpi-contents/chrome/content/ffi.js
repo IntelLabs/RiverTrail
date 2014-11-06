@@ -169,11 +169,17 @@ let ParallelArrayFFI = {
     },
 };
 
-// Stuff that Driver.js needs to call.
+// Stuff that Driver.js (and runOCL.js) needs to call.
 let DriverFFI = {
 
-    buildLog: ctypes.char.array()(""),
+    // initContext fills these in.
+    context: null,
+    cmdQueue: null,
 
+    // compileKernel fills this in.
+    buildLog: null,
+
+    // An attempt to port dpoCContext::InitContext.
     initContext: function() {
 
         OpenCL.init();
@@ -226,7 +232,7 @@ let DriverFFI = {
 
     },
 
-    compileKernel: function(source, kernelName, context) {
+    compileKernel: function(source, kernelName) {
         OpenCL.init();
 
         // A place to put all the error codes we encounter.
@@ -239,7 +245,7 @@ let DriverFFI = {
         // for each line, is expected.  So we need a pointer to a
         // pointer to a string.
 
-        let program = OpenCL.clCreateProgramWithSource(context,
+        let program = OpenCL.clCreateProgramWithSource(this.context,
                                                        1,
                                                        sourceCString.address().address(),
                                                        null,
@@ -299,12 +305,7 @@ let DriverFFI = {
 
     },
 
-};
-
-
-let RunOCLFFI = {
-
-    mapData: function(source, context) {
+    mapData: function(source) {
 
         // TODO: figure out what exactly this is supposed to do.  It
         // calls CreateBuffer and InitCData.  I *think* it should
@@ -326,20 +327,27 @@ let RunOCLFFI = {
         // Result of a call to GetPointerFromTA.
         let arrayPointer;
 
-
-
-        OpenCL.clCreateBuffer(context, CL_MEM_READ_ONLY, arraySize,
+        OpenCL.clCreateBuffer(this.context, CL_MEM_READ_ONLY, arraySize,
                               arrayPointer, err_code_address);
         check(err_code);
 
     },
 
-    allocateData: function(templ, length, context) {
+    allocateData: function(templ, length) {
 
         // TODO: figure out what exactly this is supposed to do.  It also
         // calls CreateBuffer and InitCData.
     }
+
 };
+
+// Functions that refer to `this` have to be "bound" using
+// `Function.prototype.bind` before being exported, so that they'll be
+// called with the appropriate `this` value.
+let exportableGetBuildLog = DriverFFI.getBuildLog.bind(DriverFFI);
+let exportableInitContext = DriverFFI.initContext.bind(DriverFFI);
+let exportableCompileKernel = DriverFFI.compileKernel.bind(DriverFFI);
+let exportableMapData = DriverFFI.mapData.bind(DriverFFI);
 
 let OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
