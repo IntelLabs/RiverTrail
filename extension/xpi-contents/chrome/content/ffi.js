@@ -45,6 +45,7 @@ Components.utils.import("resource://gre/modules/devtools/Console.jsm");
 // to schedule execution of a kernel(s) or operations on memory
 // objects."  But that's only so helpful, so voidptr_t will have to
 // do.
+const cl_command_queue = ctypes.voidptr_t;
 const cl_context = ctypes.voidptr_t;
 const cl_context_properties = ctypes.voidptr_t;
 const cl_context_info = ctypes.voidptr_t;
@@ -62,6 +63,7 @@ const cl_uint = ctypes.uint32_t;
 const cl_int = ctypes.int32_t;
 
 // Enum types.  I'm not really sure what type these should be...
+const cl_command_queue_properties = ctypes.uint32_t;
 const cl_device_type = ctypes.uint32_t;
 const cl_device_info = ctypes.uint32_t;
 const cl_mem_flags = ctypes.uint32_t;
@@ -118,6 +120,10 @@ const CL_MEM_READ_WRITE =                          (1 << 0);
 const CL_MEM_READ_ONLY =                           (1 << 2);
 const CL_MEM_USE_HOST_PTR =                        (1 << 3);
 const CL_MEM_COPY_HOST_PTR =                       (1 << 5);
+
+// cl_command_queue_properties bitfield variants:
+const CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE =     (1 << 0);
+const CL_QUEUE_PROFILING_ENABLE =                  (1 << 1);
 
 // Other handy constants.
 const MAX_DEVICE_NAME_LENGTH = 64;
@@ -492,7 +498,16 @@ let OpenCL = {
             cl_context, // context
             cl_mem_flags, // flags
             ctypes.size_t, // size
-            ctypes.voidptr_t, // *host_ptr,
+            ctypes.voidptr_t, // *host_ptr
+            cl_int.ptr); // *errcode_ret
+
+        this.clCreateCommandQueue = this.lib.declare(
+            "clCreateCommandQueue",
+            ctypes.default_abi,
+            cl_command_queue, // return type: command queue or NULL
+            cl_context, // context
+            cl_device_id, // device
+            cl_command_queue_properties, // properties
             cl_int.ptr); // *errcode_ret
     },
 
