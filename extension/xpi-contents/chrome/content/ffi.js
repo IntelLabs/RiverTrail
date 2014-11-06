@@ -47,8 +47,6 @@ Components.utils.import("resource://gre/modules/devtools/Console.jsm");
 // do.
 const cl_command_queue = ctypes.voidptr_t;
 const cl_context = ctypes.voidptr_t;
-const cl_context_properties = ctypes.voidptr_t;
-const cl_context_info = ctypes.voidptr_t;
 const cl_device_id = ctypes.voidptr_t;
 const cl_kernel = ctypes.voidptr_t;
 const cl_mem = ctypes.voidptr_t;
@@ -64,6 +62,8 @@ const cl_int = ctypes.int32_t;
 
 // Enum types.  I'm not really sure what type these should be...
 const cl_command_queue_properties = ctypes.uint32_t;
+const cl_context_info = ctypes.uint32_t;
+const cl_context_properties = ctypes.uint32_t;
 const cl_device_type = ctypes.uint32_t;
 const cl_device_info = ctypes.uint32_t;
 const cl_mem_flags = ctypes.uint32_t;
