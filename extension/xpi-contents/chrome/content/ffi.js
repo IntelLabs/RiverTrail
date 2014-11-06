@@ -25,6 +25,8 @@
  *
  */
 
+var EXPORTED_SYMBOLS = [ "OpenCLContext" ];
+
 // This code makes OpenCL API functions available to JavaScript
 // through the js-ctypes interface.
 
@@ -131,9 +133,25 @@ function check(errorCode) {
             " called a function that returned with error code " +
             errorCode;
         console.log(errorString);
+        alert(errorString);
         throw errorString;
     }
 }
+
+function _l(s) {
+    console.log(s);
+}
+
+/*
+function RiverTrailExtension() {
+   this.OpenCLContext = null; // {
+   this.kernelsList = [];
+}
+
+function CData() {
+    this.
+}
+*/
 
 // Stuff that ParallelArray.js needs to call.
 let ParallelArrayFFI = {
@@ -164,15 +182,32 @@ let ParallelArrayFFI = {
     },
 };
 
+//var window = Components.utils.waiveXrays(subject);
+
+function OpenCLContext(ctypesObj) {
+    this.ctypesObj = ctypesObj;
+    this._name = "openclcontexthere";
+}
+
+function GenericWrapper(ctypesObj, name) {
+    this.ctypesObj = ctypesObj;
+    this.name = name;
+}
+
+var context;
 // Stuff that Driver.js needs to call.
 let DriverFFI = {
 
     buildLog: ctypes.char.array()(""),
+    foo: "Jas",
+    mytestingfunction: function() {
+        return "Hello";
+    },
 
-    initContext: function() {
+    initContext: function(string) {
 
         OpenCL.init();
-
+        console.log("[Createcontext:: Got] : " + string);
         let prefService = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService);
         let prefBranch = prefService.getBranch("extensions.river-trail-extension.");
         let defaultPlatformPref = prefBranch.getIntPref("defaultPlatform");
@@ -193,22 +228,25 @@ let DriverFFI = {
         // `clCreateContext`.
         const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
         let deviceList = new DeviceArray();
+        let ndevices = new cl_uint();
         err_code = OpenCL.clGetDeviceIDs(defaultPlatformID, // platform
                                          CL_DEVICE_TYPE_ALL, // device_type
                                          1, // num_entries
                                          deviceList, // *devices
-                                         null); // *num_devices
+                                         ndevices.address()); // *num_devices
         check(err_code);
+        console.log("Device id: " + deviceList[0]);
+        console.log("Number of devices: " + ndevices.value);
 
-        let context = OpenCL.clCreateContext(null, // *properties
+        context = OpenCL.clCreateContext(null, // *properties
                                              1, // num_devices
                                              deviceList, // *devices
                                              null, // *pfn_notify
                                              null, // *user_data
                                              err_code_address); // *errcode_ret
         check(err_code);
-
-        return context;
+        console.log("[Created New Context]");
+        return new GenericWrapper(context, "OpenCLContext");
 
     },
 
@@ -221,23 +259,29 @@ let DriverFFI = {
 
     },
 
-    compileKernel: function(source, kernelName, context) {
+    compileKernel: function(source, kernelName) {
+        console.log("----------------------");
+        console.log("----------------------");
+        console.log("----------------------");
+        console.log("Compiling " + source);
+        console.log("Context is : " + typeof(context.name));
         OpenCL.init();
-
         // A place to put all the error codes we encounter.
         let err_code = new cl_int();
         let err_code_address = err_code.address();
 
         // `source` is a JS string; we change it to a C string.
         let sourceCString = ctypes.char.array()(source);
+        var sizes = ctypes.size_t.array(1) ([sourceCString.length - 1]);
         // It's all one line, but an array of pointers to strings, one
         // for each line, is expected.  So we need a pointer to a
         // pointer to a string.
-
+        
         let program = OpenCL.clCreateProgramWithSource(context,
                                                        1,
-                                                       sourceCString.address().address(),
-                                                       null,
+                                                       ctypes.cast(sourceCString.address().address(), ctypes.char.ptr.ptr),
+                                                       ctypes.cast (sizes.address(), ctypes.size_t.ptr),
+                                                       /*null,*/
                                                        err_code_address());
         check(err_code);
 
@@ -283,13 +327,12 @@ let DriverFFI = {
 
         // TODO: finish writing this...it should return a compiled
         // kernel of some kind.
-        let kernel = "";
+        let kernel = new GenericWrapper(null, "OpenCLKernel");
         return kernel;
-
     },
 
     getBuildLog: function() {
-
+        return "Didn't work ? wonder why";
         return this.buildLog;
 
     },
@@ -299,7 +342,7 @@ let DriverFFI = {
 
 let RunOCLFFI = {
 
-    mapData: function(source, context) {
+    mapData: function(source) {
 
         // TODO: figure out what exactly this is supposed to do.  It
         // calls CreateBuffer and InitCData.  I *think* it should
@@ -323,13 +366,13 @@ let RunOCLFFI = {
 
 
 
-        OpenCL.clCreateBuffer(context, CL_MEM_READ_ONLY, arraySize,
+        OpenCL.clCreateBuffer(CL_MEM_READ_ONLY, arraySize,
                               arrayPointer, err_code_address);
         check(err_code);
 
     },
 
-    allocateData: function(templ, length, context) {
+    allocateData: function(templ, length) {
 
         // TODO: figure out what exactly this is supposed to do.  It also
         // calls CreateBuffer and InitCData.
@@ -351,7 +394,11 @@ let OpenCL = {
             // TODO: There's probably something more general I can
             // point to here.  This is where libOpenCL.so ends up when
             // I install the Intel OpenCL SDK.
-            this.lib = ctypes.open("/opt/intel/opencl-1.2-4.6.0.92/lib64/libOpenCL.so");
+            //this.lib = ctypes.open("/opt/intel/opencl-1.2-4.6.0.92/lib64/libOpenCL.so");
+            this.lib = ctypes.open("/usr/lib64/libOpenCL.so");
+            if(!this.lib) {
+                throw "Could not open OpenCL library";
+            }
         } else if (os == "WINNT") {
             throw "TODO: handle Windows";
         } else {
@@ -371,6 +418,7 @@ let OpenCL = {
                                                  cl_uint, // in: num_entries
                                                  cl_platform_id.ptr, // in: *platforms
                                                  cl_uint.ptr); // out: *num_platforms
+        _l("Initialized clGetPlatformIDs");
 
         this.clGetPlatformInfo = this.lib.declare("clGetPlatformInfo",
                                                   ctypes.default_abi,
@@ -380,6 +428,7 @@ let OpenCL = {
                                                   ctypes.size_t, // param_value_size
                                                   ctypes.voidptr_t, // *param_value
                                                   ctypes.size_t.ptr); // *param_value_size_ret
+        _l("Initialized clGetPlatformInfo");
 
         this.clGetDeviceIDs = this.lib.declare("clGetDeviceIDs",
                                                ctypes.default_abi,
@@ -389,6 +438,7 @@ let OpenCL = {
                                                cl_uint, // num_entries
                                                cl_device_id, // *devices
                                                cl_uint.ptr); // *num_devices
+        _l("Initialized clGetDeviceIDs");
 
         this.clGetDeviceInfo = this.lib.declare("clGetDeviceInfo",
                                                ctypes.default_abi,
@@ -398,6 +448,7 @@ let OpenCL = {
                                                ctypes.size_t, // param_value_size
                                                ctypes.voidptr_t, // *param_value
                                                ctypes.size_t.ptr); // *param_value_size_ret
+        _l("Initialized clGetDeviceInfo");
 
 
         this.clCreateContext = this.lib.declare("clCreateContext",
@@ -409,8 +460,10 @@ let OpenCL = {
                                                 ctypes.voidptr_t, // *pfn_notify
                                                 ctypes.voidptr_t, // *user_data
                                                 cl_int.ptr); // *errcode_ret
+        _l("Initialized clCreateContext");
 
-        this.clCreateProgramWithSource = this.lib.declare(
+        var tmpftype = ctypes.FunctionType(ctypes.default_abi, cl_program, [cl_context, cl_uint, ctypes.char.ptr.ptr, ctypes.size_t.ptr, cl_int.ptr]);
+        let tmpf = this.lib.declare(
             "clCreateProgramWithSource",
             ctypes.default_abi,
             cl_program, // return type: "a valid non-zero program object" or NULL
@@ -419,6 +472,7 @@ let OpenCL = {
             ctypes.char.ptr.ptr, // **strings (array of pointers to strings that make up the code)
             ctypes.size_t.ptr, // *lengths (array with length of each string)
             cl_int.ptr); // *errcode_ret
+        this.clCreateProgramWithSource = ctypes.cast(tmpf, tmpftype.ptr);
 
         this.clBuildProgram = this.lib.declare(
             "clBuildProgram",
@@ -726,7 +780,7 @@ let Main = {
         check(err_code);
 
         // Finally, we can create a context.
-        let context = OpenCL.clCreateContext(null, // *properties
+        context = OpenCL.clCreateContext(null, // *properties
                                              1, // num_devices
                                              device_list, // *devices
                                              null, // *pfn_notify

@@ -37,7 +37,7 @@
 if (RiverTrail === undefined) {
     var RiverTrail = {};
 }
-
+var openCLContext;
 RiverTrail.compiler = (function () {
     // This is the compiler driver proper. 
     
@@ -63,7 +63,7 @@ RiverTrail.compiler = (function () {
 
     var reportVectorized = false;
 
-    var openCLContext = initContext();
+    openCLContext = initContext("Is it there");
 
     // check whether we have the right version of the extension; as the user has some extension installed, he probably wants to use
     // the right one for this library, so we alert him
@@ -288,7 +288,7 @@ RiverTrail.compiler = (function () {
                 // enable 64 bit extensions
                 kernelString = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n" + kernelString;
             }
-            kernel = compileKernel(kernelString, "RT_" + kernelName, openCLContext);
+            kernel = window.compileKernel(kernelString, "RT_" + kernelName);
             console.log(kernel);
         } catch (e) {
             try {

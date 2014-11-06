@@ -47,9 +47,17 @@ myObserver.prototype = {
       // TODO (LK): explain what's happening here
       var window = Components.utils.waiveXrays(subject);
 
+      //var sharedObject = { foo : "Hello!", __exposedProps__ : { foo : "r"} };
+      //window.wrappedJSObject.sharedObject = sharedObject;
+      //var newObject = new window.Object();
+      //newObject.name = "Hello";
+
       // All the functions we want to export.
       Components.utils.exportFunction(o.ParallelArrayFFI.is64BitFloatingPointEnabled, window,
                                       {defineAs: "is64BitFloatingPointEnabled"});
+
+      Components.utils.exportFunction(o.DriverFFI.mytestingfunction, window,
+                                      {defineAs: "mytestingfunction"});
 
       Components.utils.exportFunction(o.DriverFFI.initContext, window,
                                       {defineAs: "initContext"});

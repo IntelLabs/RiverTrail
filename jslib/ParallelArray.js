@@ -220,7 +220,7 @@ var ParallelArray = function () {
     // object in the cache for later use.
     var materialize = function materialize() {
         // FIXME: figure out what this instanceof check should really be
-        if (useFF4Interface && (this.data instanceof Components.interfaces.dpoIData)) {
+        if (useFF4Interface && isCData(this.data)) {
             // we have to first materialise the values on the JavaScript side
             this.data = this.data.getValue();
         }
@@ -1752,6 +1752,10 @@ var ParallelArray = function () {
         // TODO: deprecated, delete for good
         throw "inferType is no longer here!";
     };
+    function isCData(dataInstance) {
+        // This should return true if dataInstance is
+        return false;
+    };
 
     var _fastClasses = function () {
 
@@ -1937,7 +1941,7 @@ var ParallelArray = function () {
                 console.log ("(fingerprint === fingerprintTracker)");
             }
         }
-
+        
         if (arguments.length == 0) {
             result = createEmptyParallelArray.call(this);
         } else if (arguments.length == 1) {     
@@ -1956,7 +1960,7 @@ var ParallelArray = function () {
             result.flat = arguments[1].flat;
 
         // FIXME: figure out what this instanceof check should really be
-        } else if (useFF4Interface && (arguments[0] instanceof Components.interfaces.dpoIData)) {
+        } else if (useFF4Interface && (isCData(arguments[0]))) {
             result = createOpenCLMemParallelArray.apply(this, arguments);
         } else if (typeof(arguments[1]) === 'function' || arguments[1] instanceof low_precision.wrapper) {
             var extraArgs;
@@ -1995,7 +1999,7 @@ var ParallelArray = function () {
         }
 
         // FIXME: figure out what this instanceof check should really be
-        if (useFF4Interface && (result.data instanceof Components.interfaces.dpoIData)) {
+        if (useFF4Interface && isCData(result.data)) {
             if (useLazyCommunication) {
                 // wrap all functions that need access to the data
                 requiresData(result, "get");
