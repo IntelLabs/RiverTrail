@@ -29,6 +29,12 @@
 ////////////////////
 
 
+// Temp hack to find out what the type of something is.
+var typeOf = function(obj) {
+  return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase()
+}
+
+
 //ParallelArray
 //    The constructor for ParallelArrays
 
@@ -91,20 +97,6 @@
 
 /////////////////
 
-// LK: TODO: I think this can be gotten rid of.
-// try {
-//     if ((typeof DPOInterface === 'function') && (Components.interfaces.dpoIData === undefined))
-//         // great hack to check whether components still exisits
-//         // if not, dom.omit_components_in_content has to be set!
-//         alert("You seem to use a version of Firefox (22 or newer) where the \n" +
-//               "Components object is disabled by default. To use River Trail \n" +
-//               "please go to about:config and set the value for the key \n" +
-//               "dom.omit_components_in_content to false and reload the page.");
-
-//     }
-// catch (ignore) {}
-
-
 var ParallelArray = function () {
 
 //    The array object has the following prototype methods that are also implemented
@@ -129,20 +121,15 @@ var ParallelArray = function () {
     // use Proxies to emulate square bracket index selection on ParallelArray objects
     var enableProxies = false;
 
-    // check whether the new extension is installed.
-    var useFF4Interface = false;
-    // LK: What do we mean by "the new extension", exactly?  I'm going
-    // to assume that my extension is also "the new extension".
+    // Check whether the new extension is installed.
+    var extensionIsInstalled = false;
     try {
-        // Just see if we have one of the functions provided by the
-        // new interface.
-        if (is64BitFloatingPointEnabled !== undefined) {
-            useFF4Interface = true;
+        if (riverTrailExtensionIsInstalled !== undefined) {
+            extensionIsInstalled = true;
         }
     } catch (ignore) {
         console.log("It looks like the extension isn't installed.")
     }
-    console.log("useFF4Interface: " + useFF4Interface);
 
     // check whether the OpenCL implementation supports double
     var enable64BitFloatingPoint = false;
@@ -158,7 +145,7 @@ var ParallelArray = function () {
     // this is the storage that is used by default when converting arrays 
     // to typed arrays.
     var defaultTypedArrayConstructor 
-    = useFF4Interface ? (enable64BitFloatingPoint ? Float64Array : Float32Array)
+    = extensionIsInstalled ? (enable64BitFloatingPoint ? Float64Array : Float32Array)
                     : Array;
     // the default type assigned to JavaScript numbers
     var defaultNumberType = enable64BitFloatingPoint ? "double" : "float";
@@ -220,9 +207,15 @@ var ParallelArray = function () {
     // object in the cache for later use.
     var materialize = function materialize() {
         // FIXME: figure out what this instanceof check should really be
-        if (useFF4Interface && (this.data instanceof Components.interfaces.dpoIData)) {
+
+        console.log("type of this.data: " + typeOf(this.data));
+        if (extensionIsInstalled && (this.data instanceof Object)) {
             // we have to first materialise the values on the JavaScript side
-            this.data = this.data.getValue();
+
+            // FIXME (LK): Comment out for the time being until I
+            // understand what this is supposed to do.
+
+            //this.data = this.data.getValue();
         }
     };
 
@@ -1146,7 +1139,9 @@ var ParallelArray = function () {
 
                 // FIXME: figure out what this instanceof check should
                 // really be
-                if ((last.data instanceof Components.interfaces.dpoIData) && 
+
+                console.log("type of last.data: " + typeOf(last.data));
+                if ((last.data instanceof Object) &&
                     equalsShape(rawResult[0].getShape(), last.getShape())) {
                     // this was computed by openCL and the function is shape preserving.
                     // Try to preallocate and compute the result in place!
@@ -1501,7 +1496,8 @@ var ParallelArray = function () {
 
         // FIXME: figure out what this instanceof check should really
         // be
-            if (useFF4Interface && (this.data instanceof Components.interfaces.dpoIData)) {
+        console.log("type of this.data: " + typeOf(this.data));
+            if (extensionIsInstalled && (this.data instanceof Object)) {
                 this.data.writeTo(data);
             } else {
                 for (var i = 0; i < this.data.length; i++) {
@@ -1956,7 +1952,7 @@ var ParallelArray = function () {
             result.flat = arguments[1].flat;
 
         // FIXME: figure out what this instanceof check should really be
-        } else if (useFF4Interface && (arguments[0] instanceof Components.interfaces.dpoIData)) {
+        } else if (extensionIsInstalled && (arguments[0] instanceof Object)) {
             result = createOpenCLMemParallelArray.apply(this, arguments);
         } else if (typeof(arguments[1]) === 'function' || arguments[1] instanceof low_precision.wrapper) {
             var extraArgs;
@@ -1995,7 +1991,8 @@ var ParallelArray = function () {
         }
 
         // FIXME: figure out what this instanceof check should really be
-        if (useFF4Interface && (result.data instanceof Components.interfaces.dpoIData)) {
+        console.log("type of result.data: " + typeOf(result.data));
+        if (extensionIsInstalled && (result.data instanceof Object)) {
             if (useLazyCommunication) {
                 // wrap all functions that need access to the data
                 requiresData(result, "get");

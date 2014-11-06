@@ -138,6 +138,11 @@ function check(errorCode) {
 // Stuff that ParallelArray.js needs to call.
 let ParallelArrayFFI = {
 
+    riverTrailExtensionIsInstalled: function() {
+        // This does nothing; it's just here as a way to mark that the
+        // extension is installed.
+    },
+
     is64BitFloatingPointEnabled: function() {
 
         OpenCL.init();

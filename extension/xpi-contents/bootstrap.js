@@ -48,6 +48,9 @@ myObserver.prototype = {
       var window = Components.utils.waiveXrays(subject);
 
       // All the functions we want to export.
+      Components.utils.exportFunction(o.ParallelArrayFFI.riverTrailExtensionIsInstalled, window,
+                                      {defineAs: "riverTrailExtensionIsInstalled"});
+
       Components.utils.exportFunction(o.ParallelArrayFFI.is64BitFloatingPointEnabled, window,
                                       {defineAs: "is64BitFloatingPointEnabled"});
 
