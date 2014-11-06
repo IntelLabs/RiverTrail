@@ -330,20 +330,32 @@ let DriverFFI = {
 
         // LK: `deviceIDs[0]` is copied from the original code -- I'm
         // not sure how we know we want that one.
-        let buildLogSize = BUILDLOG_SIZE;
+
+        // LK: BUILDLOG_SIZE might not be big enough, but we'll worry
+        // about that later.
+        const BuildLogArray = new ctypes.ArrayType(char, BUILDLOG_SIZE);
+        this.buildLog = new BuildLogArray();
         err_code = OpenCL.clGetProgramBuildInfo(program,
                                                 deviceIDs[0],
                                                 CL_PROGRAM_BUILD_LOG,
-                                                buildLogSize,
-                                                null,
+                                                BUILDLOG_SIZE,
+                                                this.buildLog,
                                                 null);
         check(err_code);
 
+        // Finally, create the kernel.
+        let kernelNameCString = ctypes.char.array()(kernelName);
+        kernel = OpenCL.clCreateKernel(program,
+                                       kernelNameCString,
+                                       err_code.address());
+        check(err_code);
 
-        // TODO: finish writing this...it should return a compiled
-        // kernel of some kind.
-        let kernel = "";
-        return kernel;
+        err_code = OpenCL.clReleaseProgram(program);
+        check(err_code);
+
+        // Convert the kernel string back to a JS string.
+        let jsKernel = kernel.readString();
+        return jsKernel;
 
     },
 
