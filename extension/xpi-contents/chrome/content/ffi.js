@@ -476,7 +476,7 @@ let OpenCL = {
         this.clCreateContext = this.lib.declare("clCreateContext",
                                                 ctypes.default_abi,
                                                 cl_context, // return type
-                                                cl_context_properties, // *properties
+                                                cl_context_properties.ptr, // *properties
                                                 cl_uint, // num_devices
                                                 cl_device_id, // *devices
                                                 ctypes.voidptr_t, // *pfn_notify
