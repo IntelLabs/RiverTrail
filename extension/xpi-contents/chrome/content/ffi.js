@@ -243,7 +243,7 @@ let DriverFFI = {
         contextProperties[1] = ctypes.cast(defaultPlatformID, cl_context_properties);
 
         // Get the default device ID to pass to clCreateContext.
-        let defaultDevicePref = prefBranch.getIntPref("defaultDevice");
+        let defaultDevicePref = prefBranch.getIntPref("defaultDeviceType");
         if (defaultDevicePref < 0 || defaultDevicePref === undefined) {
             defaultDevicePref = 0;
         }
@@ -297,7 +297,7 @@ let DriverFFI = {
                                                        1,
                                                        sourceCString.address().address(),
                                                        null,
-                                                       err_code_address());
+                                                       err_code_address);
         check(err_code);
 
         // Apparently, the options argument to `clBuildProgram` is
