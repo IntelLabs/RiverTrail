@@ -106,6 +106,9 @@ const CL_PROGRAM_DEVICES =     0x1163;
 // `clGetProgramBuildInfo` what we're asking for info about):
 const CL_PROGRAM_BUILD_LOG =   0x1183;
 
+// cl_context_properties variants:
+const CL_CONTEXT_PLATFORM =    0x1084;
+
 // cl_device_type bitfield variants (returned from `CL_DEVICE_TYPE`
 // queries to `clGetDeviceInfo`):
 const CL_DEVICE_TYPE_DEFAULT =                     (1 << 0);
@@ -206,9 +209,20 @@ let DriverFFI = {
         let err_code = new cl_int();
         let err_code_address = err_code.address();
 
-        // Then, get a list of device IDs to pass to
+        // Get number of devices.
+        let numDevices = new cl_uint();
+        err_code = OpenCL.clGetDeviceIDs(defaultPlatformID,
+                                         CL_DEVICE_TYPE_ALL,
+                                         0,
+                                         null,
+                                         numDevices.address());
+
+        // Then, get a list of device IDs of to pass to
         // `clCreateContext`.
-        const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
+
+        // numDevices.value is the length of the array
+        const DeviceArray = new ctypes.ArrayType(cl_device_id,
+                                                 numDevices.value);
         let deviceList = new DeviceArray();
         err_code = OpenCL.clGetDeviceIDs(defaultPlatformID, // platform
                                          CL_DEVICE_TYPE_ALL, // device_type
@@ -217,16 +231,44 @@ let DriverFFI = {
                                          null); // *num_devices
         check(err_code);
 
-        let context = OpenCL.clCreateContext(null, // *properties
-                                             1, // num_devices
-                                             deviceList, // *devices
-                                             null, // *pfn_notify
-                                             null, // *user_data
-                                             err_code_address); // *errcode_ret
+        // Create a three-element array of context properties to pass
+        // to clCreateContext.
+
+        // N.B. in the original code we set the third element to NULL,
+        // but we can't do that here (it has to be a CData), so let's
+        // just not set it...
+        const ContextPropertiesArray = new ctypes.ArrayType(cl_context_properties, 3);
+        let contextProperties = new ContextPropertiesArray();
+        contextProperties[0] = CL_CONTEXT_PLATFORM;
+        contextProperties[1] = ctypes.cast(defaultPlatformID, cl_context_properties);
+
+        // Get the default device ID to pass to clCreateContext.
+        let defaultDevicePref = prefBranch.getIntPref("defaultDevice");
+        if (defaultDevicePref < 0 || defaultDevicePref === undefined) {
+            defaultDevicePref = 0;
+        }
+
+        // TODO (LK): in the original code we passed a callback
+        // function that would log errors.  I'm not going to deal with
+        // that yet...
+        let context = OpenCL.clCreateContext(contextProperties,
+                                             1,
+                                             // LK: just deviceList
+                                             // here might work too
+                                             (deviceList[defaultDevicePref]).address(),
+                                             null,
+                                             null,
+                                             err_code_address);
         check(err_code);
 
-        return context;
+        this.context = context;
 
+        // TODO (LK): figure out if these should be on or not
+        let commandQueueProperties = CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | 0;
+        this.cmdQueue = OpenCL.clCreateCommandQueue(context,
+                                                    deviceList[defaultDevicePref],
+                                                    commandQueueProperties,
+                                                    err_code_address);
     },
 
     canBeMapped: function(obj) {
