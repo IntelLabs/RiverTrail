@@ -71,8 +71,14 @@ myObserver.prototype = {
       Components.utils.exportFunction(o.DriverFFI.getBuildLog, window,
                                       {defineAs: "getBuildLog"});
 
-      Components.utils.exportFunction(o.RunOCLFFI.mapData, window,
+      Components.utils.exportFunction(o.DriverFFI.mapData, window,
                                       {defineAs: "mapData"});
+
+      Components.utils.exportFunction(o.DriverFFI.setArgument, window,
+                                      {defineAs: "setArgument"});
+
+      Components.utils.exportFunction(o.DriverFFI.setScalarArgument, window,
+                                      {defineAs: "setScalarArgument"});
 
       Components.utils.exportFunction(o.RunOCLFFI.allocateData, window,
                                       {defineAs: "allocateData"});

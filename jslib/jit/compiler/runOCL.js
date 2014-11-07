@@ -200,16 +200,17 @@ RiverTrail.compiler.runOCL = function () {
             try {
                 //console.log("driver 344 index: ", index, " arg: ", arg);
                 if (typeof (arg) === "number") {
-                    kernel.setScalarArgument(index, arg, false, !lowPrecision);
+                    setScalarArgument(kernel, index, arg, false, !lowPrecision);
                 } else if (arg instanceof RiverTrail.Helper.Integer) {
                     // console.log("index: ", index, " arg.value: ", arg.value);
-                    kernel.setScalarArgument(index, arg.value, true, false);
+                    setScalarArgument(kernel, index, arg.value, true, false);
                     // console.log("good");
 
                     // FIXME: figure out what this instanceof check
                     // should really be
-                } else if (arg instanceof Components.interfaces.dpoIData) {
-                    kernel.setArgument(index, arg);
+                //} else if (arg instanceof Components.interfaces.dpoIData) {
+                } else if (typeof(arg) === "object" && arg.name === "CData") {
+                    setArgument(kernel, index, arg);
                 } else {
                     throw new Error("unexpected kernel argument type!");
                 }
