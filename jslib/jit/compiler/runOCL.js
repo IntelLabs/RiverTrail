@@ -173,8 +173,9 @@ RiverTrail.compiler.runOCL = function () {
                 }
                 var template = RiverTrail.Helper.elementalTypeToConstructor(resultElemType);
                 if (template == undefined) throw new Error("cannot map inferred type to constructor");
-                var memObj = allocateData(new template(1), shapeToLength(resShape),
-                                          RiverTrail.compiler.openCLContext);
+                //var memObj = allocateData(new template(1), shapeToLength(resShape),                                          RiverTrail.compiler.openCLContext);
+                var objToMap = new template(shapeToLength(resShape));
+                var memObj = mapData(objToMap);
                 kernelArgs.push(memObj);
                 kernelArgs.push(new RiverTrail.Helper.Integer(0));
                 return {mem: memObj, shape: resShape, type: resultElemType, offset: 0};

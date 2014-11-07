@@ -196,10 +196,167 @@ function GenericWrapper(ctypesObj, name) {
 
 var context;
 // Stuff that Driver.js needs to call.
+
+let DriverFFI = (function() {
+
+    //buildLog: ctypes.char.array()(""),
+    var foo = "Jas";
+    var compiledKernels = [];
+    var mytestingfunction = function() {
+        return "Hello";
+    };
+
+    var initContext = function(string) {
+
+        OpenCL.init();
+        console.log("[Createcontext:: Got] : " + string);
+        let prefService = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService);
+        let prefBranch = prefService.getBranch("extensions.river-trail-extension.");
+        let defaultPlatformPref = prefBranch.getIntPref("defaultPlatform");
+        if (defaultPlatformPref < 0 || defaultPlatformPref === undefined) {
+            defaultPlatformPref = 0;
+        }
+        compiledKernels.length = 0;
+        Platforms.init();
+        let allPlatforms = Platforms.jsPlatforms;
+        let defaultPlatform = allPlatforms[defaultPlatformPref];
+        let defaultPlatformID = defaultPlatform.platform_id;
+
+        // A place to put all the error codes we encounter.
+        let err_code = new cl_int();
+        let err_code_address = err_code.address();
+
+        // Then, get a list of device IDs to pass to
+        // `clCreateContext`.
+        const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
+        let deviceList = new DeviceArray();
+        let ndevices = new cl_uint();
+        err_code = OpenCL.clGetDeviceIDs(defaultPlatformID, // platform
+                                         CL_DEVICE_TYPE_ALL, // device_type
+                                         1, // num_entries
+                                         deviceList, // *devices
+                                         ndevices.address()); // *num_devices
+        check(err_code);
+        console.log("Device id: " + deviceList[0]);
+        console.log("Number of devices: " + ndevices.value);
+
+        context = OpenCL.clCreateContext(null, // *properties
+                                             1, // num_devices
+                                             deviceList, // *devices
+                                             null, // *pfn_notify
+                                             null, // *user_data
+                                             err_code_address); // *errcode_ret
+        check(err_code);
+        console.log("[Created New Context]");
+        return new GenericWrapper(context, "OpenCLContext");
+
+    };
+
+    var canBeMapped = function(obj) {
+        // In the original code, this checked to see if obj was a
+        // nested dense array of floats.  However, it doesn't seem
+        // like we support mapping arrays at all now, so this just
+        // returns false.
+        return false;
+
+    };
+
+    var compileKernel = function(source, kernelName) {
+        console.log("----------------------");
+        console.log("----------------------");
+        console.log("----------------------");
+        console.log("Compiling " + source);
+        console.log("Context is : " + typeof(context.name));
+        OpenCL.init();
+        // A place to put all the error codes we encounter.
+        let err_code = new cl_int();
+        let err_code_address = err_code.address();
+
+        // `source` is a JS string; we change it to a C string.
+        let sourceCString = ctypes.char.array()(source);
+        var sizes = ctypes.size_t.array(1) ([sourceCString.length - 1]);
+        // It's all one line, but an array of pointers to strings, one
+        // for each line, is expected.  So we need a pointer to a
+        // pointer to a string.
+        
+        let program = OpenCL.clCreateProgramWithSource(context,
+                                                       1,
+                                                       ctypes.cast(sourceCString.address().address(), ctypes.char.ptr.ptr),
+                                                       ctypes.cast (sizes.address(), ctypes.size_t.ptr),
+                                                       err_code_address);
+        check(err_code);
+
+        // Apparently, the options argument to `clBuildProgram` is
+        // always an empty string.
+        let options = "";
+        let optionsCString = ctypes.char.array()(options);
+
+        err_code = OpenCL.clBuildProgram(program, 0, null, options, null, null);
+        check(err_code);
+
+
+        // Figure out how many devices there are...
+        let numDevices = new cl_uint();
+        err_code = OpenCL.clGetProgramInfo(program,
+                                           CL_PROGRAM_NUM_DEVICES,
+                                           cl_uint.size,
+                                           numDevices.address(),
+                                           null);
+        check(err_code);
+
+        // ...so we can get info about them
+        const DeviceIDArray = new ctypes.ArrayType(cl_device_id, numDevices.value);
+        let deviceIDs = new DeviceIDArray();
+        err_code = OpenCL.clGetProgramInfo(program,
+                                           CL_PROGRAM_DEVICES,
+                                           numDevices.value*cl_device_id.size, // size of deviceIDs
+                                           deviceIDs,
+                                           null);
+        check(err_code);
+
+        // LK: `deviceIDs[0]` is copied from the original code -- I'm
+        // not sure how we know we want that one.
+        let buildLogSize = BUILDLOG_SIZE;
+        let buildLogType = new ctypes.ArrayType(ctypes.char, BUILDLOG_SIZE);
+        let buildLog = new buildLogType();
+        err_code = OpenCL.clGetProgramBuildInfo(program,
+                                                deviceIDs[0],
+                                                CL_PROGRAM_BUILD_LOG,
+                                                buildLogSize,
+                                                buildLog,
+                                                null);
+        check(err_code);
+
+
+        // TODO: finish writing this...it should return a compiled
+        // kernel of some kind.
+        let kernel = new GenericWrapper(kernel, "OpenCLKernel");
+        compiledKernels.push(kernel);
+        return compiledKernels.length-1;
+    };
+
+    var getBuildLog = function() {
+        return "Didn't work ? wonder why";
+        return this.buildLog;
+    };
+    return {
+        mytestingfunction: mytestingfunction,
+        initContext: initContext,
+        canBeMapped: canBeMapped,
+        compileKernel: compileKernel,
+        getBuildLog: getBuildLog,
+    };
+})();
+
+
+
+/*
+
 let DriverFFI = {
 
     buildLog: ctypes.char.array()(""),
     foo: "Jas",
+    compiledKernels: [],
     mytestingfunction: function() {
         return "Hello";
     },
@@ -281,7 +438,6 @@ let DriverFFI = {
                                                        1,
                                                        ctypes.cast(sourceCString.address().address(), ctypes.char.ptr.ptr),
                                                        ctypes.cast (sizes.address(), ctypes.size_t.ptr),
-                                                       /*null,*/
                                                        err_code_address);
         check(err_code);
 
@@ -318,7 +474,7 @@ let DriverFFI = {
         let buildLogSize = BUILDLOG_SIZE;
         let buildLogType = new ctypes.ArrayType(ctypes.char, BUILDLOG_SIZE);
         let buildLog = new buildLogType();
-        const buildLog = ctypes.char.array(BUILDLOG_SIZE);
+        //const buildLog = ctypes.char.array(BUILDLOG_SIZE);
         err_code = OpenCL.clGetProgramBuildInfo(program,
                                                 deviceIDs[0],
                                                 CL_PROGRAM_BUILD_LOG,
@@ -341,7 +497,7 @@ let DriverFFI = {
     },
 
 };
-
+*/
 
 let RunOCLFFI = {
 
