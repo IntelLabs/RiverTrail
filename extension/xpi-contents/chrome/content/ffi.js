@@ -287,25 +287,41 @@ let DriverFFI = {
 
     },
 
-    compileKernel: function(source, kernelName) {
+    compileKernel: function(sourceString, kernelName) {
 
         OpenCL.init();
 
         // A place to put all the error codes we encounter.
         let err_code = new cl_int();
 
-        // `source` is a JS string; we change it to a C string.
-        let sourceCString = ctypes.char.array()(source);
-        // It's all one line, but an array of pointers to strings, one
-        // for each line, is expected.  So we need a pointer to a
-        // pointer to a string.
+        // `sourceString` is a JS string; we change it to a C string.
+        let sourceCString = ctypes.char.array()(sourceString);
 
+        // an array (of length 1) of char arrays
+        let SourceArray = new ctypes.ArrayType(ctypes.char.array(sourceCString.length), 1);
+        let source = new SourceArray();
+        source[0] = sourceCString;
+
+        // other options: pass sourceCString.address() or pass source.
+        // the latter doesn't seem to work...
+        let sourceptrptr = ctypes.cast(source, ctypes.char.ptr.ptr);
+
+        // Maybe we don't need any of this.
+        // let LengthsArray = new ctypes.ArrayType(ctypes.size_t, 1);
+        // let lengths = new LengthsArray();
+        // let length = new cl_int(source.length);
+        // lengths[0] = ctypes.cast(length, ctypes.size_t);
+
+        console.log(this.context);
         let program = OpenCL.clCreateProgramWithSource(this.context,
                                                        1,
-                                                       sourceCString.address().address(),
+                                                       sourceptrptr,
                                                        null,
+                                                       // lengths,
                                                        err_code.address());
         check(err_code);
+        console.log(err_code.value);
+        console.log("compileKernel: clCreateProgramWithSource returned " + err_code.value);
 
         // Apparently, the options argument to `clBuildProgram` is
         // always an empty string.
@@ -356,13 +372,14 @@ let DriverFFI = {
                                        kernelNameCString,
                                        err_code.address());
         check(err_code);
+        console.log(err_code.value);
+        console.log("compileKernel: clCreateKernel returned " + err_code.value);
 
         err_code.value = OpenCL.clReleaseProgram(program);
         check(err_code);
+        console.log(err_code.value);
 
-        // Convert the kernel string back to a JS string.
-        let jsKernel = kernel.readString();
-        return jsKernel;
+        return kernel;
 
     },
 
