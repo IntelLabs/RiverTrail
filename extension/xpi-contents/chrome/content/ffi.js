@@ -134,11 +134,13 @@ const BUILDLOG_SIZE  = 4096;
 
 // A handy thing to have, since we're going to be checking a lot of
 // error codes after calls to js-ctypes-declared functions.
+
+// errorCode should be a cl_int
 function check(errorCode) {
-    if (errorCode != CL_SUCCESS) {
+    if (errorCode.value != CL_SUCCESS) {
         errorString = arguments.callee.caller.name +
             " called a function that returned with error code " +
-            errorCode;
+            errorCode.value;
         console.log(errorString);
         throw errorString;
     }
@@ -207,15 +209,19 @@ let DriverFFI = {
 
         // A place to put all the error codes we encounter.
         let err_code = new cl_int();
-        let err_code_address = err_code.address();
 
         // Get number of devices.
         let numDevices = new cl_uint();
-        err_code = OpenCL.clGetDeviceIDs(defaultPlatformID,
-                                         CL_DEVICE_TYPE_ALL,
-                                         0,
-                                         null,
-                                         numDevices.address());
+
+        // weird gotcha with js-ctypes: the return value will be
+        // magically coerced to "number", so we have to assign it to
+        // err_code.value, not just err_code.
+        err_code.value = OpenCL.clGetDeviceIDs(defaultPlatformID,
+                                               CL_DEVICE_TYPE_ALL,
+                                               0,
+                                               null,
+                                               numDevices.address());
+        check(err_code);
 
         // Then, get a list of device IDs of to pass to
         // `clCreateContext`.
@@ -224,11 +230,11 @@ let DriverFFI = {
         const DeviceArray = new ctypes.ArrayType(cl_device_id,
                                                  numDevices.value);
         let deviceList = new DeviceArray();
-        err_code = OpenCL.clGetDeviceIDs(defaultPlatformID, // platform
-                                         CL_DEVICE_TYPE_ALL, // device_type
-                                         1, // num_entries
-                                         deviceList, // *devices
-                                         null); // *num_devices
+        err_code.value = OpenCL.clGetDeviceIDs(defaultPlatformID, // platform
+                                               CL_DEVICE_TYPE_ALL, // device_type
+                                               1, // num_entries
+                                               deviceList, // *devices
+                                               null); // *num_devices
         check(err_code);
 
         // Create a three-element array of context properties to pass
@@ -258,7 +264,7 @@ let DriverFFI = {
                                              (deviceList[defaultDevicePref]).address(),
                                              null,
                                              null,
-                                             err_code_address);
+                                             err_code.address());
         check(err_code);
 
         this.context = context;
@@ -268,7 +274,8 @@ let DriverFFI = {
         this.cmdQueue = OpenCL.clCreateCommandQueue(context,
                                                     deviceList[defaultDevicePref],
                                                     commandQueueProperties,
-                                                    err_code_address);
+                                                    err_code.address());
+        check(err_code);
     },
 
     canBeMapped: function(obj) {
@@ -281,11 +288,11 @@ let DriverFFI = {
     },
 
     compileKernel: function(source, kernelName) {
+
         OpenCL.init();
 
         // A place to put all the error codes we encounter.
         let err_code = new cl_int();
-        let err_code_address = err_code.address();
 
         // `source` is a JS string; we change it to a C string.
         let sourceCString = ctypes.char.array()(source);
@@ -297,7 +304,7 @@ let DriverFFI = {
                                                        1,
                                                        sourceCString.address().address(),
                                                        null,
-                                                       err_code_address);
+                                                       err_code.address());
         check(err_code);
 
         // Apparently, the options argument to `clBuildProgram` is
@@ -305,27 +312,27 @@ let DriverFFI = {
         let options = "";
         let optionsCString = ctypes.char.array()(options);
 
-        err_code = OpenCL.clBuildProgram(program, 0, null, options, null, null);
+        err_code.value = OpenCL.clBuildProgram(program, 0, null, options, null, null);
         check(err_code);
 
 
         // Figure out how many devices there are...
         let numDevices = new cl_uint();
-        err_code = OpenCL.clGetProgramInfo(program,
-                                           CL_PROGRAM_NUM_DEVICES,
-                                           cl_uint.size,
-                                           numDevices.address(),
-                                           null);
+        err_code.value = OpenCL.clGetProgramInfo(program,
+                                                 CL_PROGRAM_NUM_DEVICES,
+                                                 cl_uint.size,
+                                                 numDevices.address(),
+                                                 null);
         check(err_code);
 
         // ...so we can get info about them
         const DeviceIDArray = new ctypes.ArrayType(cl_device_id, numDevices.value);
         let deviceIDs = new DeviceIDArray();
-        err_code = OpenCL.clGetProgramInfo(program,
-                                           CL_PROGRAM_DEVICES,
-                                           numDevices.value*cl_device_id.size, // size of deviceIDs
-                                           deviceIDs,
-                                           null);
+        err_code.value = OpenCL.clGetProgramInfo(program,
+                                                 CL_PROGRAM_DEVICES,
+                                                 numDevices.value*cl_device_id.size, // size of deviceIDs
+                                                 deviceIDs,
+                                                 null);
         check(err_code);
 
         // LK: `deviceIDs[0]` is copied from the original code -- I'm
@@ -335,12 +342,12 @@ let DriverFFI = {
         // about that later.
         const BuildLogArray = new ctypes.ArrayType(char, BUILDLOG_SIZE);
         this.buildLog = new BuildLogArray();
-        err_code = OpenCL.clGetProgramBuildInfo(program,
-                                                deviceIDs[0],
-                                                CL_PROGRAM_BUILD_LOG,
-                                                BUILDLOG_SIZE,
-                                                this.buildLog,
-                                                null);
+        err_code.value = OpenCL.clGetProgramBuildInfo(program,
+                                                      deviceIDs[0],
+                                                      CL_PROGRAM_BUILD_LOG,
+                                                      BUILDLOG_SIZE,
+                                                      this.buildLog,
+                                                      null);
         check(err_code);
 
         // Finally, create the kernel.
@@ -350,7 +357,7 @@ let DriverFFI = {
                                        err_code.address());
         check(err_code);
 
-        err_code = OpenCL.clReleaseProgram(program);
+        err_code.value = OpenCL.clReleaseProgram(program);
         check(err_code);
 
         // Convert the kernel string back to a JS string.
@@ -375,8 +382,6 @@ let DriverFFI = {
 
         // A place to put all the error codes we encounter.
         let err_code = new cl_int();
-        let err_code_address = err_code.address();
-
 
         // Result of a call to ExtractArray.
         let tArray;
@@ -388,7 +393,7 @@ let DriverFFI = {
         let arrayPointer;
 
         OpenCL.clCreateBuffer(this.context, CL_MEM_READ_ONLY, arraySize,
-                              arrayPointer, err_code_address);
+                              arrayPointer, err_code.address());
         check(err_code);
 
     },
@@ -596,16 +601,16 @@ let Platforms = {
         let naplatforms = new cl_uint();
         let numSupportedPlatforms = new cl_uint(0);
 
-        err_code = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
+        err_code.value = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
         check(err_code);
 
         // All found platforms
         const PlatformsArray = new ctypes.ArrayType(cl_platform_id, nplatforms.value);
         let allPlatforms = new PlatformsArray();
 
-        err_code = OpenCL.clGetPlatformIDs(nplatforms.value,
-                                           allPlatforms,
-                                           naplatforms.address());
+        err_code.value = OpenCL.clGetPlatformIDs(nplatforms.value,
+                                                 allPlatforms,
+                                                 naplatforms.address());
         check(err_code);
 
         for (let i = 0; i < naplatforms.value; i++) {
@@ -650,11 +655,11 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
 
     // This first call to `clGetPlatformInfo` is just to find out
     // what the appropriate length is.
-    err_code = OpenCL.clGetPlatformInfo(this.platform_id,
-                                        paramName,
-                                        0,
-                                        null,
-                                        length.address());
+    err_code.value = OpenCL.clGetPlatformInfo(this.platform_id,
+                                              paramName,
+                                              0,
+                                              null,
+                                              length.address());
     check(err_code);
 
     // Now that we have a length, we can allocate space for the
@@ -665,11 +670,11 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
     const SizeTArray = new ctypes.ArrayType(ctypes.size_t, 1);
     let paramValueSizeRet = new SizeTArray();
 
-    err_code = OpenCL.clGetPlatformInfo(this.platform_id,
-                                        paramName,
-                                        length.value*ctypes.char.size, // size of propertyBuf
-                                        propertyBuf,
-                                        paramValueSizeRet);
+    err_code.value = OpenCL.clGetPlatformInfo(this.platform_id,
+                                              paramName,
+                                              length.value*ctypes.char.size, // size of propertyBuf
+                                              propertyBuf,
+                                              paramValueSizeRet);
     check(err_code);
 
     // Return the property as a JS string.
@@ -686,22 +691,22 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
     let ndevices = new cl_uint();
 
     // First, find out how many devices there are on this platform.
-    err_code = OpenCL.clGetDeviceIDs(this.platform_id,
-                                     CL_DEVICE_TYPE_ALL,
-                                     0,
-                                     null,
-                                     ndevices.address());
+    err_code.value = OpenCL.clGetDeviceIDs(this.platform_id,
+                                           CL_DEVICE_TYPE_ALL,
+                                           0,
+                                           null,
+                                           ndevices.address());
     check(err_code);
 
     // Next, get all the device IDs.
     const DeviceIDArray = new ctypes.ArrayType(cl_device_id, ndevices.value);
     let deviceIDs = new DeviceIDArray();
 
-    err_code = OpenCL.clGetDeviceIDs(this.platform_id,
-                                     CL_DEVICE_TYPE_ALL,
-                                     ndevices,
-                                     deviceIDs,
-                                     null);
+    err_code.value = OpenCL.clGetDeviceIDs(this.platform_id,
+                                           CL_DEVICE_TYPE_ALL,
+                                           ndevices,
+                                           deviceIDs,
+                                           null);
     check(err_code);
 
     // Get device names.
@@ -713,11 +718,11 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
     for (let i = 0; i < ndevices.value; i++) {
         let deviceNameBuf = new DeviceNameArray();
         let deviceNameSize = new ctypes.size_t();
-        err_code = OpenCL.clGetDeviceInfo(deviceIDs[i],
-                                          CL_DEVICE_NAME,
-                                          MAX_DEVICE_NAME_LENGTH,
-                                          deviceNameBuf,
-                                          deviceNameSize.address());
+        err_code.value = OpenCL.clGetDeviceInfo(deviceIDs[i],
+                                                CL_DEVICE_NAME,
+                                                MAX_DEVICE_NAME_LENGTH,
+                                                deviceNameBuf,
+                                                deviceNameSize.address());
         check(err_code);
 
         let jsDeviceName = deviceNameBuf.readString();
@@ -786,25 +791,24 @@ let Main = {
 
         // A place to put all the error codes we encounter.
         let err_code = new cl_int();
-        let err_code_address = err_code.address();
 
         // First, get a list of platform IDs, one of which we'll pass
         // to `clGetDeviceIDs`.
         let num_platforms = new cl_uint();
         const PlatformsArray = new ctypes.ArrayType(cl_platform_id, 1);
         let platform_list = new PlatformsArray();
-        err_code = OpenCL.clGetPlatformIDs(1, platform_list, num_platforms.address());
+        err_code.value = OpenCL.clGetPlatformIDs(1, platform_list, num_platforms.address());
         check(err_code);
 
         // Then, get a list of device IDs to pass to
         // `clCreateContext`.
         const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
         let device_list = new DeviceArray();
-        err_code = OpenCL.clGetDeviceIDs(platform_list[0], // platform
-                                         CL_DEVICE_TYPE_CPU, // device_type
-                                         1, // num_entries
-                                         device_list, // *devices
-                                         null); // *num_devices
+        err_code.value = OpenCL.clGetDeviceIDs(platform_list[0], // platform
+                                               CL_DEVICE_TYPE_CPU, // device_type
+                                               1, // num_entries
+                                               device_list, // *devices
+                                               null); // *num_devices
         check(err_code);
 
         // Finally, we can create a context.
@@ -813,10 +817,10 @@ let Main = {
                                              device_list, // *devices
                                              null, // *pfn_notify
                                              null, // *user_data
-                                             err_code_address); // *errcode_ret
+                                             err_code.address()); // *errcode_ret
         check(err_code);
 
-        if (err_code == CL_SUCCESS) {
+        if (err_code.value == CL_SUCCESS) {
             console.log(context);
             console.log("Congratulations!  You've created OpenCL context " + context + ".");
         }
