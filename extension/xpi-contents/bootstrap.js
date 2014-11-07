@@ -38,7 +38,7 @@ Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/ffi.
 let observer;
 
 function myObserver() {
-  this.register();
+    this.register();
 }
 
 myObserver.prototype = {

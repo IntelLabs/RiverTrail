@@ -289,7 +289,7 @@ RiverTrail.compiler = (function () {
                 kernelString = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n" + kernelString;
             }
             kernel = window.compileKernel(kernelString, "RT_" + kernelName);
-            console.log(kernel);
+            //console.log(kernel);
         } catch (e) {
             try {
                 var log = getBuildLog();

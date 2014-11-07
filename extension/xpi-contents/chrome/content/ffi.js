@@ -128,12 +128,12 @@ const BUILDLOG_SIZE  = 4096;
 // A handy thing to have, since we're going to be checking a lot of
 // error codes after calls to js-ctypes-declared functions.
 function check(errorCode) {
-    if (errorCode != CL_SUCCESS) {
+    let errorCodeValue = typeof(errorCode) === "number" ? errorCode : errorCode.value;
+    if (errorCodeValue != CL_SUCCESS) {
         errorString = arguments.callee.caller.name +
             " called a function that returned with error code " +
-            errorCode;
+            errorCodeValue;
         console.log(errorString);
-        alert(errorString);
         throw errorString;
     }
 }
@@ -282,7 +282,7 @@ let DriverFFI = {
                                                        ctypes.cast(sourceCString.address().address(), ctypes.char.ptr.ptr),
                                                        ctypes.cast (sizes.address(), ctypes.size_t.ptr),
                                                        /*null,*/
-                                                       err_code_address());
+                                                       err_code_address);
         check(err_code);
 
         // Apparently, the options argument to `clBuildProgram` is
@@ -316,18 +316,21 @@ let DriverFFI = {
         // LK: `deviceIDs[0]` is copied from the original code -- I'm
         // not sure how we know we want that one.
         let buildLogSize = BUILDLOG_SIZE;
+        let buildLogType = new ctypes.ArrayType(ctypes.char, BUILDLOG_SIZE);
+        let buildLog = new buildLogType();
+        const buildLog = ctypes.char.array(BUILDLOG_SIZE);
         err_code = OpenCL.clGetProgramBuildInfo(program,
                                                 deviceIDs[0],
                                                 CL_PROGRAM_BUILD_LOG,
                                                 buildLogSize,
-                                                null,
+                                                buildLog,
                                                 null);
         check(err_code);
 
 
         // TODO: finish writing this...it should return a compiled
         // kernel of some kind.
-        let kernel = new GenericWrapper(null, "OpenCLKernel");
+        let kernel = new GenericWrapper(kernel, "OpenCLKernel");
         return kernel;
     },
 
@@ -462,8 +465,8 @@ let OpenCL = {
                                                 cl_int.ptr); // *errcode_ret
         _l("Initialized clCreateContext");
 
-        var tmpftype = ctypes.FunctionType(ctypes.default_abi, cl_program, [cl_context, cl_uint, ctypes.char.ptr.ptr, ctypes.size_t.ptr, cl_int.ptr]);
-        let tmpf = this.lib.declare(
+        //var tmpftype = ctypes.FunctionType(ctypes.default_abi, cl_program, [cl_context, cl_uint, ctypes.char.ptr.ptr, ctypes.size_t.ptr, cl_int.ptr]);
+        this.clCreateProgramWithSource = this.lib.declare(
             "clCreateProgramWithSource",
             ctypes.default_abi,
             cl_program, // return type: "a valid non-zero program object" or NULL
@@ -472,7 +475,7 @@ let OpenCL = {
             ctypes.char.ptr.ptr, // **strings (array of pointers to strings that make up the code)
             ctypes.size_t.ptr, // *lengths (array with length of each string)
             cl_int.ptr); // *errcode_ret
-        this.clCreateProgramWithSource = ctypes.cast(tmpf, tmpftype.ptr);
+        //this.clCreateProgramWithSource = ctypes.cast(tmpf, tmpftype.ptr);
 
         this.clBuildProgram = this.lib.declare(
             "clBuildProgram",
