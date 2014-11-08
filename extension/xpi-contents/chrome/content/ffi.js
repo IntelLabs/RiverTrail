@@ -63,13 +63,17 @@ const cl_int = ctypes.int32_t;
 // Enum types.  I'm not really sure what type these should be...
 const cl_command_queue_properties = ctypes.uint32_t;
 const cl_context_info = ctypes.uint32_t;
-const cl_context_properties = ctypes.uint32_t;
 const cl_device_type = ctypes.uint32_t;
 const cl_device_info = ctypes.uint32_t;
 const cl_mem_flags = ctypes.uint32_t;
 const cl_platform_info = ctypes.uint32_t;
 const cl_program_info = ctypes.uint32_t;
 const cl_program_build_info = ctypes.uint32_t;
+
+// Oddly, in cl.h, this is typedef'd to intptr_t, even though it's
+// listed on the page of Enumerated Types -- you'd think it would be
+// an enum.
+const cl_context_properties = ctypes.int.ptr;
 
 // Constants from cl.h (not all of them, just the ones we need):
 
@@ -240,13 +244,34 @@ let DriverFFI = {
         // Create a three-element array of context properties to pass
         // to clCreateContext.
 
-        // N.B. in the original code we set the third element to NULL,
-        // but we can't do that here (it has to be a CData), so let's
-        // just not set it...
-        const ContextPropertiesArray = new ctypes.ArrayType(cl_context_properties, 3);
-        let contextProperties = new ContextPropertiesArray();
-        contextProperties[0] = CL_CONTEXT_PLATFORM;
-        contextProperties[1] = ctypes.cast(defaultPlatformID, cl_context_properties);
+        // According to the spec, the context properties argument
+        // should be "a list of context property names and their
+        // corresponding values. Each property name is immediately
+        // followed by the corresponding desired value. The list is
+        // terminated with 0."
+        console.log(defaultPlatformID);
+
+
+        // FIXME (LK): clCreateContext should take a pointer to a list
+        // of context properties.  The first element should be
+        // CL_CONTEXT_PLATFORM; the second element shoudld be
+        // defaultPlatformID; the third element should be 0.
+
+        // The hard part is getting the types right.  I think there
+        // will be a lot of casting involved.
+
+        // This is an experiment that currently isn't working.
+        const ContextPropertiesStruct = new ctypes.StructType('context_properties', [
+            {'name': ctypes.int32_t},
+            {'value': cl_platform_id},
+            // {'end': ctypes.int32_t},
+        ]);
+        let contextProperties = new ContextPropertiesStruct();
+        contextProperties.name = ctypes.int32_t(CL_CONTEXT_PLATFORM);
+        contextProperties.value = defaultPlatformID;
+        // contextProperties.end = ctypes.int32_t(0);
+
+        let contextPropertiesList = ctypes.cast(contextProperties, cl_context_properties);
 
         // Get the default device ID to pass to clCreateContext.
         let defaultDevicePref = prefBranch.getIntPref("defaultDeviceType");
@@ -257,7 +282,7 @@ let DriverFFI = {
         // TODO (LK): in the original code we passed a callback
         // function that would log errors.  I'm not going to deal with
         // that yet...
-        let context = OpenCL.clCreateContext(contextProperties,
+        let context = OpenCL.clCreateContext(contextPropertiesList.address(),
                                              1,
                                              // LK: just deviceList
                                              // here might work too
