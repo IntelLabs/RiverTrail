@@ -146,7 +146,9 @@ function check(errorCode) {
             " called a function that returned with error code " +
             errorCode.value;
         console.log(errorString);
-        throw errorString;
+
+        // LK: Commented for now to make debugging easier.
+        // throw errorString;
     }
 }
 
@@ -226,6 +228,7 @@ let DriverFFI = {
                                                null,
                                                numDevices.address());
         check(err_code);
+        console.log(err_code.value);
 
         // Then, get a list of device IDs of to pass to
         // `clCreateContext`.
@@ -240,6 +243,7 @@ let DriverFFI = {
                                                deviceList, // *devices
                                                null); // *num_devices
         check(err_code);
+        console.log(err_code.value);
 
         // Create a three-element array of context properties to pass
         // to clCreateContext.
@@ -291,6 +295,7 @@ let DriverFFI = {
                                              null,
                                              err_code.address());
         check(err_code);
+        console.log(err_code.value);
 
         this.context = context;
 
@@ -301,6 +306,7 @@ let DriverFFI = {
                                                     commandQueueProperties,
                                                     err_code.address());
         check(err_code);
+        console.log(err_code.value);
     },
 
     canBeMapped: function(obj) {
@@ -356,6 +362,7 @@ let DriverFFI = {
         err_code.value = OpenCL.clBuildProgram(program, 0, null, options, null, null);
         check(err_code);
 
+        console.log(err_code.value);
 
         // Figure out how many devices there are...
         let numDevices = new cl_uint();
@@ -365,6 +372,7 @@ let DriverFFI = {
                                                  numDevices.address(),
                                                  null);
         check(err_code);
+        console.log(err_code.value);
 
         // ...so we can get info about them
         const DeviceIDArray = new ctypes.ArrayType(cl_device_id, numDevices.value);
@@ -390,6 +398,7 @@ let DriverFFI = {
                                                       this.buildLog,
                                                       null);
         check(err_code);
+        console.log(err_code.value);
 
         // Finally, create the kernel.
         let kernelNameCString = ctypes.char.array()(kernelName);
@@ -437,6 +446,7 @@ let DriverFFI = {
         OpenCL.clCreateBuffer(this.context, CL_MEM_READ_ONLY, arraySize,
                               arrayPointer, err_code.address());
         check(err_code);
+        console.log(err_code.value);
 
     },
 
@@ -645,6 +655,7 @@ let Platforms = {
 
         err_code.value = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
         check(err_code);
+        console.log(err_code.value);
 
         // All found platforms
         const PlatformsArray = new ctypes.ArrayType(cl_platform_id, nplatforms.value);
@@ -654,6 +665,7 @@ let Platforms = {
                                                  allPlatforms,
                                                  naplatforms.address());
         check(err_code);
+        console.log(err_code.value);
 
         for (let i = 0; i < naplatforms.value; i++) {
 
@@ -703,6 +715,7 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
                                               null,
                                               length.address());
     check(err_code);
+    console.log(err_code.value);
 
     // Now that we have a length, we can allocate space for the
     // actual results of the call, and call it for real.
@@ -718,6 +731,7 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
                                               propertyBuf,
                                               paramValueSizeRet);
     check(err_code);
+    console.log(err_code.value);
 
     // Return the property as a JS string.
     let jsProperty = propertyBuf.readString();
@@ -739,6 +753,7 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
                                            null,
                                            ndevices.address());
     check(err_code);
+    console.log(err_code.value);
 
     // Next, get all the device IDs.
     const DeviceIDArray = new ctypes.ArrayType(cl_device_id, ndevices.value);
@@ -766,6 +781,7 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
                                                 deviceNameBuf,
                                                 deviceNameSize.address());
         check(err_code);
+        console.log(err_code.value);
 
         let jsDeviceName = deviceNameBuf.readString();
 
@@ -841,6 +857,7 @@ let Main = {
         let platform_list = new PlatformsArray();
         err_code.value = OpenCL.clGetPlatformIDs(1, platform_list, num_platforms.address());
         check(err_code);
+        console.log(err_code.value);
 
         // Then, get a list of device IDs to pass to
         // `clCreateContext`.
@@ -852,6 +869,7 @@ let Main = {
                                                device_list, // *devices
                                                null); // *num_devices
         check(err_code);
+        console.log(err_code.value);
 
         // Finally, we can create a context.
         let context = OpenCL.clCreateContext(null, // *properties
@@ -861,6 +879,7 @@ let Main = {
                                              null, // *user_data
                                              err_code.address()); // *errcode_ret
         check(err_code);
+        console.log(err_code.value);
 
         if (err_code.value == CL_SUCCESS) {
             console.log(context);
