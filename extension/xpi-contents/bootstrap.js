@@ -38,7 +38,7 @@ Services.scriptloader.loadSubScript("chrome://river-trail-extension/content/ffi.
 let observer;
 
 function myObserver() {
-  this.register();
+    this.register();
 }
 
 myObserver.prototype = {
@@ -48,32 +48,38 @@ myObserver.prototype = {
       var window = Components.utils.waiveXrays(subject);
 
       // All the functions we want to export.
+
+      // TODO (LK): bind the things that need binding
       Components.utils.exportFunction(o.ParallelArrayFFI.riverTrailExtensionIsInstalled, window,
                                       {defineAs: "riverTrailExtensionIsInstalled"});
 
       Components.utils.exportFunction(o.ParallelArrayFFI.is64BitFloatingPointEnabled, window,
                                       {defineAs: "is64BitFloatingPointEnabled"});
 
-      Components.utils.exportFunction(o.exportableInitContext, window,
+      Components.utils.exportFunction(o.DriverFFI.initContext, window,
                                       {defineAs: "initContext"});
 
       Components.utils.exportFunction(o.DriverFFI.canBeMapped, window,
                                       {defineAs: "canBeMapped"});
 
-      Components.utils.exportFunction(o.exportableCompileKernel, window,
+      Components.utils.exportFunction(o.DriverFFI.compileKernel, window,
                                       {defineAs: "compileKernel"});
 
-      Components.utils.exportFunction(o.exportableGetBuildLog, window,
+      Components.utils.exportFunction(o.DriverFFI.getBuildLog, window,
                                       {defineAs: "getBuildLog"});
 
-      Components.utils.exportFunction(o.exportableMapData, window,
+      Components.utils.exportFunction(o.DriverFFI.mapData, window,
                                       {defineAs: "mapData"});
 
-      Components.utils.exportFunction(o.DriverFFI.allocateData, window,
-                                      {defineAs: "allocateData"});
+      Components.utils.exportFunction(o.DriverFFI.setArgument, window,
+                                      {defineAs: "setArgument"});
 
-      Components.utils.exportFunction(o.Main.run, window,
+      Components.utils.exportFunction(o.DriverFFI.setScalarArgument, window,
+                                      {defineAs: "setScalarArgument"});
+
+      Components.utils.exportFunction(o.DriverFFI.run, window,
                                       {defineAs: "run"});
+
   },
   register: function() {
     var observerService = Components.classes["@mozilla.org/observer-service;1"].getService(Components.interfaces.nsIObserverService);

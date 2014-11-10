@@ -172,10 +172,11 @@ RiverTrail.compiler.runOCL = function () {
                 }
                 var template = RiverTrail.Helper.elementalTypeToConstructor(resultElemType);
                 if (template == undefined) throw new Error("cannot map inferred type to constructor");
-                var memObj = allocateData(new template(1), shapeToLength(resShape));
+                var objToMap = new template(shapeToLength(resShape));
+                var memObj = mapData(objToMap);
                 kernelArgs.push(memObj);
                 kernelArgs.push(new RiverTrail.Helper.Integer(0));
-                return {mem: memObj, shape: resShape, type: resultElemType, offset: 0};
+                return {mem: memObj, shape: resShape, type: resultElemType, offset: 0, hostAllocatedObject: objToMap};
             };
 
             // We allocate whatever the result type says. To ensure portability of 
@@ -197,16 +198,17 @@ RiverTrail.compiler.runOCL = function () {
             try {
                 //console.log("driver 344 index: ", index, " arg: ", arg);
                 if (typeof (arg) === "number") {
-                    kernel.setScalarArgument(index, arg, false, !lowPrecision);
+                    setScalarArgument(kernel, index, arg, false, !lowPrecision);
                 } else if (arg instanceof RiverTrail.Helper.Integer) {
                     // console.log("index: ", index, " arg.value: ", arg.value);
-                    kernel.setScalarArgument(index, arg.value, true, false);
+                    setScalarArgument(kernel, index, arg.value, true, false);
                     // console.log("good");
 
                     // FIXME: figure out what this instanceof check
                     // should really be
-                } else if (arg instanceof Components.interfaces.dpoIData) {
-                    kernel.setArgument(index, arg);
+                //} else if (arg instanceof Components.interfaces.dpoIData) {
+                } else if (typeof(arg) === "object" && arg.name === "CData") {
+                    setArgument(kernel, index, arg.id);
                 } else {
                     throw new Error("unexpected kernel argument type!");
                 }
@@ -227,10 +229,10 @@ RiverTrail.compiler.runOCL = function () {
                     for(var i = 0; i < rank; i++) {
                         redu [0] *= iterSpace[i];
                     }
-                    kernelFailure = kernel.run(1, redu, iterSpace.map(function () { return 1; }));
+                    kernelFailure = run(kernel, 1, redu, iterSpace.map(function () { return 1; }));
                 }
                 else {
-                    kernelFailure = kernel.run(rank, iterSpace, iterSpace.map(function () { return 1; }));
+                    kernelFailure = run(kernel, rank, iterSpace, iterSpace.map(function () { return 1; }));
                 }
             } catch (e) {
                 console.log("kernel.run fails: ", e);
@@ -246,9 +248,9 @@ RiverTrail.compiler.runOCL = function () {
 
         // FIXME: figure out what this instanceof check should really
         // be
-        if (resultMem.mem && (resultMem.mem instanceof Components.interfaces.dpoIData)) {
+        if (resultMem.mem && (resultMem.mem.name === "CData")) {
             // single result
-            paResult = new ParallelArray(resultMem.mem, resultMem.shape, resultMem.type, resultMem.offset);
+            paResult = new ParallelArray(resultMem.mem, resultMem.hostAllocatedObject, resultMem.shape);
             if (useBufferCaching) {
                 paResult.cachedOpenCLMem = resultMem.mem;
             }

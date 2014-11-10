@@ -206,10 +206,7 @@ var ParallelArray = function () {
     // If this.data is a OpenCL memory object, grab the values and store the OpenCL memory 
     // object in the cache for later use.
     var materialize = function materialize() {
-        // FIXME: figure out what this instanceof check should really be
-
-        console.log("type of this.data: " + typeOf(this.data));
-        if (extensionIsInstalled && (this.data instanceof Object)) {
+        if (extensionIsInstalled && isCData(this.data)) {
             // we have to first materialise the values on the JavaScript side
 
             // FIXME (LK): Comment out for the time being until I
@@ -483,10 +480,22 @@ var ParallelArray = function () {
         this.offset   = 0;
         return this;
     };
+
+    var createHostAllocatedParallelArray = function (cdata, values, shape) {
+        if(!isTypedArray(values))
+            throw "Cannot Create ParallelArray: Invalid Typed Array Object";
+        this.flat = shape.length === 1 ? true : false;
+        this.data = values;
+        this.shape = shape;
+        this.strides = shapeToStrides(shape);
+        this.offset = 0;
+        this.isKnownRegular = true;
+        return this;
+    };
     // Helper for constructor that takes a single element, an array, a typed array, a 
     // ParallelArray, or an image of values. The optional second argument unfluences which
     // kind of typed array is tried. 
-    var createSimpleParallelArray = function createSimpleParallelArray(values, targetType) {
+    var createSimpleParallelArray = function createSimpleParallelArray(values, targetType, noCopy) {
         if (values instanceof Array) {
             var flatArray = createFlatArray(values);
             if (flatArray == null) { // We couldn't flatten the array, it is irregular
@@ -1748,6 +1757,9 @@ var ParallelArray = function () {
         // TODO: deprecated, delete for good
         throw "inferType is no longer here!";
     };
+    function isCData(dataInstance) {
+        return dataInstance !== undefined && dataInstance.name === "CData";
+    };
 
     var _fastClasses = function () {
 
@@ -1951,9 +1963,10 @@ var ParallelArray = function () {
             result.data = arguments[1].data;
             result.flat = arguments[1].flat;
 
-        // FIXME: figure out what this instanceof check should really be
-        } else if (extensionIsInstalled && (arguments[0] instanceof Object)) {
-            result = createOpenCLMemParallelArray.apply(this, arguments);
+            // We get [CData, TypedArray, Shape].
+        } else if (isCData(arguments[0]) && isTypedArray(arguments[1])) {
+            //result = createOpenCLMemParallelArray.apply(this, arguments);
+            result = createHostAllocatedParallelArray.call(this, arguments[0], arguments[1], arguments[2]);
         } else if (typeof(arguments[1]) === 'function' || arguments[1] instanceof low_precision.wrapper) {
             var extraArgs;
             if (arguments.length > 2) {
@@ -1990,9 +2003,7 @@ var ParallelArray = function () {
             } catch (ignore) {}
         }
 
-        // FIXME: figure out what this instanceof check should really be
-        console.log("type of result.data: " + typeOf(result.data));
-        if (extensionIsInstalled && (result.data instanceof Object)) {
+        if (extensionIsInstalled && isCData(result.data)) {
             if (useLazyCommunication) {
                 // wrap all functions that need access to the data
                 requiresData(result, "get");

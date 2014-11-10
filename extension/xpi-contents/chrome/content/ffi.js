@@ -52,6 +52,7 @@ const cl_kernel = ctypes.voidptr_t;
 const cl_mem = ctypes.voidptr_t;
 const cl_platform_id = ctypes.voidptr_t;
 const cl_program = ctypes.voidptr_t;
+const cl_event = ctypes.voidptr_t;
 
 // Types that have existing ctypes counterparts:
 
@@ -186,28 +187,39 @@ let ParallelArrayFFI = {
     },
 };
 
-// Stuff that Driver.js (and runOCL.js) needs to call.
-let DriverFFI = {
+function GenericWrapper(_ctypesObj, _name, _id) {
+    this.ctypesObj = _ctypesObj;
+    this.name = _name;
+    this.id = _id;
+    this.__exposedProps__ = {ctypesObj: "rw", name: "rw", id: "rw"};
+}
 
-    // initContext fills these in.
-    context: null,
-    cmdQueue: null,
+let DriverFFI = (function() {
 
-    // compileKernel fills this in.
-    buildLog: null,
+    const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
+    let deviceList = new DeviceArray();
+    let commandQueue;
+    let failureMem = ctypes.int.array(1)([0]);
+    let failureMemCLBuffer;
+    let DPO_NUMBER_OF_ARTIFICIAL_ARGS = 1;
+    let CL_MEM_SIZE = 8;
+    let compiledKernels = [];
+    let mappedBuffers = [];
+    let buildLog = "";
+    let context;
+    let device;
 
-    // An attempt to port dpoCContext::InitContext.
-    initContext: function() {
+    let initContext = function() {
 
         OpenCL.init();
-
         let prefService = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefService);
         let prefBranch = prefService.getBranch("extensions.river-trail-extension.");
         let defaultPlatformPref = prefBranch.getIntPref("defaultPlatform");
         if (defaultPlatformPref < 0 || defaultPlatformPref === undefined) {
             defaultPlatformPref = 0;
         }
-
+        compiledKernels.length = 0;
+        mappedBuffers.length = 0;
         Platforms.init();
         let allPlatforms = Platforms.jsPlatforms;
         let defaultPlatform = allPlatforms[defaultPlatformPref];
@@ -286,18 +298,21 @@ let DriverFFI = {
         // TODO (LK): in the original code we passed a callback
         // function that would log errors.  I'm not going to deal with
         // that yet...
-        let context = OpenCL.clCreateContext(contextPropertiesList.address(),
-                                             1,
-                                             // LK: just deviceList
-                                             // here might work too
-                                             (deviceList[defaultDevicePref]).address(),
-                                             null,
-                                             null,
-                                             err_code.address());
+        let localContext = OpenCL.clCreateContext(null, // contextPropertiesList.address(),
+                                                  1,
+                                                  // LK: just deviceList
+                                                  // here might work too
+                                                  (deviceList[defaultDevicePref]).address(),
+                                                  null,
+                                                  null,
+                                                  err_code.address());
         check(err_code);
-        console.log(err_code.value);
 
-        this.context = context;
+        // Initialize global context.
+        context = localContext;
+
+        let failureMemCLBuffer = OpenCL.clCreateBuffer(context, CL_MEM_READ_WRITE, 4, null, err_code.address());
+        check(err_code);
 
         // TODO (LK): figure out if these should be on or not
         let commandQueueProperties = CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | 0;
@@ -307,21 +322,25 @@ let DriverFFI = {
                                                     err_code.address());
         check(err_code);
         console.log(err_code.value);
-    },
+    };
 
-    canBeMapped: function(obj) {
+    let canBeMapped = function(obj) {
         // In the original code, this checked to see if obj was a
         // nested dense array of floats.  However, it doesn't seem
         // like we support mapping arrays at all now, so this just
         // returns false.
         return false;
 
-    },
+    };
 
-    compileKernel: function(sourceString, kernelName) {
-
+    // Returns a GenericWrapper around a CData kernel.
+    let compileKernel = function(sourceString, kernelName) {
+        console.log("----------------------");
+        console.log("----------------------");
+        console.log("----------------------");
+        console.log("Compiling " + sourceString);
+        console.log("Context is: " + typeof(context));
         OpenCL.init();
-
         // A place to put all the error codes we encounter.
         let err_code = new cl_int();
 
@@ -335,16 +354,14 @@ let DriverFFI = {
 
         // other options: pass sourceCString.address() or pass source.
         // the latter doesn't seem to work...
-        let sourceptrptr = ctypes.cast(source, ctypes.char.ptr.ptr);
+        let sourceptrptr = ctypes.cast(source.address().address(), ctypes.char.ptr.ptr);
 
-        // Maybe we don't need any of this.
-        // let LengthsArray = new ctypes.ArrayType(ctypes.size_t, 1);
-        // let lengths = new LengthsArray();
-        // let length = new cl_int(source.length);
-        // lengths[0] = ctypes.cast(length, ctypes.size_t);
+        // Something like this for `lengths`?
+        // let sizes = ctypes.size_t.array(1) ([sourceCString.length - 1]);
+        // ctypes.cast (sizes.address(), ctypes.size_t.ptr)
 
-        console.log(this.context);
-        let program = OpenCL.clCreateProgramWithSource(this.context,
+        console.log(context);
+        let program = OpenCL.clCreateProgramWithSource(context,
                                                        1,
                                                        sourceptrptr,
                                                        null,
@@ -389,16 +406,17 @@ let DriverFFI = {
 
         // LK: BUILDLOG_SIZE might not be big enough, but we'll worry
         // about that later.
-        const BuildLogArray = new ctypes.ArrayType(char, BUILDLOG_SIZE);
-        this.buildLog = new BuildLogArray();
+        const BuildLogArray = new ctypes.ArrayType(ctypes.char, BUILDLOG_SIZE);
+        let buildLogCString = new BuildLogArray();
         err_code.value = OpenCL.clGetProgramBuildInfo(program,
                                                       deviceIDs[0],
                                                       CL_PROGRAM_BUILD_LOG,
                                                       BUILDLOG_SIZE,
-                                                      this.buildLog,
+                                                      buildLogCString,
                                                       null);
         check(err_code);
         console.log(err_code.value);
+        buildLog = buildLogCString.readString();
 
         // Finally, create the kernel.
         let kernelNameCString = ctypes.char.array()(kernelName);
@@ -413,58 +431,115 @@ let DriverFFI = {
         check(err_code);
         console.log(err_code.value);
 
-        return kernel;
+        err_code.value = OpenCL.clSetKernelArg(kernel, 0, CL_MEM_SIZE, failureMemCLBuffer.address());
+        check(err_code);
+        compiledKernels.push(kernel);
 
-    },
+        let wrappedKernel = new GenericWrapper(kernel, "OpenCLKernel", compiledKernels.length-1);
+        return wrappedKernel;
+    };
 
-    getBuildLog: function() {
+    let getBuildLog = function() {
 
-        return this.buildLog;
+        return buildLog;
 
-    },
+    };
 
-    mapData: function(source) {
-
-        // TODO: figure out what exactly this is supposed to do.  It
-        // calls CreateBuffer and InitCData.  I *think* it should
-        // return the result of clCreateBuffer.
+    let mapData = function(source) {
 
         OpenCL.init();
-
-        // A place to put all the error codes we encounter.
         let err_code = new cl_int();
 
-        // Result of a call to ExtractArray.
-        let tArray;
+        let arrayType = ctypes.double.array(5);
 
-        // Result of a call to JS_GetTypedArrayByteLength(tArray).
-        let arraySize;
-
-        // Result of a call to GetPointerFromTA.
-        let arrayPointer;
-
-        OpenCL.clCreateBuffer(this.context, CL_MEM_READ_ONLY, arraySize,
-                              arrayPointer, err_code.address());
+        let clbuffer = OpenCL.clCreateBuffer(context,
+                                             CL_MEM_USE_HOST_PTR,
+                                             source.byteLength,
+                                             ctypes.voidptr_t(source.buffer),
+                                             err_code.address());
         check(err_code);
-        console.log(err_code.value);
+        mappedBuffers.push(clbuffer);
+        return new GenericWrapper(null, "CData", mappedBuffers.length-1);
+    };
 
-    },
+    let setArgument = function(kernel, index, arg) {
+        let err_code = new cl_int();
+        let argSize = ctypes.size_t(8);
+        err_code.value = OpenCL.clSetKernelArg(compiledKernels[kernel], index+DPO_NUMBER_OF_ARTIFICIAL_ARGS, argSize, ctypes.cast(mappedBuffers[arg].address(), cl_mem.ptr));
+        check(err_code);
+    };
 
-    allocateData: function(templ, length) {
+    let setScalarArgument = function(kernel, index, arg, isInteger, is64BitPrecision) {
+        let err_code = new cl_int();
+        let argSize = ctypes.size_t(4);
+        let argV;
+        if (isInteger) {
+            argV = ctypes.int(arg);
+        }
+        else if (!is64BitPrecision) {
+            argV = ctypes.float(arg);
+        }
+        else {
+            argV = ctypes.double(arg);
+            argSize.value = 8;
+        }
+        err_code.value = OpenCL.clSetKernelArg(compiledKernels[kernel],
+                                               index+DPO_NUMBER_OF_ARTIFICIAL_ARGS,
+                                               argSize,
+                                               argV.address());
+        check(err_code);
+    };
 
-        // TODO: figure out what exactly this is supposed to do.  It also
-        // calls CreateBuffer and InitCData.
-    }
+    let run = function(kernel, rank, iterSpace, tile) {
+        // This likely won't work if cl_event is a stack allocated C struct for eg.
+        let writeEvent = new cl_event();
+        let runEvent = new cl_event();
+        let err_code = new cl_int();
+        let zero = new cl_int(0);
+        err_code.value = OpenCL.clEnqueueWriteBuffer(commandQueue,
+                                                     failureMemCLBuffer,
+                                                     0,
+                                                     0,
+                                                     4,
+                                                     zero.address(),
+                                                     0,
+                                                     null,
+                                                     writeEvent.address());
+        check(err_code);
+        let rankInteger = new cl_uint(rank|0);
+        let globalWorkSize = ctypes.size_t.array(iterSpace.length)(iterSpace);
+        for(let i = 0; i < iterSpace.length; i++) {
+            globalWorkSize[i].value = iterSpace[i]|0;
+        }
 
-};
+        err_code.value = OpenCL.clEnqueueNDRangeKernel(commandQueue,
+                                                       compiledKernels[kernel],
+                                                       rankInteger,
+                                                       null,
+                                                       globalWorkSize,
+                                                       null,
+                                                       1,
+                                                       writeEvent.address(),
+                                                       runEvent.address());
+        check(err_code);
+        let numEvents = new cl_uint();
+        numEvents.value = 1;
+        err_code.value = OpenCL.clWaitForEvents(numEvents, runEvent.address());
+        check(err_code);
+        return err_code.value;
+    };
 
-// Functions that refer to `this` have to be "bound" using
-// `Function.prototype.bind` before being exported, so that they'll be
-// called with the appropriate `this` value.
-let exportableGetBuildLog = DriverFFI.getBuildLog.bind(DriverFFI);
-let exportableInitContext = DriverFFI.initContext.bind(DriverFFI);
-let exportableCompileKernel = DriverFFI.compileKernel.bind(DriverFFI);
-let exportableMapData = DriverFFI.mapData.bind(DriverFFI);
+    return {
+        initContext: initContext,
+        canBeMapped: canBeMapped,
+        compileKernel: compileKernel,
+        mapData: mapData,
+        setArgument: setArgument,
+        setScalarArgument: setScalarArgument,
+        run: run,
+        getBuildLog: getBuildLog
+    };
+})();
 
 let OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
@@ -478,10 +553,23 @@ let OpenCL = {
         if (os == "Darwin") {
             this.lib = ctypes.open("/System/Library/Frameworks/OpenCL.framework/OpenCL");
         } else if (os == "Linux") {
-            // TODO: There's probably something more general I can
-            // point to here.  This is where libOpenCL.so ends up when
-            // I install the Intel OpenCL SDK.
-            this.lib = ctypes.open("/opt/intel/opencl-1.2-4.6.0.92/lib64/libOpenCL.so");
+            // Try letting the system look for the library in standard locations.
+            this.lib = ctypes.open("libOpenCL.so");
+
+            // If that doesn't work, try specifying a full path.
+            if (!this.lib) {
+                this.lib = ctypes.open("/usr/lib64/libOpenCL.so");
+            }
+
+            // If that still doesn't work, try another.
+            if (!this.lib) {
+                this.lib = ctypes.open("/opt/intel/opencl-1.2-4.6.0.92/lib64/libOpenCL.so");
+            }
+
+            // Give up.
+            if(!this.lib) {
+                throw "Could not open OpenCL library";
+            }
         } else if (os == "WINNT") {
             throw "TODO: handle Windows";
         } else {
@@ -528,7 +616,6 @@ let OpenCL = {
                                                ctypes.size_t, // param_value_size
                                                ctypes.voidptr_t, // *param_value
                                                ctypes.size_t.ptr); // *param_value_size_ret
-
 
         this.clCreateContext = this.lib.declare("clCreateContext",
                                                 ctypes.default_abi,
@@ -582,6 +669,54 @@ let OpenCL = {
             ctypes.voidptr_t, // *param_value
             ctypes.size_t.ptr); // *param_value_size_ret
 
+        this.clEnqueueNDRangeKernel = this.lib.declare(
+            "clEnqueueNDRangeKernel",
+            ctypes.default_abi,
+            cl_int, // return type: error code
+            cl_command_queue,
+            cl_kernel,
+            cl_uint,
+            ctypes.size_t.ptr,
+            ctypes.size_t.ptr,
+            ctypes.size_t.ptr,
+            cl_uint,
+            ctypes.voidptr_t,
+            ctypes.voidptr_t);
+
+
+        this.clEnqueueWriteBuffer = this.lib.declare(
+            "clEnqueueWriteBuffer",
+            ctypes.default_abi,
+            cl_int, // return type: error code
+            cl_command_queue,
+            cl_mem,
+            ctypes.bool,
+            ctypes.size_t,
+            ctypes.size_t,
+            ctypes.voidptr_t,
+            cl_uint,
+            ctypes.voidptr_t,
+            ctypes.voidptr_t);
+
+
+
+        this.clWaitForEvents = this.lib.declare(
+            "clWaitForEvents",
+            ctypes.default_abi,
+            cl_int,
+            cl_uint,
+            ctypes.voidptr_t);
+
+        this.clSetKernelArg = this.lib.declare(
+            "clSetKernelArg",
+            ctypes.default_abi,
+            cl_int,
+            cl_kernel, // return type: kernel object or NULL
+            cl_uint,
+            ctypes.size_t,
+            ctypes.voidptr_t);
+
+
         this.clCreateKernel = this.lib.declare(
             "clCreateKernel",
             ctypes.default_abi,
@@ -589,6 +724,15 @@ let OpenCL = {
             cl_program, // program
             ctypes.char.ptr, // *kernel_name
             cl_int.ptr); // *errcode_ret
+
+        this.clCreateCommandQueue = this.lib.declare(
+            "clCreateCommandQueue",
+            ctypes.default_abi,
+            cl_command_queue,
+            cl_context,
+            cl_device_id,
+            cl_uint,
+            cl_int.ptr);
 
         this.clReleaseProgram = this.lib.declare(
             "clReleaseProgram",
@@ -872,7 +1016,7 @@ let Main = {
         console.log(err_code.value);
 
         // Finally, we can create a context.
-        let context = OpenCL.clCreateContext(null, // *properties
+        context = OpenCL.clCreateContext(null, // *properties
                                              1, // num_devices
                                              device_list, // *devices
                                              null, // *pfn_notify
