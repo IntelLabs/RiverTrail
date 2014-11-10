@@ -490,10 +490,22 @@ var ParallelArray = function () {
         this.offset   = 0;
         return this;
     };
+
+    var createHostAllocatedParallelArray = function (cdata, values, shape) {
+        if(!isTypedArray(values))
+            throw "Cannot Create ParallelArray: Invalid Typed Array Object";
+        this.flat = shape.length === 1 ? true : false;
+        this.data = values;
+        this.shape = shape;
+        this.strides = shapeToStrides(shape);
+        this.offset = 0;
+        this.isKnownRegular = true;
+        return this;
+    };
     // Helper for constructor that takes a single element, an array, a typed array, a 
     // ParallelArray, or an image of values. The optional second argument unfluences which
     // kind of typed array is tried. 
-    var createSimpleParallelArray = function createSimpleParallelArray(values, targetType) {
+    var createSimpleParallelArray = function createSimpleParallelArray(values, targetType, noCopy) {
         if (values instanceof Array) {
             var flatArray = createFlatArray(values);
             if (flatArray == null) { // We couldn't flatten the array, it is irregular
@@ -1753,8 +1765,7 @@ var ParallelArray = function () {
         throw "inferType is no longer here!";
     };
     function isCData(dataInstance) {
-        // This should return true if dataInstance is
-        return false;
+        return dataInstance !== undefined && dataInstance.name === "CData";
     };
 
     var _fastClasses = function () {
@@ -1959,9 +1970,10 @@ var ParallelArray = function () {
             result.data = arguments[1].data;
             result.flat = arguments[1].flat;
 
-        // FIXME: figure out what this instanceof check should really be
-        } else if (useFF4Interface && (isCData(arguments[0]))) {
-            result = createOpenCLMemParallelArray.apply(this, arguments);
+            // We get [CData, TypedArray, Shape].
+        } else if (isCData(arguments[0]) && isTypedArray(arguments[1])) {
+            //result = createOpenCLMemParallelArray.apply(this, arguments);
+            result = createHostAllocatedParallelArray.call(this, arguments[0], arguments[1], arguments[2]);
         } else if (typeof(arguments[1]) === 'function' || arguments[1] instanceof low_precision.wrapper) {
             var extraArgs;
             if (arguments.length > 2) {

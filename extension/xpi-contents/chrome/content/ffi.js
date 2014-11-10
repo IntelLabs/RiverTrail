@@ -55,6 +55,8 @@ const cl_kernel = ctypes.voidptr_t;
 const cl_mem = ctypes.voidptr_t;
 const cl_platform_id = ctypes.voidptr_t;
 const cl_program = ctypes.voidptr_t;
+const cl_command_queue = ctypes.voidptr_t;
+const cl_event = ctypes.voidptr_t;
 
 // Types that have existing ctypes counterparts:
 
@@ -189,20 +191,29 @@ function OpenCLContext(ctypesObj) {
     this._name = "openclcontexthere";
 }
 
-function GenericWrapper(_ctypesObj, _name) {
+function GenericWrapper(_ctypesObj, _name, _id) {
     this.ctypesObj = _ctypesObj;
     this.name = _name;
-    this.__exposedProps__ = {ctypesObj: "r", name:"r"};
+    this.id = _id;
+    this.__exposedProps__ = {ctypesObj: "rw", name:"rw", id:"rw"};
 }
 
 var context;
 // Stuff that Driver.js needs to call.
-
+var device;
 let DriverFFI = (function() {
 
+    const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
+    let deviceList = new DeviceArray();
+    let commandQueue;
     //buildLog: ctypes.char.array()(""),
     var foo = "Jas";
+    var failureMem = ctypes.int.array(1)([0]);
+    var failureMemCLBuffer;
+    var DPO_NUMBER_OF_ARTIFICIAL_ARGS = 1;
+    var CL_MEM_SIZE = 8;
     var compiledKernels = [];
+    var mappedBuffers = [];
     var mytestingfunction = function() {
         return "Hello";
     };
@@ -218,6 +229,7 @@ let DriverFFI = (function() {
             defaultPlatformPref = 0;
         }
         compiledKernels.length = 0;
+        mappedBuffers.length = 0;
         Platforms.init();
         let allPlatforms = Platforms.jsPlatforms;
         let defaultPlatform = allPlatforms[defaultPlatformPref];
@@ -229,8 +241,6 @@ let DriverFFI = (function() {
 
         // Then, get a list of device IDs to pass to
         // `clCreateContext`.
-        const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
-        let deviceList = new DeviceArray();
         let ndevices = new cl_uint();
         err_code = OpenCL.clGetDeviceIDs(defaultPlatformID, // platform
                                          CL_DEVICE_TYPE_ALL, // device_type
@@ -249,6 +259,11 @@ let DriverFFI = (function() {
                                              err_code_address); // *errcode_ret
         check(err_code);
         console.log("[Created New Context]");
+
+        failureMemCLBuffer = OpenCL.clCreateBuffer(context, CL_MEM_READ_WRITE, 4, null, err_code_address);
+        check(err_code);
+        commandQueue = OpenCL.clCreateCommandQueue(context, deviceList[0], 0, err_code_address);
+        check(err_code);
         return new GenericWrapper(context, "OpenCLContext");
 
     };
@@ -292,7 +307,7 @@ let DriverFFI = (function() {
         let options = "";
         let optionsCString = ctypes.char.array()(options);
 
-        err_code = OpenCL.clBuildProgram(program, 0, null, options, null, null);
+        err_code = OpenCL.clBuildProgram(program, 0, null, optionsCString, null, null);
         check(err_code);
 
 
@@ -328,10 +343,11 @@ let DriverFFI = (function() {
                                                 null);
         check(err_code);
 
-
-        // TODO: finish writing this...it should return a compiled
-        // kernel of some kind.
-        let kernel = new GenericWrapper(kernel, "OpenCLKernel");
+        kernel = OpenCL.clCreateKernel(program, ctypes.char.array()(kernelName), err_code_address);
+        //let wrappedKernel = new GenericWrapper(kernel, "OpenCLKernel", compiledKernels.length);
+        check(err_code);
+        err_code.value = OpenCL.clSetKernelArg(kernel, 0, CL_MEM_SIZE, failureMemCLBuffer.address());
+        check(err_code);
         compiledKernels.push(kernel);
         return compiledKernels.length-1;
     };
@@ -340,16 +356,60 @@ let DriverFFI = (function() {
         OpenCL.init();
         let err_code = new cl_int();
         let err_code_address = err_code.address();
-        let clbuffer = OpenCL.clCreateBuffer(context, CL_MEM_USE_HOST_PTR, source.byteLength, source.buffer, err_code_address);
+        let arrayType = ctypes.double.array(5);
+        //let clbuffer = OpenCL.clCreateBuffer(context, CL_MEM_USE_HOST_PTR, source.byteLength, ctypes.cast(ctypes.double.ptr(source.buffer), arrayType.ptr), err_code_address);
+        //let clbuffer = OpenCL.clCreateBuffer(context, CL_MEM_USE_HOST_PTR, source.byteLength, (ctypes.cast(ctypes.double.ptr(source.buffer), arrayType.ptr)).contents, err_code_address);
+        let clbuffer = OpenCL.clCreateBuffer(context, CL_MEM_USE_HOST_PTR, source.byteLength, ctypes.voidptr_t(source.buffer), err_code_address);
         check(err_code);
-        return new GenericWrapper(clbuffer, "CData");
+        mappedBuffers.push(clbuffer);
+        //return {name:"CData", id:mappedBuffers.length-1};
+        return new GenericWrapper(null, "CData", mappedBuffers.length-1);
     };
-
-    var setArgument = function(kernel, index, arg, isInteger, is64BitPrecision) {
+    var setArgument = function(kernel, index, arg) {
+        let err_code = new cl_int();
+        let argSize = ctypes.size_t(8);
+        err_code.value = OpenCL.clSetKernelArg(compiledKernels[kernel], index+DPO_NUMBER_OF_ARTIFICIAL_ARGS, argSize, ctypes.cast(mappedBuffers[arg].address(), cl_mem.ptr));
+        check(err_code);
     };
-    var setScalarArgument = function(kernel, index, argv, isInteger, is64BitPrecision) {
+    var setScalarArgument = function(kernel, index, arg, isInteger, is64BitPrecision) {
+        let err_code = new cl_int();
+        let argSize = ctypes.size_t(4);
+        let argV;
+        if(isInteger) {
+            argV = ctypes.int(arg);
+        }
+        else if(!is64BitPrecision) {
+            argV = ctypes.float(arg);
+        }
+        else {
+            argV = ctypes.double(arg);
+            argSize.value = 8;
+        }
+        err_code.value = OpenCL.clSetKernelArg(compiledKernels[kernel], index+DPO_NUMBER_OF_ARTIFICIAL_ARGS, argSize, argV.address());
+        check(err_code);
     };
-
+    var run = function(kernel, rank, iterSpace, tile) {
+        // This likely won't work if cl_event is a stack allocated C struct for eg.
+        let writeEvent = new cl_event();
+        let runEvent = new cl_event();
+        let err_code = new cl_int();
+        let zero = new cl_int(0);
+        err_code.value = OpenCL.clEnqueueWriteBuffer(commandQueue, failureMemCLBuffer, 0, 0, 4, zero.address(), 0, null, writeEvent.address());  
+        check(err_code);
+        let rankInteger = new cl_uint(rank|0);
+        let globalWorkSize = ctypes.size_t.array(iterSpace.length)(iterSpace);
+        for(let i = 0; i < iterSpace.length; i++) {
+            globalWorkSize[i].value = iterSpace[i]|0;
+        }
+        
+        err_code.value = OpenCL.clEnqueueNDRangeKernel(commandQueue, compiledKernels[kernel], rankInteger, null, globalWorkSize, null, 1, writeEvent.address(), runEvent.address()); 
+        check(err_code);
+        let numEvents = new cl_uint();
+        numEvents.value = 1;
+        err_code.value = OpenCL.clWaitForEvents(numEvents, runEvent.address());
+        check(err_code);
+        return err_code.value;
+    };
     var getBuildLog = function() {
         return "Didn't work ? wonder why";
         return this.buildLog;
@@ -362,48 +422,10 @@ let DriverFFI = (function() {
         mapData: mapData,
         setArgument: setArgument,
         setScalarArgument: setScalarArgument,
+        run: run,
         getBuildLog: getBuildLog
     };
 })();
-
-let RunOCLFFI = {
-
-    mapData: function(source) {
-
-        // TODO: figure out what exactly this is supposed to do.  It
-        // calls CreateBuffer and InitCData.  I *think* it should
-        // return the result of clCreateBuffer.
-
-        OpenCL.init();
-
-        // A place to put all the error codes we encounter.
-        let err_code = new cl_int();
-        let err_code_address = err_code.address();
-
-
-        // Result of a call to ExtractArray.
-        let tArray;
-
-        // Result of a call to JS_GetTypedArrayByteLength(tArray).
-        let arraySize;
-
-        // Result of a call to GetPointerFromTA.
-        let arrayPointer;
-
-
-
-        OpenCL.clCreateBuffer(CL_MEM_READ_ONLY, arraySize,
-                              arrayPointer, err_code_address);
-        check(err_code);
-
-    },
-
-    allocateData: function(templ, length) {
-
-        // TODO: figure out what exactly this is supposed to do.  It also
-        // calls CreateBuffer and InitCData.
-    }
-};
 
 let OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
@@ -532,6 +554,54 @@ let OpenCL = {
             ctypes.voidptr_t, // *param_value
             ctypes.size_t.ptr); // *param_value_size_ret
 
+        this.clEnqueueNDRangeKernel = this.lib.declare(
+            "clEnqueueNDRangeKernel",
+            ctypes.default_abi,
+            cl_int, // return type: error code
+            cl_command_queue,
+            cl_kernel,
+            cl_uint,
+            ctypes.size_t.ptr,
+            ctypes.size_t.ptr,
+            ctypes.size_t.ptr,
+            cl_uint,
+            ctypes.voidptr_t,
+            ctypes.voidptr_t);
+
+
+        this.clEnqueueWriteBuffer = this.lib.declare(
+            "clEnqueueWriteBuffer",
+            ctypes.default_abi,
+            cl_int, // return type: error code
+            cl_command_queue,
+            cl_mem,
+            ctypes.bool,
+            ctypes.size_t,
+            ctypes.size_t,
+            ctypes.voidptr_t,
+            cl_uint,
+            ctypes.voidptr_t,
+            ctypes.voidptr_t);
+
+
+
+        this.clWaitForEvents = this.lib.declare(
+            "clWaitForEvents",
+            ctypes.default_abi,
+            cl_int,
+            cl_uint,
+            ctypes.voidptr_t);
+
+        this.clSetKernelArg = this.lib.declare(
+            "clSetKernelArg",
+            ctypes.default_abi,
+            cl_int,
+            cl_kernel, // return type: kernel object or NULL
+            cl_uint,
+            ctypes.size_t,
+            ctypes.voidptr_t);
+
+
         this.clCreateKernel = this.lib.declare(
             "clCreateKernel",
             ctypes.default_abi,
@@ -539,6 +609,16 @@ let OpenCL = {
             cl_program, // program
             ctypes.char.ptr, // *kernel_name
             cl_int.ptr); // *errcode_ret
+
+        this.clCreateCommandQueue = this.lib.declare(
+            "clCreateCommandQueue",
+            ctypes.default_abi,
+            cl_command_queue,
+            cl_context,
+            cl_device_id,
+            cl_uint,
+            cl_int.ptr);
+            
 
         this.clReleaseProgram = this.lib.declare(
             "clReleaseProgram",

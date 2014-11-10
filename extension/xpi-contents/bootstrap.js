@@ -80,11 +80,12 @@ myObserver.prototype = {
       Components.utils.exportFunction(o.DriverFFI.setScalarArgument, window,
                                       {defineAs: "setScalarArgument"});
 
+      Components.utils.exportFunction(o.DriverFFI.run, window,
+                                      {defineAs: "run"});
+
       Components.utils.exportFunction(o.RunOCLFFI.allocateData, window,
                                       {defineAs: "allocateData"});
 
-      Components.utils.exportFunction(o.Main.run, window,
-                                      {defineAs: "run"});
   },
   register: function() {
     var observerService = Components.classes["@mozilla.org/observer-service;1"].getService(Components.interfaces.nsIObserverService);
