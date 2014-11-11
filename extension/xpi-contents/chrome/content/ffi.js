@@ -289,28 +289,30 @@ let RiverTrailFFI = (function() {
         // TODO (LK): in the original code we passed a callback
         // function that would log errors.  I'm not going to deal with
         // that yet...
-        let localContext = OpenCL.clCreateContext(null, // contextPropertiesList.address(),
-                                                  1,
-                                                  // LK: just deviceList
-                                                  // here might work too
-                                                  (deviceList[defaultDevicePref]).address(),
-                                                  null,
-                                                  null,
-                                                  err_code.address());
+        context = OpenCL.clCreateContext(null, // contextPropertiesList.address(),
+                                         1,
+                                         // LK: just deviceList
+                                         // here might work too
+                                         (deviceList[defaultDevicePref]).address(),
+                                         null,
+                                         null,
+                                         err_code.address());
         check(err_code);
 
-        // Initialize global context.
-        context = localContext;
-
-        failureMemCLBuffer = OpenCL.clCreateBuffer(context, CL_MEM_READ_WRITE, 4, null, err_code.address());
+        failureMemCLBuffer = OpenCL.clCreateBuffer(context,
+                                                   CL_MEM_READ_WRITE,
+                                                   4,
+                                                   null,
+                                                   err_code.address());
         check(err_code);
 
         // TODO (LK): figure out if these should be on or not
-        let commandQueueProperties = CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | 0;
+        let commandQueueProperties =
+            CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | 0;
         commandQueue = OpenCL.clCreateCommandQueue(context,
-                                                    deviceList[defaultDevicePref],
-                                                    commandQueueProperties,
-                                                    err_code.address());
+                                                   deviceList[defaultDevicePref],
+                                                   commandQueueProperties,
+                                                   err_code.address());
         check(err_code);
         console.log(err_code.value);
     };
@@ -456,7 +458,11 @@ let RiverTrailFFI = (function() {
     let setArgument = function(kernel, index, arg) {
         let err_code = new cl_int();
         let argSize = ctypes.size_t(8);
-        err_code.value = OpenCL.clSetKernelArg(compiledKernels[kernel], index+DPO_NUMBER_OF_ARTIFICIAL_ARGS, argSize, ctypes.cast(mappedBuffers[arg].address(), cl_mem.ptr));
+        err_code.value = OpenCL.clSetKernelArg(compiledKernels[kernel],
+                                               index+DPO_NUMBER_OF_ARTIFICIAL_ARGS,
+                                               argSize,
+                                               ctypes.cast(mappedBuffers[arg].address(),
+                                                           cl_mem.ptr));
         check(err_code);
     };
 
@@ -530,7 +536,7 @@ let RiverTrailFFI = (function() {
         setArgument: setArgument,
         setScalarArgument: setScalarArgument,
         run: run,
-        getBuildLog: getBuildLog
+        getBuildLog: getBuildLog,
     };
 })();
 
@@ -691,8 +697,6 @@ let OpenCL = {
             ctypes.voidptr_t,
             ctypes.voidptr_t);
 
-
-
         this.clWaitForEvents = this.lib.declare(
             "clWaitForEvents",
             ctypes.default_abi,
@@ -708,7 +712,6 @@ let OpenCL = {
             cl_uint,
             ctypes.size_t,
             ctypes.voidptr_t);
-
 
         this.clCreateKernel = this.lib.declare(
             "clCreateKernel",
