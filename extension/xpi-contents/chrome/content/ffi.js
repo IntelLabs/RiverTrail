@@ -193,7 +193,6 @@ let RiverTrailFFI = (function() {
         // platform.
         let defaultPlatform = allPlatforms[defaultPlatformPref];
         let defaultPlatformExtensions = defaultPlatform.extensions;
-        console.log("defaultPlatformExtensions: " + defaultPlatformExtensions);
 
         // Check if 64-bit floating point extension is turned on.
         let retval = defaultPlatformExtensions.indexOf("cl_khr_fp64") !== -1;
@@ -256,8 +255,6 @@ let RiverTrailFFI = (function() {
         // corresponding values. Each property name is immediately
         // followed by the corresponding desired value. The list is
         // terminated with 0."
-        console.log(defaultPlatformID);
-
 
         // FIXME (LK): clCreateContext should take a pointer to a list
         // of context properties.  The first element should be
@@ -353,7 +350,6 @@ let RiverTrailFFI = (function() {
         // let sizes = ctypes.size_t.array(1) ([sourceCString.length - 1]);
         // ctypes.cast (sizes.address(), ctypes.size_t.ptr)
 
-        console.log(context);
         let program = OpenCL.clCreateProgramWithSource(context,
                                                        1,
                                                        sourceptrptr,
@@ -362,7 +358,6 @@ let RiverTrailFFI = (function() {
                                                        err_code.address());
         check(err_code);
         console.log(err_code.value);
-        console.log("compileKernel: clCreateProgramWithSource returned " + err_code.value);
 
         // Apparently, the options argument to `clBuildProgram` is
         // always an empty string.
@@ -371,7 +366,6 @@ let RiverTrailFFI = (function() {
 
         err_code.value = OpenCL.clBuildProgram(program, 0, null, options, null, null);
         check(err_code);
-
         console.log(err_code.value);
 
         // Figure out how many devices there are...
@@ -418,7 +412,6 @@ let RiverTrailFFI = (function() {
                                        err_code.address());
         check(err_code);
         console.log(err_code.value);
-        console.log("compileKernel: clCreateKernel returned " + err_code.value);
 
         err_code.value = OpenCL.clReleaseProgram(program);
         check(err_code);
@@ -544,7 +537,6 @@ let OpenCL = {
     lib: null, // This will point to the OpenCL library object shortly.
 
     init: function() {
-        console.log("OpenCL.init()...");
 
         let os = Services.appinfo.OS;
 
@@ -763,7 +755,6 @@ let OpenCL = {
     },
 
     shutdown: function() {
-        console.log("OpenCL.shutdown()...");
 
         this.lib.close();
     },
@@ -1022,7 +1013,6 @@ let Main = {
         console.log(err_code.value);
 
         if (err_code.value == CL_SUCCESS) {
-            console.log(context);
             console.log("Congratulations!  You've created OpenCL context " + context + ".");
         }
 
