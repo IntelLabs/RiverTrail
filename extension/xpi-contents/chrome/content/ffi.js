@@ -25,7 +25,6 @@
  *
  */
 
-var EXPORTED_SYMBOLS = [ "OpenCLContext" ];
 
 // This code makes OpenCL API functions available to JavaScript
 // through the js-ctypes interface.
@@ -357,8 +356,6 @@ let DriverFFI = (function() {
         let err_code = new cl_int();
         let err_code_address = err_code.address();
         let arrayType = ctypes.double.array(5);
-        //let clbuffer = OpenCL.clCreateBuffer(context, CL_MEM_USE_HOST_PTR, source.byteLength, ctypes.cast(ctypes.double.ptr(source.buffer), arrayType.ptr), err_code_address);
-        //let clbuffer = OpenCL.clCreateBuffer(context, CL_MEM_USE_HOST_PTR, source.byteLength, (ctypes.cast(ctypes.double.ptr(source.buffer), arrayType.ptr)).contents, err_code_address);
         let clbuffer = OpenCL.clCreateBuffer(context, CL_MEM_USE_HOST_PTR, source.byteLength, ctypes.voidptr_t(source.buffer), err_code_address);
         check(err_code);
         mappedBuffers.push(clbuffer);
