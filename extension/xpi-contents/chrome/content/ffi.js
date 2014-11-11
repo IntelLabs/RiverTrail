@@ -256,26 +256,15 @@ let RiverTrailFFI = (function() {
         // followed by the corresponding desired value. The list is
         // terminated with 0."
 
-        // FIXME (LK): clCreateContext should take a pointer to a list
-        // of context properties.  The first element should be
-        // CL_CONTEXT_PLATFORM; the second element shoudld be
-        // defaultPlatformID; the third element should be 0.
+	let contextPropertiesList = cl_context_properties.array(3)();
 
-        // The hard part is getting the types right.  I think there
-        // will be a lot of casting involved.
+	// We have to do these casts because contextPropertiesList
+	// actually contains pointers.
+	ctypes.cast(contextPropertiesList[0], ctypes.int).value = CL_CONTEXT_PLATFORM;
+	contextPropertiesList[1] = ctypes.cast(defaultPlatformID, ctypes.int.ptr);
+	ctypes.cast(contextPropertiesList[2], ctypes.int).value = 0;
 
-        // This is an experiment that currently isn't working.
-        const ContextPropertiesStruct = new ctypes.StructType('context_properties', [
-            {'name': ctypes.int32_t},
-            {'value': cl_platform_id},
-            // {'end': ctypes.int32_t},
-        ]);
-        let contextProperties = new ContextPropertiesStruct();
-        contextProperties.name = ctypes.int32_t(CL_CONTEXT_PLATFORM);
-        contextProperties.value = defaultPlatformID;
-        // contextProperties.end = ctypes.int32_t(0);
-
-        let contextPropertiesList = ctypes.cast(contextProperties, cl_context_properties);
+	let contextProps = ctypes.cast(contextPropertiesList.address(), cl_context_properties.ptr);
 
         // Get the default device ID to pass to clCreateContext.
         let defaultDevicePref = prefBranch.getIntPref("defaultDeviceType");
@@ -286,7 +275,7 @@ let RiverTrailFFI = (function() {
         // TODO (LK): in the original code we passed a callback
         // function that would log errors.  I'm not going to deal with
         // that yet...
-        context = OpenCL.clCreateContext(null, // contextPropertiesList.address(),
+        context = OpenCL.clCreateContext(contextProps,
                                          1,
                                          // LK: just deviceList
                                          // here might work too
