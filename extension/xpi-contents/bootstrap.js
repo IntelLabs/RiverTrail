@@ -47,37 +47,35 @@ myObserver.prototype = {
       // TODO (LK): explain what's happening here
       var window = Components.utils.waiveXrays(subject);
 
-      // All the functions we want to export.
-
-      // TODO (LK): bind the things that need binding
-      Components.utils.exportFunction(o.ParallelArrayFFI.riverTrailExtensionIsInstalled, window,
+      // All the functions we want user-side code to be able to call.
+      Components.utils.exportFunction(o.RiverTrailFFI.riverTrailExtensionIsInstalled, window,
                                       {defineAs: "riverTrailExtensionIsInstalled"});
 
-      Components.utils.exportFunction(o.ParallelArrayFFI.is64BitFloatingPointEnabled, window,
+      Components.utils.exportFunction(o.RiverTrailFFI.is64BitFloatingPointEnabled, window,
                                       {defineAs: "is64BitFloatingPointEnabled"});
 
-      Components.utils.exportFunction(o.DriverFFI.initContext, window,
+      Components.utils.exportFunction(o.RiverTrailFFI.initContext, window,
                                       {defineAs: "initContext"});
 
-      Components.utils.exportFunction(o.DriverFFI.canBeMapped, window,
+      Components.utils.exportFunction(o.RiverTrailFFI.canBeMapped, window,
                                       {defineAs: "canBeMapped"});
 
-      Components.utils.exportFunction(o.DriverFFI.compileKernel, window,
+      Components.utils.exportFunction(o.RiverTrailFFI.compileKernel, window,
                                       {defineAs: "compileKernel"});
 
-      Components.utils.exportFunction(o.DriverFFI.getBuildLog, window,
+      Components.utils.exportFunction(o.RiverTrailFFI.getBuildLog, window,
                                       {defineAs: "getBuildLog"});
 
-      Components.utils.exportFunction(o.DriverFFI.mapData, window,
+      Components.utils.exportFunction(o.RiverTrailFFI.mapData, window,
                                       {defineAs: "mapData"});
 
-      Components.utils.exportFunction(o.DriverFFI.setArgument, window,
+      Components.utils.exportFunction(o.RiverTrailFFI.setArgument, window,
                                       {defineAs: "setArgument"});
 
-      Components.utils.exportFunction(o.DriverFFI.setScalarArgument, window,
+      Components.utils.exportFunction(o.RiverTrailFFI.setScalarArgument, window,
                                       {defineAs: "setScalarArgument"});
 
-      Components.utils.exportFunction(o.DriverFFI.run, window,
+      Components.utils.exportFunction(o.RiverTrailFFI.run, window,
                                       {defineAs: "run"});
 
   },

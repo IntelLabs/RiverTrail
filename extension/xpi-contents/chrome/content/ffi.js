@@ -153,15 +153,38 @@ function check(errorCode) {
     }
 }
 
-// Stuff that ParallelArray.js needs to call.
-let ParallelArrayFFI = {
+// A wrapper for CData values that are being returned to user-side
+// code, so that we can distinguish among them by name on the user
+// side.
+function GenericWrapper(_ctypesObj, _name, _id) {
+    this.ctypesObj = _ctypesObj;
+    this.name = _name;
+    this.id = _id;
+    this.__exposedProps__ = {ctypesObj: "rw", name: "rw", id: "rw"};
+}
 
-    riverTrailExtensionIsInstalled: function() {
-        // This does nothing; it's just here as a way to mark that the
+let RiverTrailFFI = (function() {
+
+    // A few handy constants.
+    const BUILDLOG_SIZE  = 4096;
+    const DPO_NUMBER_OF_ARTIFICIAL_ARGS = 1;
+    const CL_MEM_SIZE = 8;
+
+    // A few bits of state that the below functions manipulate.
+    let context;
+    let commandQueue;
+    let failureMem = ctypes.int.array(1)([0]);
+    let failureMemCLBuffer;
+    let compiledKernels = [];
+    let mappedBuffers = [];
+    let buildLog = "";
+
+    let riverTrailExtensionIsInstalled = function() {
+        // This does nothing; its existence is just a marker that the
         // extension is installed.
-    },
+    };
 
-    is64BitFloatingPointEnabled: function() {
+    let is64BitFloatingPointEnabled = function() {
 
         OpenCL.init();
 
@@ -184,30 +207,7 @@ let ParallelArrayFFI = {
         // Check if 64-bit floating point extension is turned on.
         let retval = defaultPlatformExtensions.indexOf("cl_khr_fp64") !== -1;
         return retval;
-    },
-};
-
-function GenericWrapper(_ctypesObj, _name, _id) {
-    this.ctypesObj = _ctypesObj;
-    this.name = _name;
-    this.id = _id;
-    this.__exposedProps__ = {ctypesObj: "rw", name: "rw", id: "rw"};
-}
-
-let DriverFFI = (function() {
-
-    const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
-    let deviceList = new DeviceArray();
-    let commandQueue;
-    let failureMem = ctypes.int.array(1)([0]);
-    let failureMemCLBuffer;
-    let DPO_NUMBER_OF_ARTIFICIAL_ARGS = 1;
-    let CL_MEM_SIZE = 8;
-    let compiledKernels = [];
-    let mappedBuffers = [];
-    let buildLog = "";
-    let context;
-    let device;
+    };
 
     let initContext = function() {
 
@@ -530,6 +530,8 @@ let DriverFFI = (function() {
     };
 
     return {
+        riverTrailExtensionIsInstalled: riverTrailExtensionIsInstalled,
+        is64BitFloatingPointEnabled: is64BitFloatingPointEnabled,
         initContext: initContext,
         canBeMapped: canBeMapped,
         compileKernel: compileKernel,
