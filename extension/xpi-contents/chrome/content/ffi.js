@@ -135,7 +135,6 @@ const CL_QUEUE_PROFILING_ENABLE =                  (1 << 1);
 
 // Other handy constants.
 const MAX_DEVICE_NAME_LENGTH = 64;
-const BUILDLOG_SIZE  = 4096;
 
 // A handy thing to have, since we're going to be checking a lot of
 // error codes after calls to js-ctypes-declared functions.
