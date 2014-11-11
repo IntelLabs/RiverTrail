@@ -311,7 +311,7 @@ let DriverFFI = (function() {
         // Initialize global context.
         context = localContext;
 
-        let failureMemCLBuffer = OpenCL.clCreateBuffer(context, CL_MEM_READ_WRITE, 4, null, err_code.address());
+        failureMemCLBuffer = OpenCL.clCreateBuffer(context, CL_MEM_READ_WRITE, 4, null, err_code.address());
         check(err_code);
 
         // TODO (LK): figure out if these should be on or not
