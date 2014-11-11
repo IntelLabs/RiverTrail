@@ -37,46 +37,41 @@ Components.utils.import("resource://gre/modules/Services.jsm");
 // For debugging.
 Components.utils.import("resource://gre/modules/devtools/Console.jsm");
 
-// Here are a few types for which we have no better alternative than
-// voidptr_t.  We have no idea how, e.g., the cl_context type is
-// actually defined.  From the OpenCL spec: "The context includes a
-// set of devices, the memory accessible to those devices, the
-// corresponding memory properties and one or more command-queues used
-// to schedule execution of a kernel(s) or operations on memory
-// objects."  But that's only so helpful, so voidptr_t will have to
-// do.
-const cl_command_queue = ctypes.voidptr_t;
-const cl_context = ctypes.voidptr_t;
-const cl_device_id = ctypes.voidptr_t;
-const cl_kernel = ctypes.voidptr_t;
-const cl_mem = ctypes.voidptr_t;
-const cl_platform_id = ctypes.voidptr_t;
-const cl_program = ctypes.voidptr_t;
-const cl_event = ctypes.voidptr_t;
+// OpenCL "abstract data types" (see
+// https://www.khronos.org/registry/cl/sdk/1.2/docs/man/xhtml/abstractDataTypes.html).
+// We have no choice but to represent these as ctypes.voidptr_t, since
+// we don't know know how OpenCL represents them internally.
+
+const cl_platform_id = ctypes.voidptr_t; // The ID for a platform.
+const cl_device_id = ctypes.voidptr_t; // The ID for a device.
+const cl_context = ctypes.voidptr_t; // A context.
+const cl_command_queue = ctypes.voidptr_t; // A command queue.
+const cl_mem = ctypes.voidptr_t; // A memory object.
+const cl_program = ctypes.voidptr_t; // A program.
+const cl_kernel = ctypes.voidptr_t; // A kernel.
+const cl_event = ctypes.voidptr_t; // An event.
 
 // Types that have existing ctypes counterparts:
 
-// cl_uint and cl_int are 32-bit, according to
-// https://www.khronos.org/registry/cl/sdk/2.0/docs/man/xhtml/scalarDataTypes.html.
-const cl_uint = ctypes.uint32_t;
+// As defined in cl_platform.h.
 const cl_int = ctypes.int32_t;
+const cl_uint = ctypes.uint32_t;
+const cl_ulong = ctypes.uint64_t;
 
-// Enum types.  I'm not really sure what type these should be...
-const cl_command_queue_properties = ctypes.uint32_t;
-const cl_context_info = ctypes.uint32_t;
-const cl_device_type = ctypes.uint32_t;
-const cl_device_info = ctypes.uint32_t;
-const cl_mem_flags = ctypes.uint32_t;
-const cl_platform_info = ctypes.uint32_t;
-const cl_program_info = ctypes.uint32_t;
-const cl_program_build_info = ctypes.uint32_t;
+// As defined in cl.h.
+const cl_bitfield = cl_ulong;
+const cl_device_type = cl_bitfield;
+const cl_platform_info = cl_uint;
+const cl_device_info = cl_uint;
+const cl_command_queue_properties = cl_bitfield;
 
-// Oddly, in cl.h, this is typedef'd to intptr_t, even though it's
-// listed on the page of Enumerated Types -- you'd think it would be
-// an enum.
-const cl_context_properties = ctypes.int.ptr;
+const cl_context_properties = ctypes.int.ptr; // N.B.: in cl.h, cl_context_properties is typedef'd to intptr_t, even though it's an enum type.
+const cl_context_info = cl_uint;
+const cl_mem_flags = cl_bitfield;
+const cl_program_info = cl_bitfield;
+const cl_program_build_info = cl_uint;
 
-// Constants from cl.h (not all of them, just the ones we need):
+// Various constants from cl.h:
 
 // Error codes:
 const CL_SUCCESS =                                  0;
@@ -90,7 +85,6 @@ const CL_CONTEXT_NUM_DEVICES = 0x1083;
 
 // cl_device_info variants (for specifying to `clGetDeviceInfo` what
 // we're asking for info about):
-const CL_DEVICE_TYPE_ = 0x1000;
 const CL_DEVICE_AVAILABLE = 0x1027;
 const CL_DEVICE_NAME = 0x102B;
 
@@ -114,8 +108,8 @@ const CL_PROGRAM_BUILD_LOG =   0x1183;
 // cl_context_properties variants:
 const CL_CONTEXT_PLATFORM =    0x1084;
 
-// cl_device_type bitfield variants (returned from `CL_DEVICE_TYPE`
-// queries to `clGetDeviceInfo`):
+// cl_device_type bitfield bits (for specifying to `clGetDeviceIDs`
+// which devices we want to query):
 const CL_DEVICE_TYPE_DEFAULT =                     (1 << 0);
 const CL_DEVICE_TYPE_CPU =                         (1 << 1);
 const CL_DEVICE_TYPE_GPU =                         (1 << 2);
@@ -123,23 +117,21 @@ const CL_DEVICE_TYPE_ACCELERATOR =                 (1 << 3);
 const CL_DEVICE_TYPE_CUSTOM =                      (1 << 4);
 const CL_DEVICE_TYPE_ALL =                         0xFFFFFFFF;
 
-// cl_mem_flags bitfield variants:
+// cl_mem_flags bitfield bits:
 const CL_MEM_READ_WRITE =                          (1 << 0);
 const CL_MEM_READ_ONLY =                           (1 << 2);
 const CL_MEM_USE_HOST_PTR =                        (1 << 3);
 const CL_MEM_COPY_HOST_PTR =                       (1 << 5);
 
-// cl_command_queue_properties bitfield variants:
+// cl_command_queue_properties bitfield bits:
 const CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE =     (1 << 0);
 const CL_QUEUE_PROFILING_ENABLE =                  (1 << 1);
 
-// Other handy constants.
+// Other constants, not specific to OpenCL.
 const MAX_DEVICE_NAME_LENGTH = 64;
 
-// A handy thing to have, since we're going to be checking a lot of
-// error codes after calls to js-ctypes-declared functions.
-
-// errorCode should be a cl_int
+// Checks for non-CL_SUCCESS error codes.
+// errorCode should be a cl_int.
 function check(errorCode) {
     if (errorCode.value != CL_SUCCESS) {
         errorString = arguments.callee.caller.name +
