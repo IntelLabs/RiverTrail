@@ -284,6 +284,7 @@ let RiverTrailFFI = (function() {
                                          null,
                                          err_code.address());
         check(err_code);
+        console.log(err_code.value);
 
         failureMemCLBuffer = OpenCL.clCreateBuffer(context,
                                                    CL_MEM_READ_WRITE,
@@ -291,6 +292,7 @@ let RiverTrailFFI = (function() {
                                                    null,
                                                    err_code.address());
         check(err_code);
+        console.log(err_code.value);
 
         // TODO (LK): figure out if these should be on or not
         let commandQueueProperties =
