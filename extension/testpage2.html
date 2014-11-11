@@ -55,6 +55,29 @@
 
     var b = new ParallelArray(4, function(i) { return i*i; });
     document.getElementById("results2").innerHTML = "Shape: " + b.getShape();
+
+    // Sample code from the interactive shell page:
+
+    // Create your first array:
+    var first = new ParallelArray(1,2,3,4);
+
+    // Hit the run button and in the console, type "first" without quotes.
+    // You will get the string representation of your first ParallelArray as output:
+    // [1 2 3 4]
+
+    // Or you can create the same array using a comprehension
+    var second = new ParallelArray(4, function (idx) { return idx+1; });
+
+    // Some more idioms to play with:
+
+    /* Increment */
+    var inc_pa = first.map(function (val) {return val+1;});
+
+    /* add */
+    var add_pa = first.combine(function (idx,snd) {return this.get(idx)+snd.get(idx);}, second);
+
+    /* sum */
+    var sum_pa = first.reduce(function (a, b) {return a + b;});
   </script>
 </body>
 </html>
