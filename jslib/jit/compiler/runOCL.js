@@ -34,8 +34,7 @@ RiverTrail.compiler.runOCL = function () {
     // Executes the kernel function with the ParallelArray this and the args for the elemental function
     // paSource     - 'this' inside the kernel
 
-    // FIXME: what will kernel's type be now?  just CData?
-    // kernel       - a precompiled kernel (dpoIKernel object)
+    // kernel       - a precompiled kernel (CData)
     // ast          - result from parsing
     // construct    - outer construct in {combine,map,comprehension,comprehensionScalar}
     // rankOrShape  - either the rank of the iteration space, or for comprehension the shape of the interationspace
@@ -65,8 +64,9 @@ RiverTrail.compiler.runOCL = function () {
         // construct kernel arguments
         var jsObjectToKernelArg = function (args, object) {
             if (object instanceof ParallelArray) {
-                // FIXME: figure out what this instanceof check should really be
-                if (object.data instanceof Components.interfaces.dpoIData) {
+
+                // FIXME (LK): I'm not sure if this is correct.
+                if (object.name === "CData") {
                     // we already have an OpenCL value
                     args.push(object.data);
                 } else if (RiverTrail.Helper.isTypedArray(object.data)) {
@@ -145,9 +145,8 @@ RiverTrail.compiler.runOCL = function () {
                 throw new Error("preallocated memory used more than once!");
             }
 
-            // FIXME: figure out what this instanceof check should
-            // really be
-            if (!(paSource.updateInPlacePA.data instanceof Components.interfaces.dpoIData)) {
+            // FIXME (LK): I'm not sure if this is correct.
+            if (paSource.updateInPlacePA.data.name !== "CData") {
                 if (paSource.updateInPlacePA.cachedOpenCLMem) {
                     paSource.updateInPlacePA.data = paSource.updateInPlacePA.cachedOpenCLMem;
                     delete paSource.updateInPlacePA.cachedOpenCLMem;
@@ -204,9 +203,6 @@ RiverTrail.compiler.runOCL = function () {
                     setScalarArgument(kernel.id, index, arg.value, true, false);
                     // console.log("good");
 
-                    // FIXME: figure out what this instanceof check
-                    // should really be
-                //} else if (arg instanceof Components.interfaces.dpoIData) {
                 } else if (typeof(arg) === "object" && arg.name === "CData") {
                     setArgument(kernel.id, index, arg.id);
                 } else {
@@ -246,8 +242,6 @@ RiverTrail.compiler.runOCL = function () {
             alert("runOCL only deals with comprehensions, map and combine (so far).");
         }
 
-        // FIXME: figure out what this instanceof check should really
-        // be
         if (resultMem.mem && (resultMem.mem.name === "CData")) {
             // single result
             paResult = new ParallelArray(resultMem.mem, resultMem.hostAllocatedObject, resultMem.shape);
