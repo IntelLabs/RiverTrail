@@ -198,17 +198,17 @@ RiverTrail.compiler.runOCL = function () {
             try {
                 //console.log("driver 344 index: ", index, " arg: ", arg);
                 if (typeof (arg) === "number") {
-                    setScalarArgument(kernel, index, arg, false, !lowPrecision);
+                    setScalarArgument(kernel.id, index, arg, false, !lowPrecision);
                 } else if (arg instanceof RiverTrail.Helper.Integer) {
                     // console.log("index: ", index, " arg.value: ", arg.value);
-                    setScalarArgument(kernel, index, arg.value, true, false);
+                    setScalarArgument(kernel.id, index, arg.value, true, false);
                     // console.log("good");
 
                     // FIXME: figure out what this instanceof check
                     // should really be
                 //} else if (arg instanceof Components.interfaces.dpoIData) {
                 } else if (typeof(arg) === "object" && arg.name === "CData") {
-                    setArgument(kernel, index, arg.id);
+                    setArgument(kernel.id, index, arg.id);
                 } else {
                     throw new Error("unexpected kernel argument type!");
                 }
@@ -229,10 +229,10 @@ RiverTrail.compiler.runOCL = function () {
                     for(var i = 0; i < rank; i++) {
                         redu [0] *= iterSpace[i];
                     }
-                    kernelFailure = run(kernel, 1, redu, iterSpace.map(function () { return 1; }));
+                    kernelFailure = run(kernel.id, 1, redu, iterSpace.map(function () { return 1; }));
                 }
                 else {
-                    kernelFailure = run(kernel, rank, iterSpace, iterSpace.map(function () { return 1; }));
+                    kernelFailure = run(kernel.id, rank, iterSpace, iterSpace.map(function () { return 1; }));
                 }
             } catch (e) {
                 console.log("kernel.run fails: ", e);
