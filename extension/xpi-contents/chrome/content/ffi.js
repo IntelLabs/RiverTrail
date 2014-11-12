@@ -59,6 +59,7 @@ const cl_uint = ctypes.uint32_t;
 const cl_ulong = ctypes.uint64_t;
 
 // As defined in cl.h.
+const cl_bool = cl_uint;
 const cl_bitfield = cl_ulong;
 const cl_device_type = cl_bitfield;
 const cl_platform_info = cl_uint;
@@ -68,6 +69,7 @@ const cl_command_queue_properties = cl_bitfield;
 const cl_context_properties = ctypes.int.ptr; // N.B.: in cl.h, cl_context_properties is typedef'd to intptr_t, even though it's an enum type.
 const cl_context_info = cl_uint;
 const cl_mem_flags = cl_bitfield;
+const cl_map_flags = cl_bitfield;
 const cl_program_info = cl_bitfield;
 const cl_program_build_info = cl_uint;
 
@@ -78,6 +80,9 @@ const CL_SUCCESS =                                  0;
 const CL_MEM_OBJECT_ALLOCATION_FAILURE =           -4;
 const CL_OUT_OF_RESOURCES =                        -5;
 const CL_OUT_OF_HOST_MEMORY =                      -6;
+
+// cl_bool variants:
+const CL_TRUE = 1;
 
 // cl_context_info variants (for specifying to `clGetContextInfo` what
 // we're asking for info about):
@@ -126,6 +131,9 @@ const CL_MEM_COPY_HOST_PTR =                       (1 << 5);
 // cl_command_queue_properties bitfield bits:
 const CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE =     (1 << 0);
 const CL_QUEUE_PROFILING_ENABLE =                  (1 << 1);
+
+// cl_map_flags bitfield bits:
+const CL_MAP_READ =                                (1 << 0);
 
 // Other constants, not specific to OpenCL.
 const MAX_DEVICE_NAME_LENGTH = 64;
@@ -416,26 +424,29 @@ let RiverTrailFFI = (function() {
         return buildLog;
 
     };
+
     // We have an OpenCL buffer with id |bufferObjId| that was originally
     // made out of a Typed Array object |view|
     let getValue = function(bufferObjId, view) {
-        let blockingMap = ctypes.bool(true);
-        let mapFlags = ctypes.unsigned_long(1 << 0); // CL_MAP_READ
-        let offset = ctypes.size_t(0);
+
+        OpenCL.init();
         let err_code = new cl_int();
-        let err_code_address = err_code.address();
-        let numEvents = new cl_uint();
-        numEvents.value = 0;
+
+        let offset = ctypes.size_t(0);
+        let numEvents = new cl_uint(0);
+
         let mappedBuffer = OpenCL.clEnqueueMapBuffer(commandQueue,
                                     mappedBuffers[bufferObjId],
-                                    blockingMap,
-                                    mapFlags,
-                                    ctypes.size_t(0),
+                                    CL_TRUE,
+                                    CL_MAP_READ,
+                                    offset,
                                     ctypes.size_t(view.byteLength),
                                     numEvents,
                                     null,
                                     null,
-                                    err_code_address);
+                                    err_code.address());
+        check(err_code);
+        console.log(err_code.value);
     };
 
     let mapData = function(source) {
@@ -701,14 +712,13 @@ let OpenCL = {
             ctypes.voidptr_t, // return type: void *
             cl_command_queue, // command queue
             cl_mem, // buffer object
-            ctypes.bool, // blocking_map
-            ctypes.unsigned_long, // map_flags
+            cl_bool, // blocking_map
+            cl_map_flags, // map_flags
             ctypes.size_t, // offset
             ctypes.size_t, // cb (bytelength)
-
             cl_uint, // num_events_in_wait_list
-            ctypes.voidptr_t, // cl_event * event_wait_list
-            ctypes.voidptr_t, // cl_event *event
+            cl_event.ptr, // * event_wait_list
+            cl_event.ptr, // * event
             cl_int.ptr); // err_code
 
         this.clWaitForEvents = this.lib.declare(
