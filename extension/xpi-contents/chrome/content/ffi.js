@@ -82,7 +82,8 @@ const CL_OUT_OF_RESOURCES =                        -5;
 const CL_OUT_OF_HOST_MEMORY =                      -6;
 
 // cl_bool variants:
-const CL_TRUE = 1;
+const CL_FALSE = 0;
+const CL_TRUE  = 1;
 
 // cl_context_info variants (for specifying to `clGetContextInfo` what
 // we're asking for info about):
@@ -496,23 +497,29 @@ let RiverTrailFFI = (function() {
         check(err_code);
     };
 
+    // FIXME (LK): We aren't using the `tile` argument.  Is it always null?
     let run = function(kernel, rank, iterSpace, tile) {
-        // This likely won't work if cl_event is a stack allocated C struct for eg.
-        let writeEvent = new cl_event();
-        let runEvent = new cl_event();
+
         let err_code = new cl_int();
+
+        let offset = ctypes.size_t(0);
+        let size = ctypes.size_t(4);
         let zero = new cl_int(0);
+        let writeEvent = new cl_event(); // This likely won't work if cl_event is a stack allocated C struct for eg. -- jsreeram
+
         err_code.value = OpenCL.clEnqueueWriteBuffer(commandQueue,
                                                      failureMemCLBuffer,
-                                                     0,
-                                                     0,
-                                                     4,
+                                                     CL_FALSE,
+                                                     offset,
+                                                     size,
                                                      zero.address(),
                                                      0,
                                                      null,
                                                      writeEvent.address());
         check(err_code);
+
         let rankInteger = new cl_uint(rank|0);
+        let runEvent = new cl_event();
         let globalWorkSize = ctypes.size_t.array(iterSpace.length)(iterSpace);
         for(let i = 0; i < iterSpace.length; i++) {
             globalWorkSize[i].value = iterSpace[i]|0;
@@ -528,9 +535,11 @@ let RiverTrailFFI = (function() {
                                                        writeEvent.address(),
                                                        runEvent.address());
         check(err_code);
-        let numEvents = new cl_uint();
-        numEvents.value = 1;
-        err_code.value = OpenCL.clWaitForEvents(numEvents, runEvent.address());
+
+        let numEvents = new cl_uint(1);
+
+        err_code.value = OpenCL.clWaitForEvents(numEvents,
+                                                runEvent.address());
         check(err_code);
         return err_code.value;
     };
