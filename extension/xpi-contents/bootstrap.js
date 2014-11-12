@@ -78,6 +78,9 @@ myObserver.prototype = {
       Components.utils.exportFunction(o.RiverTrailFFI.run, window,
                                       {defineAs: "run"});
 
+      Components.utils.exportFunction(o.RiverTrailFFI.getValue, window,
+                                      {defineAs: "getValue"});
+
   },
   register: function() {
     var observerService = Components.classes["@mozilla.org/observer-service;1"].getService(Components.interfaces.nsIObserverService);

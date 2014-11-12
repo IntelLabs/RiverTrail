@@ -484,6 +484,7 @@ var ParallelArray = function () {
     var createHostAllocatedParallelArray = function (cdata, values, shape) {
         if(!isTypedArray(values))
             throw "Cannot Create ParallelArray: Invalid Typed Array Object";
+        getValue(cdata, values.byteLength);
         this.flat = shape.length === 1 ? true : false;
         this.data = values;
         this.shape = shape;
