@@ -411,6 +411,32 @@ let DriverFFI = (function() {
         return "Didn't work ? wonder why";
         return this.buildLog;
     };
+
+    var getValue = function(bufferObjId, byteLength) {
+        let blockingMap = ctypes.bool(true);
+        let mapFlags = ctypes.unsigned_long(1 << 0); // CL_MAP_READ
+        let offset = ctypes.size_t(0);
+        let err_code = new cl_int();
+        let err_code_address = err_code.address();
+        let numEvents = new cl_uint();
+        numEvents.value = 0;
+        // clEnqueueMapBuffer(commandQueue, mappedBuffers[bufferObj.id], CL_TRUE, CL_MAP_READ, 0, byteLength, 0, NULL, NULL, err_code_address)
+        let mappedBuffer = OpenCL.clEnqueueMapBuffer(commandQueue,
+                                    mappedBuffers[bufferObjId],
+                                    blockingMap,
+                                    mapFlags,
+                                    ctypes.size_t(0),
+                                    ctypes.size_t(byteLength),
+                                    numEvents,
+                                    null,
+                                    null,
+                                    err_code_address);
+        let k = new Float64Array(mappedBuffer);
+        for(var i = 0; i < 4; i++) {
+            console.log("In buffer, found " + k[i]);
+        }
+    };
+
     return {
         mytestingfunction: mytestingfunction,
         initContext: initContext,
@@ -420,6 +446,7 @@ let DriverFFI = (function() {
         setArgument: setArgument,
         setScalarArgument: setScalarArgument,
         run: run,
+        getValue: getValue,
         getBuildLog: getBuildLog
     };
 })();
@@ -579,6 +606,22 @@ let OpenCL = {
             cl_uint,
             ctypes.voidptr_t,
             ctypes.voidptr_t);
+
+        this.clEnqueueMapBuffer = this.lib.declare(
+            "clEnqueueMapBuffer",
+            ctypes.default_abi,
+            ctypes.voidptr_t, // return type: void *
+            cl_command_queue, // command queue
+            cl_mem, // buffer object
+            ctypes.bool, // blocking_map
+            ctypes.unsigned_long, // map_flags
+            ctypes.size_t, // offset
+            ctypes.size_t, // cb (bytelength)
+
+            cl_uint, // num_events_in_wait_list
+            ctypes.voidptr_t, // cl_event * event_wait_list
+            ctypes.voidptr_t, // cl_event *event
+            cl_int.ptr); // err_code
 
 
 

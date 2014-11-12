@@ -220,7 +220,7 @@ var ParallelArray = function () {
     // object in the cache for later use.
     var materialize = function materialize() {
         // FIXME: figure out what this instanceof check should really be
-        if (useFF4Interface && isCData(this.data)) {
+        if (false && useFF4Interface && isCData(this.data)) {
             // we have to first materialise the values on the JavaScript side
             this.data = this.data.getValue();
         }
@@ -494,6 +494,7 @@ var ParallelArray = function () {
     var createHostAllocatedParallelArray = function (cdata, values, shape) {
         if(!isTypedArray(values))
             throw "Cannot Create ParallelArray: Invalid Typed Array Object";
+        getValue(cdata.id, values.byteLength);
         this.flat = shape.length === 1 ? true : false;
         this.data = values;
         this.shape = shape;

@@ -82,6 +82,9 @@ myObserver.prototype = {
 
       Components.utils.exportFunction(o.DriverFFI.run, window,
                                       {defineAs: "run"});
+      
+      Components.utils.exportFunction(o.DriverFFI.getValue, window,
+                                      {defineAs: "getValue"});
 
       Components.utils.exportFunction(o.RunOCLFFI.allocateData, window,
                                       {defineAs: "allocateData"});
