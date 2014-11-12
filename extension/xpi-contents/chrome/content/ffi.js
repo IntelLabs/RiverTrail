@@ -427,7 +427,7 @@ let RiverTrailFFI = (function() {
     };
 
     // We have an OpenCL buffer with id |bufferObjId| that was originally
-    // made out of a Typed Array object |view|
+    // made out of a TypedArray object |view|
     let getValue = function(bufferObjId, view) {
 
         OpenCL.init();
