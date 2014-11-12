@@ -416,8 +416,9 @@ let RiverTrailFFI = (function() {
         return buildLog;
 
     };
-
-    let getValue = function(bufferObjId, byteLength) {
+    // We have an OpenCL buffer with id |bufferObjId| that was originally
+    // made out of a Typed Array object |view|
+    let getValue = function(bufferObjId, view) {
         let blockingMap = ctypes.bool(true);
         let mapFlags = ctypes.unsigned_long(1 << 0); // CL_MAP_READ
         let offset = ctypes.size_t(0);
@@ -425,13 +426,12 @@ let RiverTrailFFI = (function() {
         let err_code_address = err_code.address();
         let numEvents = new cl_uint();
         numEvents.value = 0;
-        // clEnqueueMapBuffer(commandQueue, mappedBuffers[bufferObj.id], CL_TRUE, CL_MAP_READ, 0, byteLength, 0, NULL, NULL, err_code_address)
         let mappedBuffer = OpenCL.clEnqueueMapBuffer(commandQueue,
                                     mappedBuffers[bufferObjId],
                                     blockingMap,
                                     mapFlags,
                                     ctypes.size_t(0),
-                                    ctypes.size_t(byteLength),
+                                    ctypes.size_t(view.byteLength),
                                     numEvents,
                                     null,
                                     null,
@@ -442,8 +442,6 @@ let RiverTrailFFI = (function() {
 
         OpenCL.init();
         let err_code = new cl_int();
-
-        let arrayType = ctypes.double.array(5);
 
         let clbuffer = OpenCL.clCreateBuffer(context,
                                              CL_MEM_USE_HOST_PTR,

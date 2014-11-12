@@ -486,7 +486,7 @@ var ParallelArray = function () {
             throw "Cannot Create ParallelArray: Invalid Typed Array Object";
         if(!isCData(cdata))
             throw "Error creating new ParallelArray: Invalid CData object";
-        getValue(cdata.id, values.byteLength);
+        getValue(cdata.id, values);
         this.flat = shape.length === 1 ? true : false;
         this.data = values;
         this.shape = shape;
@@ -498,7 +498,7 @@ var ParallelArray = function () {
     // Helper for constructor that takes a single element, an array, a typed array, a 
     // ParallelArray, or an image of values. The optional second argument unfluences which
     // kind of typed array is tried. 
-    var createSimpleParallelArray = function createSimpleParallelArray(values, targetType, noCopy) {
+    var createSimpleParallelArray = function createSimpleParallelArray(values, targetType) {
         if (values instanceof Array) {
             var flatArray = createFlatArray(values);
             if (flatArray == null) { // We couldn't flatten the array, it is irregular
