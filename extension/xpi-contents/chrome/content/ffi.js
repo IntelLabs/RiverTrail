@@ -681,35 +681,34 @@ let OpenCL = {
             "clEnqueueNDRangeKernel",
             ctypes.default_abi,
             cl_int, // return type: error code
-            cl_command_queue,
-            cl_kernel,
-            cl_uint,
-            ctypes.size_t.ptr,
-            ctypes.size_t.ptr,
-            ctypes.size_t.ptr,
-            cl_uint,
-            ctypes.voidptr_t,
-            ctypes.voidptr_t);
-
+            cl_command_queue, // command_queue
+            cl_kernel, // kernel
+            cl_uint, // work_dim
+            ctypes.size_t.ptr, // *global_work_offset
+            ctypes.size_t.ptr, // *global_work_size
+            ctypes.size_t.ptr, // *local_work_size
+            cl_uint, // num_events_in_wait_list
+            cl_event.ptr, // *event_wait_list
+            cl_event.ptr); // *event
 
         this.clEnqueueWriteBuffer = this.lib.declare(
             "clEnqueueWriteBuffer",
             ctypes.default_abi,
             cl_int, // return type: error code
-            cl_command_queue,
-            cl_mem,
-            ctypes.bool,
-            ctypes.size_t,
-            ctypes.size_t,
-            ctypes.voidptr_t,
-            cl_uint,
-            ctypes.voidptr_t,
-            ctypes.voidptr_t);
+            cl_command_queue, // command_queue
+            cl_mem, // buffer
+            cl_bool, // blocking_write
+            ctypes.size_t, // offset
+            ctypes.size_t, // size
+            ctypes.voidptr_t, // *ptr
+            cl_uint, // num_events_in_wait_list
+            cl_event.ptr, // *event_wait_list
+            cl_event.ptr); // *event
 
         this.clEnqueueMapBuffer = this.lib.declare(
             "clEnqueueMapBuffer",
             ctypes.default_abi,
-            ctypes.voidptr_t, // return type: void *
+            ctypes.voidptr_t, // return type: pointer to mapped region
             cl_command_queue, // command queue
             cl_mem, // buffer object
             cl_bool, // blocking_map
@@ -717,25 +716,25 @@ let OpenCL = {
             ctypes.size_t, // offset
             ctypes.size_t, // cb (bytelength)
             cl_uint, // num_events_in_wait_list
-            cl_event.ptr, // * event_wait_list
-            cl_event.ptr, // * event
+            cl_event.ptr, // *event_wait_list
+            cl_event.ptr, // *event
             cl_int.ptr); // err_code
 
         this.clWaitForEvents = this.lib.declare(
             "clWaitForEvents",
             ctypes.default_abi,
-            cl_int,
-            cl_uint,
-            ctypes.voidptr_t);
+            cl_int, // return type: error code
+            cl_uint, // num_events
+            cl_event.ptr); // *event_list
 
         this.clSetKernelArg = this.lib.declare(
             "clSetKernelArg",
             ctypes.default_abi,
-            cl_int,
-            cl_kernel, // return type: kernel object or NULL
-            cl_uint,
-            ctypes.size_t,
-            ctypes.voidptr_t);
+            cl_int, // return type: error code
+            cl_kernel, // kernel
+            cl_uint, // arg_index
+            ctypes.size_t, // arg_size
+            ctypes.voidptr_t); // *arg_value
 
         this.clCreateKernel = this.lib.declare(
             "clCreateKernel",
@@ -744,15 +743,6 @@ let OpenCL = {
             cl_program, // program
             ctypes.char.ptr, // *kernel_name
             cl_int.ptr); // *errcode_ret
-
-        this.clCreateCommandQueue = this.lib.declare(
-            "clCreateCommandQueue",
-            ctypes.default_abi,
-            cl_command_queue,
-            cl_context,
-            cl_device_id,
-            cl_uint,
-            cl_int.ptr);
 
         this.clReleaseProgram = this.lib.declare(
             "clReleaseProgram",
