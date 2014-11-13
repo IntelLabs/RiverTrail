@@ -165,6 +165,9 @@ function GenericWrapper(_ctypesObj, _name, _id) {
 
 let RiverTrailFFI = (function() {
 
+    // A place to put all the error codes we encounter.
+    let err_code = new cl_int();
+
     // A few handy constants.
     const BUILDLOG_SIZE  = 4096;
     const DPO_NUMBER_OF_ARTIFICIAL_ARGS = 1;
@@ -223,9 +226,6 @@ let RiverTrailFFI = (function() {
         let allPlatforms = Platforms.jsPlatforms;
         let defaultPlatform = allPlatforms[defaultPlatformPref];
         let defaultPlatformID = defaultPlatform.platform_id;
-
-        // A place to put all the error codes we encounter.
-        let err_code = new cl_int();
 
         // Get number of devices.
         let numDevices = new cl_uint();
@@ -326,8 +326,6 @@ let RiverTrailFFI = (function() {
     // Returns a GenericWrapper around a CData kernel.
     let compileKernel = function(sourceString, kernelName) {
         OpenCL.init();
-        // A place to put all the error codes we encounter.
-        let err_code = new cl_int();
 
         // `sourceString` is a JS string; we change it to a C string.
         let sourceCString = ctypes.char.array()(sourceString);
@@ -431,7 +429,6 @@ let RiverTrailFFI = (function() {
     let getValue = function(bufferObjId, view) {
 
         OpenCL.init();
-        let err_code = new cl_int();
 
         let offset = ctypes.size_t(0);
         let numEvents = new cl_uint(0);
@@ -453,7 +450,6 @@ let RiverTrailFFI = (function() {
     let mapData = function(source) {
 
         OpenCL.init();
-        let err_code = new cl_int();
 
         let clbuffer = OpenCL.clCreateBuffer(context,
                                              CL_MEM_USE_HOST_PTR,
@@ -466,7 +462,7 @@ let RiverTrailFFI = (function() {
     };
 
     let setArgument = function(kernel, index, arg) {
-        let err_code = new cl_int();
+
         let argSize = ctypes.size_t(8);
         err_code.value = OpenCL.clSetKernelArg(compiledKernels[kernel],
                                                index+DPO_NUMBER_OF_ARTIFICIAL_ARGS,
@@ -477,7 +473,7 @@ let RiverTrailFFI = (function() {
     };
 
     let setScalarArgument = function(kernel, index, arg, isInteger, is64BitPrecision) {
-        let err_code = new cl_int();
+
         let argSize = ctypes.size_t(4);
         let argV;
         if (isInteger) {
@@ -499,8 +495,6 @@ let RiverTrailFFI = (function() {
 
     // FIXME (LK): We aren't using the `tile` argument.  Is it always null?
     let run = function(kernel, rank, iterSpace, tile) {
-
-        let err_code = new cl_int();
 
         let offset = ctypes.size_t(0);
         let size = ctypes.size_t(4);
