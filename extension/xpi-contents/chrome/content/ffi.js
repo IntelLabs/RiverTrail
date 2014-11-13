@@ -173,6 +173,7 @@ let RiverTrailFFI = (function() {
     let riverTrailExtensionIsInstalled = function() {
         // This does nothing; its existence is just a marker that the
         // extension is installed.
+        return true;
     };
 
     let is64BitFloatingPointEnabled = function() {
@@ -426,16 +427,18 @@ let RiverTrailFFI = (function() {
         let err_code_address = err_code.address();
         let numEvents = new cl_uint();
         numEvents.value = 0;
-        let mappedBuffer = OpenCL.clEnqueueMapBuffer(commandQueue,
+        
+        err_code.value = OpenCL.clEnqueueReadBuffer(commandQueue,
                                     mappedBuffers[bufferObjId],
                                     blockingMap,
-                                    mapFlags,
                                     ctypes.size_t(0),
                                     ctypes.size_t(view.byteLength),
+                                    ctypes.voidptr_t(view.buffer),
                                     numEvents,
                                     null,
-                                    null,
-                                    err_code_address);
+                                    null);
+        check(err_code);
+        return view;
     };
 
     let mapData = function(source) {
@@ -711,6 +714,22 @@ let OpenCL = {
             ctypes.voidptr_t, // cl_event *event
             cl_int.ptr); // err_code
 
+        this.clEnqueueReadBuffer = this.lib.declare(
+            "clEnqueueReadBuffer",
+            ctypes.default_abi,
+            cl_int, // return type: cl_int (error code)
+            cl_command_queue, // command queue
+            cl_mem, // buffer object
+            ctypes.bool, // blocking_map
+            //ctypes.unsigned_long, // map_flags
+            ctypes.size_t, // offset
+            ctypes.size_t, // cb (bytelength)
+            ctypes.voidptr_t, // host ptr
+            cl_uint, // num_events_in_wait_list
+            ctypes.voidptr_t, // cl_event * event_wait_list
+            ctypes.voidptr_t); // cl_event *event
+
+
         this.clWaitForEvents = this.lib.declare(
             "clWaitForEvents",
             ctypes.default_abi,
@@ -735,6 +754,7 @@ let OpenCL = {
             ctypes.char.ptr, // *kernel_name
             cl_int.ptr); // *errcode_ret
 
+        /*
         this.clCreateCommandQueue = this.lib.declare(
             "clCreateCommandQueue",
             ctypes.default_abi,
@@ -743,6 +763,7 @@ let OpenCL = {
             cl_device_id,
             cl_uint,
             cl_int.ptr);
+        */
 
         this.clReleaseProgram = this.lib.declare(
             "clReleaseProgram",
