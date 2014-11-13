@@ -59,6 +59,7 @@ const cl_uint = ctypes.uint32_t;
 const cl_ulong = ctypes.uint64_t;
 
 // As defined in cl.h.
+const cl_bool = cl_uint;
 const cl_bitfield = cl_ulong;
 const cl_device_type = cl_bitfield;
 const cl_platform_info = cl_uint;
@@ -68,6 +69,7 @@ const cl_command_queue_properties = cl_bitfield;
 const cl_context_properties = ctypes.int.ptr; // N.B.: in cl.h, cl_context_properties is typedef'd to intptr_t, even though it's an enum type.
 const cl_context_info = cl_uint;
 const cl_mem_flags = cl_bitfield;
+const cl_map_flags = cl_bitfield;
 const cl_program_info = cl_bitfield;
 const cl_program_build_info = cl_uint;
 
@@ -78,6 +80,10 @@ const CL_SUCCESS =                                  0;
 const CL_MEM_OBJECT_ALLOCATION_FAILURE =           -4;
 const CL_OUT_OF_RESOURCES =                        -5;
 const CL_OUT_OF_HOST_MEMORY =                      -6;
+
+// cl_bool variants:
+const CL_FALSE = 0;
+const CL_TRUE  = 1;
 
 // cl_context_info variants (for specifying to `clGetContextInfo` what
 // we're asking for info about):
@@ -127,6 +133,9 @@ const CL_MEM_COPY_HOST_PTR =                       (1 << 5);
 const CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE =     (1 << 0);
 const CL_QUEUE_PROFILING_ENABLE =                  (1 << 1);
 
+// cl_map_flags bitfield bits:
+const CL_MAP_READ =                                (1 << 0);
+
 // Other constants, not specific to OpenCL.
 const MAX_DEVICE_NAME_LENGTH = 64;
 
@@ -155,6 +164,9 @@ function GenericWrapper(_ctypesObj, _name, _id) {
 }
 
 let RiverTrailFFI = (function() {
+
+    // A place to put all the error codes we encounter.
+    let err_code = new cl_int();
 
     // A few handy constants.
     const BUILDLOG_SIZE  = 4096;
@@ -215,9 +227,6 @@ let RiverTrailFFI = (function() {
         let allPlatforms = Platforms.jsPlatforms;
         let defaultPlatform = allPlatforms[defaultPlatformPref];
         let defaultPlatformID = defaultPlatform.platform_id;
-
-        // A place to put all the error codes we encounter.
-        let err_code = new cl_int();
 
         // Get number of devices.
         let numDevices = new cl_uint();
@@ -318,8 +327,6 @@ let RiverTrailFFI = (function() {
     // Returns a GenericWrapper around a CData kernel.
     let compileKernel = function(sourceString, kernelName) {
         OpenCL.init();
-        // A place to put all the error codes we encounter.
-        let err_code = new cl_int();
 
         // `sourceString` is a JS string; we change it to a C string.
         let sourceCString = ctypes.char.array()(sourceString);
@@ -417,20 +424,18 @@ let RiverTrailFFI = (function() {
         return buildLog;
 
     };
+
     // We have an OpenCL buffer with id |bufferObjId| that was originally
-    // made out of a Typed Array object |view|
+    // made out of a TypedArray object |view|
     let getValue = function(bufferObjId, view) {
-        let blockingMap = ctypes.bool(true);
-        let mapFlags = ctypes.unsigned_long(1 << 0); // CL_MAP_READ
-        let offset = ctypes.size_t(0);
-        let err_code = new cl_int();
-        let err_code_address = err_code.address();
-        let numEvents = new cl_uint();
-        numEvents.value = 0;
+
+        OpenCL.init();
+
+        let numEvents = new cl_uint(0);
         
         err_code.value = OpenCL.clEnqueueReadBuffer(commandQueue,
                                     mappedBuffers[bufferObjId],
-                                    blockingMap,
+                                    CL_TRUE,
                                     ctypes.size_t(0),
                                     ctypes.size_t(view.byteLength),
                                     ctypes.voidptr_t(view.buffer),
@@ -444,7 +449,6 @@ let RiverTrailFFI = (function() {
     let mapData = function(source) {
 
         OpenCL.init();
-        let err_code = new cl_int();
 
         let clbuffer = OpenCL.clCreateBuffer(context,
                                              CL_MEM_USE_HOST_PTR,
@@ -457,7 +461,7 @@ let RiverTrailFFI = (function() {
     };
 
     let setArgument = function(kernel, index, arg) {
-        let err_code = new cl_int();
+
         let argSize = ctypes.size_t(8);
         err_code.value = OpenCL.clSetKernelArg(compiledKernels[kernel],
                                                index+DPO_NUMBER_OF_ARTIFICIAL_ARGS,
@@ -468,7 +472,7 @@ let RiverTrailFFI = (function() {
     };
 
     let setScalarArgument = function(kernel, index, arg, isInteger, is64BitPrecision) {
-        let err_code = new cl_int();
+
         let argSize = ctypes.size_t(4);
         let argV;
         if (isInteger) {
@@ -488,23 +492,27 @@ let RiverTrailFFI = (function() {
         check(err_code);
     };
 
+    // FIXME (LK): We aren't using the `tile` argument.  Is it always null?
     let run = function(kernel, rank, iterSpace, tile) {
-        // This likely won't work if cl_event is a stack allocated C struct for eg.
-        let writeEvent = new cl_event();
-        let runEvent = new cl_event();
-        let err_code = new cl_int();
+
+        let offset = ctypes.size_t(0);
+        let size = ctypes.size_t(4);
         let zero = new cl_int(0);
+        let writeEvent = new cl_event(); // This likely won't work if cl_event is a stack allocated C struct for eg. -- jsreeram
+
         err_code.value = OpenCL.clEnqueueWriteBuffer(commandQueue,
                                                      failureMemCLBuffer,
-                                                     0,
-                                                     0,
-                                                     4,
+                                                     CL_FALSE,
+                                                     offset,
+                                                     size,
                                                      zero.address(),
                                                      0,
                                                      null,
                                                      writeEvent.address());
         check(err_code);
+
         let rankInteger = new cl_uint(rank|0);
+        let runEvent = new cl_event();
         let globalWorkSize = ctypes.size_t.array(iterSpace.length)(iterSpace);
         for(let i = 0; i < iterSpace.length; i++) {
             globalWorkSize[i].value = iterSpace[i]|0;
@@ -520,9 +528,11 @@ let RiverTrailFFI = (function() {
                                                        writeEvent.address(),
                                                        runEvent.address());
         check(err_code);
-        let numEvents = new cl_uint();
-        numEvents.value = 1;
-        err_code.value = OpenCL.clWaitForEvents(numEvents, runEvent.address());
+
+        let numEvents = new cl_uint(1);
+
+        err_code.value = OpenCL.clWaitForEvents(numEvents,
+                                                runEvent.address());
         check(err_code);
         return err_code.value;
     };
@@ -673,45 +683,43 @@ let OpenCL = {
             "clEnqueueNDRangeKernel",
             ctypes.default_abi,
             cl_int, // return type: error code
-            cl_command_queue,
-            cl_kernel,
-            cl_uint,
-            ctypes.size_t.ptr,
-            ctypes.size_t.ptr,
-            ctypes.size_t.ptr,
-            cl_uint,
-            ctypes.voidptr_t,
-            ctypes.voidptr_t);
-
+            cl_command_queue, // command_queue
+            cl_kernel, // kernel
+            cl_uint, // work_dim
+            ctypes.size_t.ptr, // *global_work_offset
+            ctypes.size_t.ptr, // *global_work_size
+            ctypes.size_t.ptr, // *local_work_size
+            cl_uint, // num_events_in_wait_list
+            cl_event.ptr, // *event_wait_list
+            cl_event.ptr); // *event
 
         this.clEnqueueWriteBuffer = this.lib.declare(
             "clEnqueueWriteBuffer",
             ctypes.default_abi,
             cl_int, // return type: error code
-            cl_command_queue,
-            cl_mem,
-            ctypes.bool,
-            ctypes.size_t,
-            ctypes.size_t,
-            ctypes.voidptr_t,
-            cl_uint,
-            ctypes.voidptr_t,
-            ctypes.voidptr_t);
+            cl_command_queue, // command_queue
+            cl_mem, // buffer
+            cl_bool, // blocking_write
+            ctypes.size_t, // offset
+            ctypes.size_t, // size
+            ctypes.voidptr_t, // *ptr
+            cl_uint, // num_events_in_wait_list
+            cl_event.ptr, // *event_wait_list
+            cl_event.ptr); // *event
 
         this.clEnqueueMapBuffer = this.lib.declare(
             "clEnqueueMapBuffer",
             ctypes.default_abi,
-            ctypes.voidptr_t, // return type: void *
+            ctypes.voidptr_t, // return type: pointer to mapped region
             cl_command_queue, // command queue
             cl_mem, // buffer object
-            ctypes.bool, // blocking_map
-            ctypes.unsigned_long, // map_flags
+            cl_bool, // blocking_map
+            cl_map_flags, // map_flags
             ctypes.size_t, // offset
             ctypes.size_t, // cb (bytelength)
-
             cl_uint, // num_events_in_wait_list
-            ctypes.voidptr_t, // cl_event * event_wait_list
-            ctypes.voidptr_t, // cl_event *event
+            cl_event.ptr, // *event_wait_list
+            cl_event.ptr, // *event
             cl_int.ptr); // err_code
 
         this.clEnqueueReadBuffer = this.lib.declare(
@@ -733,18 +741,18 @@ let OpenCL = {
         this.clWaitForEvents = this.lib.declare(
             "clWaitForEvents",
             ctypes.default_abi,
-            cl_int,
-            cl_uint,
-            ctypes.voidptr_t);
+            cl_int, // return type: error code
+            cl_uint, // num_events
+            cl_event.ptr); // *event_list
 
         this.clSetKernelArg = this.lib.declare(
             "clSetKernelArg",
             ctypes.default_abi,
-            cl_int,
-            cl_kernel, // return type: kernel object or NULL
-            cl_uint,
-            ctypes.size_t,
-            ctypes.voidptr_t);
+            cl_int, // return type: error code
+            cl_kernel, // kernel
+            cl_uint, // arg_index
+            ctypes.size_t, // arg_size
+            ctypes.voidptr_t); // *arg_value
 
         this.clCreateKernel = this.lib.declare(
             "clCreateKernel",
@@ -753,17 +761,6 @@ let OpenCL = {
             cl_program, // program
             ctypes.char.ptr, // *kernel_name
             cl_int.ptr); // *errcode_ret
-
-        /*
-        this.clCreateCommandQueue = this.lib.declare(
-            "clCreateCommandQueue",
-            ctypes.default_abi,
-            cl_command_queue,
-            cl_context,
-            cl_device_id,
-            cl_uint,
-            cl_int.ptr);
-        */
 
         this.clReleaseProgram = this.lib.declare(
             "clReleaseProgram",
@@ -1013,51 +1010,4 @@ Platform.prototype.GetPlatformID = function(platform_id) {
     } else {
         return retval;
     }
-};
-
-let Main = {
-
-    run: function run() {
-
-        OpenCL.init();
-
-        // A place to put all the error codes we encounter.
-        let err_code = new cl_int();
-
-        // First, get a list of platform IDs, one of which we'll pass
-        // to `clGetDeviceIDs`.
-        let num_platforms = new cl_uint();
-        const PlatformsArray = new ctypes.ArrayType(cl_platform_id, 1);
-        let platform_list = new PlatformsArray();
-        err_code.value = OpenCL.clGetPlatformIDs(1, platform_list, num_platforms.address());
-        check(err_code);
-        console.log(err_code.value);
-
-        // Then, get a list of device IDs to pass to
-        // `clCreateContext`.
-        const DeviceArray = new ctypes.ArrayType(cl_device_id, 1);
-        let device_list = new DeviceArray();
-        err_code.value = OpenCL.clGetDeviceIDs(platform_list[0], // platform
-                                               CL_DEVICE_TYPE_CPU, // device_type
-                                               1, // num_entries
-                                               device_list, // *devices
-                                               null); // *num_devices
-        check(err_code);
-        console.log(err_code.value);
-
-        // Finally, we can create a context.
-        context = OpenCL.clCreateContext(null, // *properties
-                                             1, // num_devices
-                                             device_list, // *devices
-                                             null, // *pfn_notify
-                                             null, // *user_data
-                                             err_code.address()); // *errcode_ret
-        check(err_code);
-        console.log(err_code.value);
-
-        if (err_code.value == CL_SUCCESS) {
-            console.log("Congratulations!  You've created OpenCL context " + context + ".");
-        }
-
-    },
 };
