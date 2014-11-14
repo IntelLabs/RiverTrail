@@ -163,6 +163,24 @@ function GenericWrapper(_ctypesObj, _name, _id) {
     this.__exposedProps__ = {ctypesObj: "rw", name: "rw", id: "rw"};
 }
 
+// This wrapper makes it possible to return TypedArrays from
+// extension-side code to user-side code.
+function TypedArrayWrapper(_typedArray) {
+    console.log("Wrapping...");
+    this.typedArray = _typedArray;
+    this.typedArray.__exposedProps__ = {
+        name: "rw",
+        prototype: "rw",
+    };
+    this.typedArray.prototype.__exposedProps__ = {
+        buffer: "rw",
+        byteLength: "rw",
+        byteOffset: "rw",
+        length: "rw",
+    };
+    this.__exposedProps__ = { typedArray: "rw" };
+}
+
 let RiverTrailFFI = (function() {
 
     // A place to put all the error codes we encounter.
@@ -433,6 +451,8 @@ let RiverTrailFFI = (function() {
 
         let numEvents = new cl_uint(0);
         
+        // This call side-effects the contents of view.buffer, writing
+        // into it from bufferObjId.
         err_code.value = OpenCL.clEnqueueReadBuffer(commandQueue,
                                     mappedBuffers[bufferObjId],
                                     CL_TRUE,
@@ -443,7 +463,13 @@ let RiverTrailFFI = (function() {
                                     null,
                                     null);
         check(err_code);
-        return view;
+
+        // Wrap up the newly written-to buffer and return it to the
+        // user side.
+        let wrappedTA = new TypedArrayWrapper(view);
+        return wrappedTA;
+        // view.__exposedProps__ = {name: "rw"};
+        // return view;
     };
 
     let mapData = function(source) {

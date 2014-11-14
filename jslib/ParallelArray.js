@@ -206,14 +206,14 @@ var ParallelArray = function () {
     // If this.data is a OpenCL memory object, grab the values and store the OpenCL memory 
     // object in the cache for later use.
     var materialize = function materialize() {
-        if (extensionIsInstalled && isCData(this.data)) {
+        // if (extensionIsInstalled && isCData(this.data)) {
             // we have to first materialise the values on the JavaScript side
 
             // FIXME (LK): Comment out for the time being until I
             // understand what this is supposed to do.
 
             //this.data = this.data.getValue();
-        }
+        // }
     };
 
     // Returns true if the values for x an y are withing fuzz.
@@ -486,13 +486,22 @@ var ParallelArray = function () {
             throw "Cannot Create ParallelArray: Invalid Typed Array Object";
         if(!isCData(cdata))
             throw "Error creating new ParallelArray: Invalid CData object";
-        getValue(cdata.id, values);
+
+        // Get the contents of the underlying OpenCL buffer (cdata.id)
+        // and write them into the `values` TypedArray.  Return the
+        // results wrapped in a TypedArrayWrapper object.
+        var wrapper = getValue(cdata.id, values);
+        // var newValues = getValue(cdata.id, values);
+
         this.flat = shape.length === 1 ? true : false;
-        this.data = values;
+        this.data = wrapper.typedArray; // Unwrap.
+        // this.data = newValues;
         this.shape = shape;
         this.strides = shapeToStrides(shape);
         this.offset = 0;
         this.isKnownRegular = true;
+
+        // FIXME (LK): we need to make `this.data` readable somehow.
         return this;
     };
     // Helper for constructor that takes a single element, an array, a typed array, a 
@@ -568,6 +577,9 @@ var ParallelArray = function () {
             this.flat = true;
             this.offset = 0;
         }
+
+        // TODO (LK): do we need to do anything here to make sure
+        // `this.data` is readable?
         return this;
     };
 
@@ -2006,20 +2018,24 @@ var ParallelArray = function () {
             } catch (ignore) {}
         }
 
-        if (extensionIsInstalled && isCData(result.data)) {
-            if (useLazyCommunication) {
-                // wrap all functions that need access to the data
-                requiresData(result, "get");
-                //requiresData(result, "partition");
-                requiresData(result, "concat");
-                requiresData(result, "join");
-                requiresData(result, "slice");
-                requiresData(result, "toString");
-                requiresData(result, "getArray");
-            } else {
-                result.materialize();
-            }  
-        }
+        // FIXME (LK): Since all requiresData does is call
+        // materialize, and materialize is now a no-op, can we get
+        // away without this at all?
+
+        // if (extensionIsInstalled && isCData(result.data)) {
+        //     if (useLazyCommunication) {
+        //         // wrap all functions that need access to the data
+        //         requiresData(result, "get");
+        //         //requiresData(result, "partition");
+        //         requiresData(result, "concat");
+        //         requiresData(result, "join");
+        //         requiresData(result, "slice");
+        //         requiresData(result, "toString");
+        //         requiresData(result, "getArray");
+        //     } else {
+        //         result.materialize();
+        //     }
+        // }
 
         return result;
     };
