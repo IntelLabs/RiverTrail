@@ -132,7 +132,13 @@ RiverTrail.Helper = function () {
         // if we already have type information, we return it.
         // 
         if (pa.elementalType === undefined) {
-            pa.elementalType = inferTypedArrayType(pa.data);
+            // The ParallelArray may not have been materialized yet
+            if(pa.data !== undefined && (!isWebCLBufferObject(pa.data))) {
+                pa.elementalType = inferTypedArrayType(pa.data);
+            }
+            else if(isTypedArray(pa.hostAllocatedObject)) {
+                pa.elementalType = inferTypedArrayType(pa.hostAllocatedObject);
+            }
         }
         return {"dimSize": dimSize, "inferredType" : pa.elementalType};
     }; 

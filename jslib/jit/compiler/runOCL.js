@@ -77,7 +77,8 @@ RiverTrail.compiler.runOCL = function () {
                     if (object.cachedOpenCLMem) {
                         memObj = object.cachedOpenCLMem;
                     } else {
-                        // we map this argument
+                        // JS: We may not have mapped this ParallelArray before,
+                        // so we map it now
                         memObj = RiverTrail.runtime.mapData(object.data);
                     }
                     args.push(memObj);
@@ -195,6 +196,28 @@ RiverTrail.compiler.runOCL = function () {
             }
         }
 
+        for(var argIdx = 0; argIdx < kernelArgs.length; argIdx++) {
+            var arg = kernelArgs[argIdx];
+            try {
+                if (typeof (arg) === "number") {
+                    RiverTrail.runtime.setScalarArgument(kernel, argIdx, arg, false, !lowPrecision);
+                } else if (arg instanceof RiverTrail.Helper.Integer) {
+                    RiverTrail.runtime.setScalarArgument(kernel, argIdx, arg.value, true, false);
+                    // console.log("good");
+
+                } else if (typeof(arg) === "object" && arg.name === "CData") {
+                    RiverTrail.runtime.setArgument(kernel, argIdx, arg);
+                }else if (typeof(arg) === "object" && arg._name === "WebCLBuffer") {
+                    RiverTrail.runtime.setArgument(kernel, argIdx, arg);
+                } else {
+                    throw new Error("unexpected kernel argument type!");
+                }
+            } catch (e) {
+                console.log("reduce error: ", e, " index: ", argIdx, "arg: ", arg);
+                throw e;
+            }
+        }
+        /*
         // set arguments
         kernelArgs.reduce(function (kernel, arg, index) {
             try {
@@ -219,6 +242,7 @@ RiverTrail.compiler.runOCL = function () {
                 throw e;
             }
         }, kernel);
+        */
 
         if ((construct === "map") || (construct == "combine") || (construct == "comprehension") || (construct == "comprehensionScalar")) {
             // The differences are to do with args to the elemental function and are dealt with there so we can use the same routine.

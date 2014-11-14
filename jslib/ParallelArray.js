@@ -206,13 +206,14 @@ var ParallelArray = function () {
     // If this.data is a OpenCL memory object, grab the values and store the OpenCL memory 
     // object in the cache for later use.
     var materialize = function materialize() {
-        if (extensionIsInstalled && RiverTrail.Helper.isCData(this.data)) {
+        if (RiverTrail.Helper.isWebCLBufferObject(this.data) && RiverTrail.runtime.name === "WebCL") {
             // we have to first materialise the values on the JavaScript side
 
             // FIXME (LK): Comment out for the time being until I
             // understand what this is supposed to do.
 
-            //this.data = this.data.getValue();
+            RiverTrail.runtime.getValue(this.data, this.hostAllocatedObject);
+            this.data = this.hostAllocatedObject;
         }
     };
 
@@ -485,13 +486,15 @@ var ParallelArray = function () {
         if(!isTypedArray(values))
             throw "Cannot Create ParallelArray: Invalid Typed Array Object";
         if(RiverTrail.Helper.isCData(cdata)) {
-            value = RiverTrail.runtime.getValue(cdata, values);
+            values = RiverTrail.runtime.getValue(cdata, values);
+            this.data = values;
         } else if(RiverTrail.Helper.isWebCLBufferObject(cdata)) {
-            RiverTrail.runtime.getValue(cdata, values);
+            //RiverTrail.runtime.getValue(cdata, values);
+            this.data = cdata;
+            this.hostAllocatedObject = values;
         } else 
             throw "Error creating new ParallelArray: Invalid CData object";
         this.flat = shape.length === 1 ? true : false;
-        this.data = values;
         this.shape = shape;
         this.strides = shapeToStrides(shape);
         this.offset = 0;

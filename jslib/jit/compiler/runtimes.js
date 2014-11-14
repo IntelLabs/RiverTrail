@@ -138,7 +138,7 @@ RiverTrail.SupportedInterfaces.WebCLAdapter = function() {
     return {
         name: "WebCL",
         initContext: _initContext,
-        is64BitFloatingPointEnabled: true, // TODO: getInfo should tell us this.
+        is64BitFloatingPointEnabled: false, // TODO: getInfo should tell us this.
         compileKernel: _compileKernel,
         mapData: _mapData,
         setArgument: _setArgument,
