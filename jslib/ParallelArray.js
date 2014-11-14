@@ -206,15 +206,13 @@ var ParallelArray = function () {
     // If this.data is a OpenCL memory object, grab the values and store the OpenCL memory 
     // object in the cache for later use.
     var materialize = function materialize() {
+        /*
         if (RiverTrail.Helper.isWebCLBufferObject(this.data) && RiverTrail.runtime.name === "WebCL") {
             // we have to first materialise the values on the JavaScript side
-
-            // FIXME (LK): Comment out for the time being until I
-            // understand what this is supposed to do.
-
             RiverTrail.runtime.getValue(this.data, this.hostAllocatedObject);
             this.data = this.hostAllocatedObject;
         }
+        */
     };
 
     // Returns true if the values for x an y are withing fuzz.
@@ -489,9 +487,10 @@ var ParallelArray = function () {
             values = RiverTrail.runtime.getValue(cdata, values);
             this.data = values;
         } else if(RiverTrail.Helper.isWebCLBufferObject(cdata)) {
-            //RiverTrail.runtime.getValue(cdata, values);
-            this.data = cdata;
-            this.hostAllocatedObject = values;
+            RiverTrail.runtime.getValue(cdata, values);
+            //this.data = cdata;
+            this.data = values;
+            //this.hostAllocatedObject = values;
         } else 
             throw "Error creating new ParallelArray: Invalid CData object";
         this.flat = shape.length === 1 ? true : false;
