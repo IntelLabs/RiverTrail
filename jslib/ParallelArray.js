@@ -206,16 +206,6 @@ var ParallelArray = function () {
     // If this.data is a OpenCL memory object, grab the values and store the OpenCL memory 
     // object in the cache for later use.
     var materialize = function materialize() {
-<<<<<<< HEAD
-        // if (extensionIsInstalled && isCData(this.data)) {
-            // we have to first materialise the values on the JavaScript side
-
-            // FIXME (LK): Comment out for the time being until I
-            // understand what this is supposed to do.
-
-            //this.data = this.data.getValue();
-        // }
-=======
         /*
         if (RiverTrail.Helper.isWebCLBufferObject(this.data) && RiverTrail.runtime.name === "WebCL") {
             // we have to first materialise the values on the JavaScript side
@@ -223,7 +213,6 @@ var ParallelArray = function () {
             this.data = this.hostAllocatedObject;
         }
         */
->>>>>>> rivertrailwebcl
     };
 
     // Returns true if the values for x an y are withing fuzz.
@@ -505,7 +494,6 @@ var ParallelArray = function () {
 
         if(RiverTrail.Helper.isCData(cdata)) {
             RiverTrail.runtime.getValue(cdata, values, boundCallback);
-            this.data = values;
         } else if(RiverTrail.Helper.isWebCLBufferObject(cdata)) {
             RiverTrail.runtime.getValue(cdata, values);
             this.data = values;
@@ -2034,26 +2022,6 @@ var ParallelArray = function () {
             } catch (ignore) {}
         }
 
-<<<<<<< HEAD
-        // FIXME (LK): Since all requiresData does is call
-        // materialize, and materialize is now a no-op, can we get
-        // away without this at all?
-
-        // if (extensionIsInstalled && isCData(result.data)) {
-        //     if (useLazyCommunication) {
-        //         // wrap all functions that need access to the data
-        //         requiresData(result, "get");
-        //         //requiresData(result, "partition");
-        //         requiresData(result, "concat");
-        //         requiresData(result, "join");
-        //         requiresData(result, "slice");
-        //         requiresData(result, "toString");
-        //         requiresData(result, "getArray");
-        //     } else {
-        //         result.materialize();
-        //     }
-        // }
-=======
         if (extensionIsInstalled && RiverTrail.Helper.isCData(result.data)) {
             if (useLazyCommunication) {
                 // wrap all functions that need access to the data
@@ -2068,8 +2036,6 @@ var ParallelArray = function () {
                 result.materialize();
             }  
         }
->>>>>>> rivertrailwebcl
-
         return result;
     };
 

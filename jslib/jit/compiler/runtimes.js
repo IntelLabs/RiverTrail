@@ -1,3 +1,37 @@
+/*
+ * Copyright (c) 2011, Intel Corporation
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright notice, 
+ *   this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice, 
+ *   this list of conditions and the following disclaimer in the documentation 
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
+/*
+ * JS: Interface and definitions of adapters to a platform OpenCL runtime
+*/
+
+
+"use strict";
+
 if(RiverTrail === undefined) {
     var RiverTrail = {};
 }
@@ -13,8 +47,8 @@ RiverTrail.SupportedInterfaces.RiverTrailAdapter = function() {
     var _run = function(k, r, i) {
         return run(k.id, r, i);
     };
-    var _getValue = function(b, t) {
-        return getValue(b.id, v);
+    var _getValue = function(b, v, f) {
+        return getValue(b.id, v, f);
     };
     return {
         name: "RiverTrailExtension",
@@ -150,7 +184,7 @@ RiverTrail.SupportedInterfaces.WebCLAdapter = function() {
 }
 
 RiverTrail.runtime = (function() {
-    if(window.RTExtension !== undefined) {
+    if(window.riverTrailExtensionIsInstalled !== undefined) {
         return RiverTrail.SupportedInterfaces.RiverTrailAdapter();
     }
     else if(window.webcl !== undefined) {
