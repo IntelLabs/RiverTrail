@@ -38,6 +38,7 @@ if (RiverTrail === undefined) {
     var RiverTrail = {};
 }
 
+
 RiverTrail.compiler = (function () {
     // This is the compiler driver proper. 
     
