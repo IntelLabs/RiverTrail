@@ -322,9 +322,10 @@ let RiverTrailFFI = (function() {
         check(err_code);
         console.log(err_code.value);
 
-        // TODO (LK): figure out if these should be on or not
-        let commandQueueProperties =
-            CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | 0;
+        // TODO (LK): Put these properties behind a flag.
+        // let commandQueueProperties =
+        //     CL_QUEUE_PROFILING_ENABLE | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | 0;
+        let commandQueueProperties = 0;
         commandQueue = OpenCL.clCreateCommandQueue(context,
                                                    deviceList[defaultDevicePref],
                                                    commandQueueProperties,
