@@ -124,7 +124,7 @@ var ParallelArray = function () {
     // Check whether the new extension is installed.
     var extensionIsInstalled = false;
     try {
-        if (riverTrailExtensionIsInstalled !== undefined) {
+        if (RiverTrail.runtime !== undefined) {
             extensionIsInstalled = true;
         }
     } catch (ignore) {
@@ -134,8 +134,8 @@ var ParallelArray = function () {
     // check whether the OpenCL implementation supports double
     var enable64BitFloatingPoint = false;
     try {
-        if (is64BitFloatingPointEnabled !== undefined) {
-            enable64BitFloatingPoint = is64BitFloatingPointEnabled();
+        if (RiverTrail.runtime.is64BitFloatingPointEnabled !== undefined) {
+            enable64BitFloatingPoint = RiverTrail.runtime.is64BitFloatingPointEnabled;
         }
     } catch (ignore) {
         console.log("It looks like 64-bit floating point isn't supported.")
@@ -206,7 +206,7 @@ var ParallelArray = function () {
     // If this.data is a OpenCL memory object, grab the values and store the OpenCL memory 
     // object in the cache for later use.
     var materialize = function materialize() {
-        if (extensionIsInstalled && isCData(this.data)) {
+        if (extensionIsInstalled && RiverTrail.Helper.isCData(this.data)) {
             // we have to first materialise the values on the JavaScript side
 
             // FIXME (LK): Comment out for the time being until I
@@ -484,9 +484,12 @@ var ParallelArray = function () {
     var createHostAllocatedParallelArray = function (cdata, values, shape) {
         if(!isTypedArray(values))
             throw "Cannot Create ParallelArray: Invalid Typed Array Object";
-        if(!isCData(cdata))
+        if(RiverTrail.Helper.isCData(cdata)) {
+            value = RiverTrail.runtime.getValue(cdata, values);
+        } else if(RiverTrail.Helper.isWebCLBufferObject(cdata)) {
+            RiverTrail.runtime.getValue(cdata, values);
+        } else 
             throw "Error creating new ParallelArray: Invalid CData object";
-        getValue(cdata.id, values);
         this.flat = shape.length === 1 ? true : false;
         this.data = values;
         this.shape = shape;
@@ -1760,10 +1763,7 @@ var ParallelArray = function () {
         // TODO: deprecated, delete for good
         throw "inferType is no longer here!";
     };
-    function isCData(dataInstance) {
-        return dataInstance !== undefined && dataInstance.name === "CData";
-    };
-
+    
     var _fastClasses = function () {
 
         var Fast0DPA = function (pa) { 
@@ -1967,7 +1967,8 @@ var ParallelArray = function () {
             result.flat = arguments[1].flat;
 
             // We get [CData, TypedArray, Shape].
-        } else if (isCData(arguments[0]) && isTypedArray(arguments[1])) {
+        } else if ((RiverTrail.Helper.isCData(arguments[0]) || 
+                    RiverTrail.Helper.isWebCLBufferObject(arguments[0])) && isTypedArray(arguments[1])) {
             //result = createOpenCLMemParallelArray.apply(this, arguments);
             result = createHostAllocatedParallelArray.call(this, arguments[0], arguments[1], arguments[2]);
         } else if (typeof(arguments[1]) === 'function' || arguments[1] instanceof low_precision.wrapper) {
@@ -2006,7 +2007,7 @@ var ParallelArray = function () {
             } catch (ignore) {}
         }
 
-        if (extensionIsInstalled && isCData(result.data)) {
+        if (extensionIsInstalled && RiverTrail.Helper.isCData(result.data)) {
             if (useLazyCommunication) {
                 // wrap all functions that need access to the data
                 requiresData(result, "get");

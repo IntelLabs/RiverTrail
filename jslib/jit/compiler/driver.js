@@ -65,7 +65,7 @@ RiverTrail.compiler = (function () {
     var reportVectorized = false;
 
     // Create an OpenCL context on the extension side.
-    initContext();
+    RiverTrail.runtime.initContext();
 
     var isTypedArray = RiverTrail.Helper.isTypedArray;
 
@@ -281,7 +281,7 @@ RiverTrail.compiler = (function () {
                 kernelString = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n" + kernelString;
             }
             // TODO (LK): see if "window" is redundant here
-            kernel = compileKernel(kernelString, "RT_" + kernelName);
+            kernel = RiverTrail.runtime.compileKernel(kernelString, "RT_" + kernelName);
             //console.log(kernel);
         } catch (e) {
             try {
@@ -294,7 +294,7 @@ RiverTrail.compiler = (function () {
         }
         if (reportVectorized) {
             try {
-                var log = getBuildLog();
+                var log = RiverTrail.runtime.getBuildLog();
                 if (log.indexOf("was successfully vectorized") !== -1) {
                     console.log(kernelName + "was successfully vectorized");
                 }

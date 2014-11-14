@@ -69,13 +69,16 @@ RiverTrail.compiler.runOCL = function () {
                 if (object.name === "CData") {
                     // we already have an OpenCL value
                     args.push(object.data);
+                } else if(RiverTrail.Helper.isWebCLBufferObject(object.cachedOpenCLMem)) {
+                    // JS: If we already have an OpenCL buffer, push that.
+                    args.push(object.cachedOpenCLMem);
                 } else if (RiverTrail.Helper.isTypedArray(object.data)) {
                     var memObj;
                     if (object.cachedOpenCLMem) {
                         memObj = object.cachedOpenCLMem;
                     } else {
                         // we map this argument
-                        memObj = mapData(object.data);
+                        memObj = RiverTrail.runtime.mapData(object.data);
                     }
                     args.push(memObj);
                     if (useBufferCaching) {
@@ -90,10 +93,10 @@ RiverTrail.compiler.runOCL = function () {
                 args.push(new RiverTrail.Helper.Integer(object.offset));
             } else if (object instanceof RiverTrail.Helper.FlatArray) {
                 // these are based on a flat array, so we can just push the data over
-                args.push(mapData(object.data));
+                args.push(RiverTrail.runtime.mapData(object.data));
             } else if (object instanceof Array) {
                 // we have an ordinary JS array, which has passed the uniformity checks and thus can be mapped
-                args.push(mapData(object));
+                args.push(RiverTrail.runtime.mapData(object));
             } else if (typeof (object) === "number") {
                 // Scalar numbers are passed directly, as doubles.
                 args.push(object);
@@ -107,7 +110,7 @@ RiverTrail.compiler.runOCL = function () {
                 args.push(object);
             } else if (RiverTrail.Helper.isTypedArray(object)) {
                 // map the typed array
-                args.push(mapData(object));
+                args.push(RiverTrail.runtime.mapData(object));
             } else {
                 throw new Error("only typed arrays and scalars are currently supported as OpenCL kernel arguments");
             }
@@ -151,7 +154,7 @@ RiverTrail.compiler.runOCL = function () {
                     paSource.updateInPlacePA.data = paSource.updateInPlacePA.cachedOpenCLMem;
                     delete paSource.updateInPlacePA.cachedOpenCLMem;
                 } else {
-                    paSource.updateInPlacePA.data = mapData(paSource.updateInPlacePA.data);
+                    paSource.updateInPlacePA.data = RiverTrail.runtime.mapData(paSource.updateInPlacePA.data);
                     if (useBufferCaching) {
                         paSource.updateInPlacePA.cachedOpenCLMem = paSource.updateInPlacePA.data;
                     }
@@ -172,7 +175,7 @@ RiverTrail.compiler.runOCL = function () {
                 var template = RiverTrail.Helper.elementalTypeToConstructor(resultElemType);
                 if (template == undefined) throw new Error("cannot map inferred type to constructor");
                 var objToMap = new template(shapeToLength(resShape));
-                var memObj = mapData(objToMap);
+                var memObj = RiverTrail.runtime.mapData(objToMap);
                 kernelArgs.push(memObj);
                 kernelArgs.push(new RiverTrail.Helper.Integer(0));
                 return {mem: memObj, shape: resShape, type: resultElemType, offset: 0, hostAllocatedObject: objToMap};
@@ -197,14 +200,16 @@ RiverTrail.compiler.runOCL = function () {
             try {
                 //console.log("driver 344 index: ", index, " arg: ", arg);
                 if (typeof (arg) === "number") {
-                    setScalarArgument(kernel.id, index, arg, false, !lowPrecision);
+                    RiverTrail.runtime.setScalarArgument(kernel, index, arg, false, !lowPrecision);
                 } else if (arg instanceof RiverTrail.Helper.Integer) {
                     // console.log("index: ", index, " arg.value: ", arg.value);
-                    setScalarArgument(kernel.id, index, arg.value, true, false);
+                    RiverTrail.runtime.setScalarArgument(kernel, index, arg.value, true, false);
                     // console.log("good");
 
                 } else if (typeof(arg) === "object" && arg.name === "CData") {
-                    setArgument(kernel.id, index, arg.id);
+                    RiverTrail.runtime.setArgument(kernel, index, arg);
+                }else if (typeof(arg) === "object" && arg._name === "WebCLBuffer") {
+                    RiverTrail.runtime.setArgument(kernel, index, arg);
                 } else {
                     throw new Error("unexpected kernel argument type!");
                 }
@@ -225,10 +230,10 @@ RiverTrail.compiler.runOCL = function () {
                     for(var i = 0; i < rank; i++) {
                         redu [0] *= iterSpace[i];
                     }
-                    kernelFailure = run(kernel.id, 1, redu, iterSpace.map(function () { return 1; }));
+                    kernelFailure = RiverTrail.runtime.run(kernel, 1, redu, iterSpace.map(function () { return 1; }));
                 }
                 else {
-                    kernelFailure = run(kernel.id, rank, iterSpace, iterSpace.map(function () { return 1; }));
+                    kernelFailure = RiverTrail.runtime.run(kernel, rank, iterSpace, iterSpace.map(function () { return 1; }));
                 }
             } catch (e) {
                 console.log("kernel.run fails: ", e);
@@ -242,7 +247,7 @@ RiverTrail.compiler.runOCL = function () {
             alert("runOCL only deals with comprehensions, map and combine (so far).");
         }
 
-        if (resultMem.mem && (resultMem.mem.name === "CData")) {
+        if (RiverTrail.Helper.isCData(resultMem.mem) || RiverTrail.Helper.isWebCLBufferObject(resultMem.mem)) {
             // single result
             paResult = new ParallelArray(resultMem.mem, resultMem.hostAllocatedObject, resultMem.shape);
             if (useBufferCaching) {
