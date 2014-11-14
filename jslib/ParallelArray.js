@@ -490,12 +490,15 @@ var ParallelArray = function () {
         // Get the contents of the underlying OpenCL buffer (cdata.id)
         // and write them into the `values` TypedArray.  Return the
         // results wrapped in a TypedArrayWrapper object.
-        var wrapper = getValue(cdata.id, values);
-        // var newValues = getValue(cdata.id, values);
+
+	// This should run right after `getValue` does its work.
+	var callback = function(typedArray) {
+	    this.data = typedArray;
+	}
+	var boundCallback = callback.bind(this);
+        getValue(cdata.id, values, boundCallback);
 
         this.flat = shape.length === 1 ? true : false;
-        this.data = wrapper.typedArray; // Unwrap.
-        // this.data = newValues;
         this.shape = shape;
         this.strides = shapeToStrides(shape);
         this.offset = 0;

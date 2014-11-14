@@ -79,7 +79,8 @@ myObserver.prototype = {
                                       {defineAs: "run"});
 
       Components.utils.exportFunction(o.RiverTrailFFI.getValue, window,
-                                      {defineAs: "getValue"});
+                                      {defineAs: "getValue",
+                                       allowCallbacks: true});
 
   },
   register: function() {

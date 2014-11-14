@@ -445,7 +445,7 @@ let RiverTrailFFI = (function() {
 
     // We have an OpenCL buffer with id |bufferObjId| that was originally
     // made out of a TypedArray object |view|
-    let getValue = function(bufferObjId, view) {
+    let getValue = function(bufferObjId, view, callback) {
 
         OpenCL.init();
 
@@ -464,12 +464,10 @@ let RiverTrailFFI = (function() {
                                     null);
         check(err_code);
 
-        // Wrap up the newly written-to buffer and return it to the
-        // user side.
-        let wrappedTA = new TypedArrayWrapper(view);
-        return wrappedTA;
-        // view.__exposedProps__ = {name: "rw"};
-        // return view;
+
+        // Run the callback, which will take the TypedArray and assign it.
+        callback(view);
+
     };
 
     let mapData = function(source) {
