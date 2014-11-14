@@ -258,7 +258,6 @@ let RiverTrailFFI = (function() {
                                                null,
                                                numDevices.address());
         check(err_code);
-        console.log(err_code.value);
 
         // Then, get a list of device IDs of to pass to
         // `clCreateContext`.
@@ -273,7 +272,6 @@ let RiverTrailFFI = (function() {
                                                deviceList, // *devices
                                                null); // *num_devices
         check(err_code);
-        console.log(err_code.value);
 
         // Create a three-element array of context properties to pass
         // to clCreateContext.
@@ -312,7 +310,6 @@ let RiverTrailFFI = (function() {
                                          null,
                                          err_code.address());
         check(err_code);
-        console.log(err_code.value);
 
         failureMemCLBuffer = OpenCL.clCreateBuffer(context,
                                                    CL_MEM_READ_WRITE,
@@ -320,7 +317,6 @@ let RiverTrailFFI = (function() {
                                                    null,
                                                    err_code.address());
         check(err_code);
-        console.log(err_code.value);
 
         // TODO (LK): Put these properties behind a flag.
         // let commandQueueProperties =
@@ -331,7 +327,6 @@ let RiverTrailFFI = (function() {
                                                    commandQueueProperties,
                                                    err_code.address());
         check(err_code);
-        console.log(err_code.value);
     };
 
     let canBeMapped = function(obj) {
@@ -370,7 +365,6 @@ let RiverTrailFFI = (function() {
                                                        // lengths,
                                                        err_code.address());
         check(err_code);
-        console.log(err_code.value);
 
         // Apparently, the options argument to `clBuildProgram` is
         // always an empty string.
@@ -379,7 +373,6 @@ let RiverTrailFFI = (function() {
 
         err_code.value = OpenCL.clBuildProgram(program, 0, null, options, null, null);
         check(err_code);
-        console.log(err_code.value);
 
         // Figure out how many devices there are...
         let numDevices = new cl_uint();
@@ -389,7 +382,6 @@ let RiverTrailFFI = (function() {
                                                  numDevices.address(),
                                                  null);
         check(err_code);
-        console.log(err_code.value);
 
         // ...so we can get info about them
         const DeviceIDArray = new ctypes.ArrayType(cl_device_id, numDevices.value);
@@ -415,7 +407,6 @@ let RiverTrailFFI = (function() {
                                                       buildLogCString,
                                                       null);
         check(err_code);
-        console.log(err_code.value);
         buildLog = buildLogCString.readString();
 
         // Finally, create the kernel.
@@ -424,11 +415,9 @@ let RiverTrailFFI = (function() {
                                        kernelNameCString,
                                        err_code.address());
         check(err_code);
-        console.log(err_code.value);
 
         err_code.value = OpenCL.clReleaseProgram(program);
         check(err_code);
-        console.log(err_code.value);
 
         err_code.value = OpenCL.clSetKernelArg(kernel, 0, CL_MEM_SIZE, failureMemCLBuffer.address());
         check(err_code);
@@ -606,9 +595,9 @@ let OpenCL = {
                 throw "Could not open OpenCL library";
             }
         } else if (os == "WINNT") {
-            throw "TODO: handle Windows";
+            this.lib = ctypes.open("OpenCL.lib");
         } else {
-            throw "I'm not sure what OS this is";
+            throw "Your OS " + os + " is not supported";
         }
 
         // Set up stubs for functions that we want to talk to from JS.
@@ -851,7 +840,6 @@ let Platforms = {
 
         err_code.value = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
         check(err_code);
-        console.log(err_code.value);
 
         // All found platforms
         const PlatformsArray = new ctypes.ArrayType(cl_platform_id, nplatforms.value);
@@ -861,7 +849,6 @@ let Platforms = {
                                                  allPlatforms,
                                                  naplatforms.address());
         check(err_code);
-        console.log(err_code.value);
 
         for (let i = 0; i < naplatforms.value; i++) {
 
@@ -911,7 +898,6 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
                                               null,
                                               length.address());
     check(err_code);
-    console.log(err_code.value);
 
     // Now that we have a length, we can allocate space for the
     // actual results of the call, and call it for real.
@@ -927,7 +913,6 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
                                               propertyBuf,
                                               paramValueSizeRet);
     check(err_code);
-    console.log(err_code.value);
 
     // Return the property as a JS string.
     let jsProperty = propertyBuf.readString();
@@ -949,7 +934,6 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
                                            null,
                                            ndevices.address());
     check(err_code);
-    console.log(err_code.value);
 
     // Next, get all the device IDs.
     const DeviceIDArray = new ctypes.ArrayType(cl_device_id, ndevices.value);
@@ -977,7 +961,6 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
                                                 deviceNameBuf,
                                                 deviceNameSize.address());
         check(err_code);
-        console.log(err_code.value);
 
         let jsDeviceName = deviceNameBuf.readString();
 
