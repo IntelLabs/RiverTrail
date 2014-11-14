@@ -124,7 +124,7 @@ var ParallelArray = function () {
     // Check whether the new extension is installed.
     var extensionIsInstalled = false;
     try {
-        if (riverTrailExtensionIsInstalled !== undefined) {
+        if (RiverTrail.runtime !== undefined) {
             extensionIsInstalled = true;
         }
     } catch (ignore) {
@@ -134,8 +134,8 @@ var ParallelArray = function () {
     // check whether the OpenCL implementation supports double
     var enable64BitFloatingPoint = false;
     try {
-        if (is64BitFloatingPointEnabled !== undefined) {
-            enable64BitFloatingPoint = is64BitFloatingPointEnabled();
+        if (RiverTrail.runtime.is64BitFloatingPointEnabled !== undefined) {
+            enable64BitFloatingPoint = RiverTrail.runtime.is64BitFloatingPointEnabled;
         }
     } catch (ignore) {
         console.log("It looks like 64-bit floating point isn't supported.")
@@ -206,6 +206,7 @@ var ParallelArray = function () {
     // If this.data is a OpenCL memory object, grab the values and store the OpenCL memory 
     // object in the cache for later use.
     var materialize = function materialize() {
+<<<<<<< HEAD
         // if (extensionIsInstalled && isCData(this.data)) {
             // we have to first materialise the values on the JavaScript side
 
@@ -214,6 +215,15 @@ var ParallelArray = function () {
 
             //this.data = this.data.getValue();
         // }
+=======
+        /*
+        if (RiverTrail.Helper.isWebCLBufferObject(this.data) && RiverTrail.runtime.name === "WebCL") {
+            // we have to first materialise the values on the JavaScript side
+            RiverTrail.runtime.getValue(this.data, this.hostAllocatedObject);
+            this.data = this.hostAllocatedObject;
+        }
+        */
+>>>>>>> rivertrailwebcl
     };
 
     // Returns true if the values for x an y are withing fuzz.
@@ -484,19 +494,24 @@ var ParallelArray = function () {
     var createHostAllocatedParallelArray = function (cdata, values, shape) {
         if(!isTypedArray(values))
             throw "Cannot Create ParallelArray: Invalid Typed Array Object";
-        if(!isCData(cdata))
-            throw "Error creating new ParallelArray: Invalid CData object";
-
         // Get the contents of the underlying OpenCL buffer (cdata.id)
         // and write them into the `values` TypedArray.  Return the
         // results wrapped in a TypedArrayWrapper object.
+        // This should run right after `getValue` does its work.
+        var callback = function(typedArray) {
+            this.data = typedArray;
+        }
+        var boundCallback = callback.bind(this);
 
-	// This should run right after `getValue` does its work.
-	var callback = function(typedArray) {
-	    this.data = typedArray;
-	}
-	var boundCallback = callback.bind(this);
-        getValue(cdata.id, values, boundCallback);
+        if(RiverTrail.Helper.isCData(cdata)) {
+            RiverTrail.runtime.getValue(cdata, values, boundCallback);
+            this.data = values;
+        } else if(RiverTrail.Helper.isWebCLBufferObject(cdata)) {
+            RiverTrail.runtime.getValue(cdata, values);
+            this.data = values;
+        } else 
+            throw "Error creating new ParallelArray: Invalid CData object";
+
 
         this.flat = shape.length === 1 ? true : false;
         this.shape = shape;
@@ -1775,10 +1790,7 @@ var ParallelArray = function () {
         // TODO: deprecated, delete for good
         throw "inferType is no longer here!";
     };
-    function isCData(dataInstance) {
-        return dataInstance !== undefined && dataInstance.name === "CData";
-    };
-
+    
     var _fastClasses = function () {
 
         var Fast0DPA = function (pa) { 
@@ -1982,7 +1994,8 @@ var ParallelArray = function () {
             result.flat = arguments[1].flat;
 
             // We get [CData, TypedArray, Shape].
-        } else if (isCData(arguments[0]) && isTypedArray(arguments[1])) {
+        } else if ((RiverTrail.Helper.isCData(arguments[0]) || 
+                    RiverTrail.Helper.isWebCLBufferObject(arguments[0])) && isTypedArray(arguments[1])) {
             //result = createOpenCLMemParallelArray.apply(this, arguments);
             result = createHostAllocatedParallelArray.call(this, arguments[0], arguments[1], arguments[2]);
         } else if (typeof(arguments[1]) === 'function' || arguments[1] instanceof low_precision.wrapper) {
@@ -2021,6 +2034,7 @@ var ParallelArray = function () {
             } catch (ignore) {}
         }
 
+<<<<<<< HEAD
         // FIXME (LK): Since all requiresData does is call
         // materialize, and materialize is now a no-op, can we get
         // away without this at all?
@@ -2039,6 +2053,22 @@ var ParallelArray = function () {
         //         result.materialize();
         //     }
         // }
+=======
+        if (extensionIsInstalled && RiverTrail.Helper.isCData(result.data)) {
+            if (useLazyCommunication) {
+                // wrap all functions that need access to the data
+                requiresData(result, "get");
+                //requiresData(result, "partition");
+                requiresData(result, "concat");
+                requiresData(result, "join");
+                requiresData(result, "slice");
+                requiresData(result, "toString");
+                requiresData(result, "getArray");
+            } else {
+                result.materialize();
+            }  
+        }
+>>>>>>> rivertrailwebcl
 
         return result;
     };
