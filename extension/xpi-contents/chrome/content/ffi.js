@@ -595,7 +595,7 @@ let OpenCL = {
                 throw "Could not open OpenCL library";
             }
         } else if (os == "WINNT") {
-            this.lib = ctypes.open("OpenCL.lib");
+            this.lib = ctypes.open("OpenCL.dll");
         } else {
             throw "Your OS " + os + " is not supported";
         }
