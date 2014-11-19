@@ -189,11 +189,12 @@ let RiverTrailFFI = (function() {
     // A few handy constants.
     const BUILDLOG_SIZE  = 4096;
     const DPO_NUMBER_OF_ARTIFICIAL_ARGS = 1;
-    const CL_MEM_SIZE = 8;
 
     // A few bits of state that the below functions manipulate.
     let context;
     let commandQueue;
+    let deviceList = null;
+    let defaultDevicePref;
     let failureMem = ctypes.int.array(1)([0]);
     let failureMemCLBuffer;
     let compiledKernels = [];
@@ -265,7 +266,7 @@ let RiverTrailFFI = (function() {
         // numDevices.value is the length of the array
         const DeviceArray = new ctypes.ArrayType(cl_device_id,
                                                  numDevices.value);
-        let deviceList = new DeviceArray();
+        deviceList = new DeviceArray();
         err_code.value = OpenCL.clGetDeviceIDs(defaultPlatformID, // platform
                                                CL_DEVICE_TYPE_ALL, // device_type
                                                1, // num_entries
@@ -293,7 +294,7 @@ let RiverTrailFFI = (function() {
 	let contextProps = ctypes.cast(contextPropertiesList.address(), cl_context_properties.ptr);
 
         // Get the default device ID to pass to clCreateContext.
-        let defaultDevicePref = prefBranch.getIntPref("defaultDeviceType");
+        defaultDevicePref = prefBranch.getIntPref("defaultDeviceType");
         if (defaultDevicePref < 0 || defaultDevicePref === undefined) {
             defaultDevicePref = 0;
         }
@@ -374,25 +375,7 @@ let RiverTrailFFI = (function() {
         err_code.value = OpenCL.clBuildProgram(program, 0, null, options, null, null);
         check(err_code);
 
-        // Figure out how many devices there are...
-        let numDevices = new cl_uint();
-        err_code.value = OpenCL.clGetProgramInfo(program,
-                                                 CL_PROGRAM_NUM_DEVICES,
-                                                 cl_uint.size,
-                                                 numDevices.address(),
-                                                 null);
-        check(err_code);
-
-        // ...so we can get info about them
-        const DeviceIDArray = new ctypes.ArrayType(cl_device_id, numDevices.value);
-        let deviceIDs = new DeviceIDArray();
-        err_code.value = OpenCL.clGetProgramInfo(program,
-                                                 CL_PROGRAM_DEVICES,
-                                                 numDevices.value*cl_device_id.size, // size of deviceIDs
-                                                 deviceIDs,
-                                                 null);
-        check(err_code);
-
+    
         // LK: `deviceIDs[0]` is copied from the original code -- I'm
         // not sure how we know we want that one.
 
@@ -401,7 +384,7 @@ let RiverTrailFFI = (function() {
         const BuildLogArray = new ctypes.ArrayType(ctypes.char, BUILDLOG_SIZE);
         let buildLogCString = new BuildLogArray();
         err_code.value = OpenCL.clGetProgramBuildInfo(program,
-                                                      deviceIDs[0],
+                                                      deviceList[defaultDevicePref],
                                                       CL_PROGRAM_BUILD_LOG,
                                                       BUILDLOG_SIZE,
                                                       buildLogCString,
@@ -419,7 +402,7 @@ let RiverTrailFFI = (function() {
         err_code.value = OpenCL.clReleaseProgram(program);
         check(err_code);
 
-        err_code.value = OpenCL.clSetKernelArg(kernel, 0, CL_MEM_SIZE, failureMemCLBuffer.address());
+        err_code.value = OpenCL.clSetKernelArg(kernel, 0, cl_mem.ptr.size, failureMemCLBuffer.address());
         check(err_code);
         compiledKernels.push(kernel);
 
@@ -476,7 +459,7 @@ let RiverTrailFFI = (function() {
 
     let setArgument = function(kernel, index, arg) {
 
-        let argSize = ctypes.size_t(8);
+        let argSize = ctypes.size_t.size;
         err_code.value = OpenCL.clSetKernelArg(compiledKernels[kernel],
                                                index+DPO_NUMBER_OF_ARTIFICIAL_ARGS,
                                                argSize,
@@ -572,7 +555,7 @@ let OpenCL = {
     init: function() {
 
         let os = Services.appinfo.OS;
-
+        let platformABI = ctypes.default_abi;
         // Depending what OS we're using, we need to open a different OpenCL library.
         if (os == "Darwin") {
             this.lib = ctypes.open("/System/Library/Frameworks/OpenCL.framework/OpenCL");
@@ -596,6 +579,7 @@ let OpenCL = {
             }
         } else if (os == "WINNT") {
             this.lib = ctypes.open("OpenCL.dll");
+            platformABI = ctypes.winapi_abi;
         } else {
             throw "Your OS " + os + " is not supported";
         }
@@ -604,18 +588,15 @@ let OpenCL = {
         // These are documented at
         // https://www.khronos.org/registry/cl/sdk/2.0/docs/man/xhtml/.
 
-        // N.B.: ctypes.default_abi should work on both Linux and Mac,
-        // but not Windows.
-
         this.clGetPlatformIDs = this.lib.declare("clGetPlatformIDs",
-                                                 ctypes.default_abi,
+                                                 platformABI,
                                                  cl_int, // return type: error code
                                                  cl_uint, // in: num_entries
                                                  cl_platform_id.ptr, // in: *platforms
                                                  cl_uint.ptr); // out: *num_platforms
 
         this.clGetPlatformInfo = this.lib.declare("clGetPlatformInfo",
-                                                  ctypes.default_abi,
+                                                  platformABI,
                                                   cl_int, // return type: error code
                                                   cl_platform_id, // platform
                                                   cl_platform_info, // param_name
@@ -624,7 +605,7 @@ let OpenCL = {
                                                   ctypes.size_t.ptr); // *param_value_size_ret
 
         this.clGetDeviceIDs = this.lib.declare("clGetDeviceIDs",
-                                               ctypes.default_abi,
+                                               platformABI,
                                                cl_int, // return type: error code
                                                cl_platform_id, // platform
                                                cl_device_type, // device_type
@@ -633,7 +614,7 @@ let OpenCL = {
                                                cl_uint.ptr); // *num_devices
 
         this.clGetDeviceInfo = this.lib.declare("clGetDeviceInfo",
-                                               ctypes.default_abi,
+                                               platformABI,
                                                cl_int, // return type
                                                cl_device_id, // device
                                                cl_device_info, // param_name
@@ -642,7 +623,7 @@ let OpenCL = {
                                                ctypes.size_t.ptr); // *param_value_size_ret
 
         this.clCreateContext = this.lib.declare("clCreateContext",
-                                                ctypes.default_abi,
+                                                platformABI,
                                                 cl_context, // return type
                                                 cl_context_properties.ptr, // *properties
                                                 cl_uint, // num_devices
@@ -653,7 +634,7 @@ let OpenCL = {
 
         this.clCreateProgramWithSource = this.lib.declare(
             "clCreateProgramWithSource",
-            ctypes.default_abi,
+            platformABI,
             cl_program, // return type: "a valid non-zero program object" or NULL
             cl_context, // context
             cl_uint, // count (length of the strings array)
@@ -663,7 +644,7 @@ let OpenCL = {
 
         this.clBuildProgram = this.lib.declare(
             "clBuildProgram",
-            ctypes.default_abi,
+            platformABI,
             cl_int, // return type: error code
             cl_program, // program: the program object
             cl_uint, // num_devices: the number of devices listed in device_list
@@ -674,7 +655,7 @@ let OpenCL = {
 
         this.clGetProgramInfo = this.lib.declare(
             "clGetProgramInfo",
-            ctypes.default_abi,
+            platformABI,
             cl_int, // return type: error code
             cl_program, // program
             cl_program_info, // param_name
@@ -684,7 +665,7 @@ let OpenCL = {
 
         this.clGetProgramBuildInfo = this.lib.declare(
             "clGetProgramBuildInfo",
-            ctypes.default_abi,
+            platformABI,
             cl_int, // return type: error code
             cl_program, // program
             cl_device_id, // device
@@ -695,7 +676,7 @@ let OpenCL = {
 
         this.clEnqueueNDRangeKernel = this.lib.declare(
             "clEnqueueNDRangeKernel",
-            ctypes.default_abi,
+            platformABI,
             cl_int, // return type: error code
             cl_command_queue, // command_queue
             cl_kernel, // kernel
@@ -709,7 +690,7 @@ let OpenCL = {
 
         this.clEnqueueWriteBuffer = this.lib.declare(
             "clEnqueueWriteBuffer",
-            ctypes.default_abi,
+            platformABI,
             cl_int, // return type: error code
             cl_command_queue, // command_queue
             cl_mem, // buffer
@@ -723,7 +704,7 @@ let OpenCL = {
 
         this.clEnqueueMapBuffer = this.lib.declare(
             "clEnqueueMapBuffer",
-            ctypes.default_abi,
+            platformABI,
             ctypes.voidptr_t, // return type: pointer to mapped region
             cl_command_queue, // command queue
             cl_mem, // buffer object
@@ -738,7 +719,7 @@ let OpenCL = {
 
         this.clEnqueueReadBuffer = this.lib.declare(
             "clEnqueueReadBuffer",
-            ctypes.default_abi,
+            platformABI,
             cl_int, // return type: cl_int (error code)
             cl_command_queue, // command queue
             cl_mem, // buffer object
@@ -754,14 +735,14 @@ let OpenCL = {
 
         this.clWaitForEvents = this.lib.declare(
             "clWaitForEvents",
-            ctypes.default_abi,
+            platformABI,
             cl_int, // return type: error code
             cl_uint, // num_events
             cl_event.ptr); // *event_list
 
         this.clSetKernelArg = this.lib.declare(
             "clSetKernelArg",
-            ctypes.default_abi,
+            platformABI,
             cl_int, // return type: error code
             cl_kernel, // kernel
             cl_uint, // arg_index
@@ -770,7 +751,7 @@ let OpenCL = {
 
         this.clCreateKernel = this.lib.declare(
             "clCreateKernel",
-            ctypes.default_abi,
+            platformABI,
             cl_kernel, // return type: kernel object or NULL
             cl_program, // program
             ctypes.char.ptr, // *kernel_name
@@ -778,19 +759,19 @@ let OpenCL = {
 
         this.clReleaseProgram = this.lib.declare(
             "clReleaseProgram",
-            ctypes.default_abi,
+            platformABI,
             cl_int, // return type: error code
             cl_program); // program
 
         this.clReleaseKernel = this.lib.declare(
             "clReleaseKernel",
-            ctypes.default_abi,
+            platformABI,
             cl_int, // return type: error code
             cl_kernel); // kernel
 
         this.clCreateBuffer = this.lib.declare(
             "clCreateBuffer",
-            ctypes.default_abi,
+            platformABI,
             cl_mem, // return type: buffer object or NULL
             cl_context, // context
             cl_mem_flags, // flags
@@ -800,7 +781,7 @@ let OpenCL = {
 
         this.clCreateCommandQueue = this.lib.declare(
             "clCreateCommandQueue",
-            ctypes.default_abi,
+            platformABI,
             cl_command_queue, // return type: command queue or NULL
             cl_context, // context
             cl_device_id, // device
