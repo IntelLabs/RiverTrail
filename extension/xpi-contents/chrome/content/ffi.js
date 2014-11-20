@@ -285,15 +285,15 @@ let RiverTrailFFI = (function() {
         // followed by the corresponding desired value. The list is
         // terminated with 0."
 
-	let contextPropertiesList = cl_context_properties.array(3)();
+        let contextPropertiesList = cl_context_properties.array(3)();
 
-	// We have to do these casts because contextPropertiesList
-	// actually contains pointers.
-	ctypes.cast(contextPropertiesList[0], ctypes.int).value = CL_CONTEXT_PLATFORM;
-	contextPropertiesList[1] = ctypes.cast(defaultPlatformID, ctypes.int.ptr);
-	ctypes.cast(contextPropertiesList[2], ctypes.int).value = 0;
+        // We have to do these casts because contextPropertiesList
+        // actually contains pointers.
+        ctypes.cast(contextPropertiesList[0], ctypes.int).value = CL_CONTEXT_PLATFORM;
+        contextPropertiesList[1] = ctypes.cast(defaultPlatformID, ctypes.int.ptr);
+        ctypes.cast(contextPropertiesList[2], ctypes.int).value = 0;
 
-	let contextProps = ctypes.cast(contextPropertiesList.address(), cl_context_properties.ptr);
+        let contextProps = ctypes.cast(contextPropertiesList.address(), cl_context_properties.ptr);
 
         // Get the default device ID to pass to clCreateContext.
         defaultDevicePref = prefBranch.getIntPref("defaultDeviceType");
