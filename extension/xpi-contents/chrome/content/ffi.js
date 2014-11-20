@@ -573,13 +573,15 @@ let OpenCL = {
     init: function() {
 
         let os = Services.appinfo.OS;
-        let platformABI = ctypes.default_abi;
+        let platformABI;
         // Depending what OS we're using, we need to open a different OpenCL library.
         if (os == "Darwin") {
             this.lib = ctypes.open("/System/Library/Frameworks/OpenCL.framework/OpenCL");
+            platformABI = ctypes.default_abi;
         } else if (os == "Linux") {
             // Try letting the system look for the library in standard locations.
             this.lib = ctypes.open("libOpenCL.so");
+            platformABI = ctypes.default_abi;
 
             // If that doesn't work, try specifying a full path.
             if (!this.lib) {
