@@ -1,9 +1,20 @@
 {
-  "name": "tmp",
-  "title": "tmp",
+  "name": "river-trail-for-firefox",
+  "title": "River Trail for Firefox",
   "id": "jid1-bDmQztb2AgWrHQ",
-  "description": "a basic add-on",
-  "author": "",
-  "license": "MPL 2.0",
-  "version": "0.1"
+  "description": "Used by River Trail to interface with OpenCL from JavaScript",
+  "author": "Intel Labs",
+  "version": "0.33",
+  "preferences": [{
+    "name": "defaultPlatform",
+    "title": "Default OpenCL platform",
+    "type": "integer",
+    "value": 0
+  },
+  {
+    "name": "defaultDeviceType",
+    "title": "Default OpenCL device type",
+    "type": "integer",
+    "value": 1
+  }]
 }
