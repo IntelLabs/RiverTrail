@@ -15,6 +15,6 @@
     "name": "defaultDeviceType",
     "title": "Default OpenCL device type",
     "type": "integer",
-    "value": 1
+    "value": 0
   }]
 }
