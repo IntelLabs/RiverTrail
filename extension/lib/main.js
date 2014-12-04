@@ -28,6 +28,8 @@
 // This code makes OpenCL API functions available to JavaScript
 // through the js-ctypes interface.
 
+let events = require("sdk/system/events");
+
 // Get "chrome privileges" to access the Components object.
 var {Cu, Cc, Ci} = require("chrome");
 
@@ -154,6 +156,14 @@ function check(errorCode) {
         // LK: Commented for now to make debugging easier.
         // throw errorString;
     }
+}
+
+let gDebug = true;
+let gPrefix = "River Trail extension: ";
+function log(x) {
+  if (gDebug) {
+    console.log(gPrefix + x);
+  }
 }
 
 // A wrapper for CData values that are being returned to user-side
@@ -1028,82 +1038,78 @@ Platform.prototype.GetPlatformID = function(platform_id) {
     }
 };
 
-// Finally, attach a content script to each page that will export
-// stubs of the functions that the River Trail library needs.
+function loadLibraries() {
+    OpenCL.init();
+}
 
-var pageMod = require("sdk/page-mod");
-var data = require("sdk/self").data;
+function unloadLibraries() {
+    OpenCL.shutdown();
+}
 
-pageMod.PageMod({
-    include: ["*", "file://*"],
-    attachTo: ["existing", "top"],
-    contentScriptFile: data.url("content.js"),
-    contentScriptWhen: "start", // Attach the content script before any page script loads.
+function injectFunctions(event) {
+    // event.subject is an nsIDOMWindow
+    // event.data is a string representing the origin
+    log("injecting functions for origin " + event.data);
+    let domWindow = event.subject;
 
-    // LK: I don't actually understand why it doesn't work to use `apply` here, e.g.,
-    // let result = RiverTrailFFI.compileKernel.apply(RiverTrailFFI, args);
-    // But that didn't work, so I'm doing this in a more "manual" way
-    // and calling each function with its individual arguments, if
-    // they exist.
+    // Add to window all the functions we want user-side code to be able to call.
+    Cu.exportFunction(RiverTrailFFI.riverTrailExtensionIsInstalled, domWindow,
+                      {defineAs: "riverTrailExtensionIsInstalled"});
 
-    onAttach: function(worker) {
-        worker.port.on("riverTrailExtensionIsInstalledCalled", function() {
-            let result = RiverTrailFFI.riverTrailExtensionIsInstalled();
-            worker.port.emit("riverTrailExtensionIsInstalledReturned", result);
-        });
+    Cu.exportFunction(RiverTrailFFI.is64BitFloatingPointEnabled, domWindow,
+                      {defineAs: "is64BitFloatingPointEnabled"});
 
-        worker.port.on("is64BitFloatingPointEnabledCalled", function(args) {
-            let result = RiverTrailFFI.is64BitFloatingPointEnabled();
-            worker.port.emit("is64BitFloatingPointEnabledReturned", result);
-        });
+    Cu.exportFunction(RiverTrailFFI.initContext, domWindow,
+                      {defineAs: "initContext"});
 
-        worker.port.on("initContextCalled", function(args) {
-            let result = RiverTrailFFI.initContext();
-            worker.port.emit("initContextReturned", result);
-        });
+    Cu.exportFunction(RiverTrailFFI.canBeMapped, domWindow,
+                      {defineAs: "canBeMapped"});
 
-        worker.port.on("canBeMappedCalled", function(args) {
-            let result = RiverTrailFFI.canBeMapped(args[0]);
-            worker.port.emit("canBeMappedReturned", result);
-        });
+    Cu.exportFunction(RiverTrailFFI.compileKernel, domWindow,
+                      {defineAs: "compileKernel"});
 
-        worker.port.on("compileKernelCalled", function(args) {
-            let result = RiverTrailFFI.compileKernel(args[0], args[1]);
-            worker.port.emit("compileKernelReturned", result);
-        });
+    Cu.exportFunction(RiverTrailFFI.getBuildLog, domWindow,
+                      {defineAs: "getBuildLog"});
 
-        worker.port.on("getBuildLogCalled", function(args) {
-            let result = RiverTrailFFI.getBuildLog();
-            worker.port.emit("getBuildLogReturned", result);
-        });
+    Cu.exportFunction(RiverTrailFFI.mapData, domWindow,
+                      {defineAs: "mapData"});
 
-        worker.port.on("mapDataCalled", function(args) {
-            console.log(args);
-            console.log(args[0]);
-            let result = RiverTrailFFI.mapData(args[0]);
-            worker.port.emit("mapDataReturned", result);
-        });
+    Cu.exportFunction(RiverTrailFFI.setArgument, domWindow,
+                      {defineAs: "setArgument"});
 
-        worker.port.on("setArgumentCalled", function(args) {
-            let result = RiverTrailFFI.setArgument(args[0], args[1], args[2]);
-            worker.port.emit("setArgumentReturned", result);
-        });
+    Cu.exportFunction(RiverTrailFFI.setScalarArgument, domWindow,
+                      {defineAs: "setScalarArgument"});
 
-        worker.port.on("setScalarArgumentCalled", function(args) {
-            let result = RiverTrailFFI.setScalarArgument(args[0], args[1], args[2], args[3], args[4]);
-            worker.port.emit("setScalarArgumentReturned", result);
-        });
+    Cu.exportFunction(RiverTrailFFI.run, domWindow,
+                      {defineAs: "run"});
 
-        worker.port.on("runCalled", function(args) {
-            let result = RiverTrailFFI.run(args[0], args[1], args[2], args[3]);
-            worker.port.emit("runReturned", result);
-        });
+    Cu.exportFunction(RiverTrailFFI.getValue, domWindow,
+                      {defineAs: "getValue",
+                       allowCallbacks: true});
 
-        worker.port.on("getValueCalled", function(args) {
-            let result = RiverTrailFFI.getValue(args[0], args[1], args[2]);
-            worker.port.emit("getValueReturned", result);
-        });
+    log("finished injecting functions");
+}
 
-    }
-});
+let gInitialized = false;
+
+exports.main = function(options, callbacks) {
+  if (!gInitialized &&
+      (options.loadReason == "startup" ||
+       options.loadReason == "install" ||
+       options.loadReason == "enable")) {
+    log("initializing");
+    loadLibraries();
+    events.on("content-document-global-created", injectFunctions);
+    gInitialized = true;
+  }
+};
+
+exports.onUnload = function(reason) {
+  log("onUnload: " + reason);
+  if (gInitialized && (reason == "shutdown" || reason == "disable")) {
+    log("deinitializing");
+    events.off("content-document-global-created", injectFunctions);
+    unloadLibraries();
+    gInitialized = false;
+  }};
 
