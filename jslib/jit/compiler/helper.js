@@ -62,6 +62,13 @@ RiverTrail.Helper = function () {
 
         return s;
     }
+    function isCData(dataInstance) {
+        return dataInstance !== undefined && dataInstance.name === "CData";
+    };
+    function isWebCLBufferObject(dataInstance) {
+        return dataInstance !== undefined && dataInstance._name === "WebCLBuffer";
+    };
+
 
     //
     // Function and helpers to infer the type of a Parallel Array
@@ -73,7 +80,7 @@ RiverTrail.Helper = function () {
         [Uint8Array, "unsigned char"],
         [Uint8ClampedArray, "unsigned /* clamped */ char"],
         [Int16Array, "short"],
-        [Uint16Array, "unsigend short"],
+        [Uint16Array, "unsigned short"],
         [Int32Array, "int"],
         [Uint32Array, "unsigned int"],
         [Float32Array, "float"],
@@ -125,7 +132,13 @@ RiverTrail.Helper = function () {
         // if we already have type information, we return it.
         // 
         if (pa.elementalType === undefined) {
-            pa.elementalType = inferTypedArrayType(pa.data);
+            // The ParallelArray may not have been materialized yet
+            if(pa.data !== undefined && (!isWebCLBufferObject(pa.data))) {
+                pa.elementalType = inferTypedArrayType(pa.data);
+            }
+            else if(isTypedArray(pa.hostAllocatedObject)) {
+                pa.elementalType = inferTypedArrayType(pa.hostAllocatedObject);
+            }
         }
         return {"dimSize": dimSize, "inferredType" : pa.elementalType};
     }; 
@@ -535,6 +548,8 @@ RiverTrail.Helper = function () {
              "FlatArray" : FlatArray,
              "debugThrow" : debugThrow,
              "isTypedArray" : isTypedArray,
+             "isCData" : isCData,
+             "isWebCLBufferObject" : isWebCLBufferObject,
              "inferTypedArrayType" : inferTypedArrayType,
              "cloneFunction" : cloneFunction,
              "nameGen" : nameGen,

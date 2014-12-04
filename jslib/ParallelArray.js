@@ -29,6 +29,12 @@
 ////////////////////
 
 
+// Temp hack to find out what the type of something is.
+var typeOf = function(obj) {
+  return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase()
+}
+
+
 //ParallelArray
 //    The constructor for ParallelArrays
 
@@ -91,21 +97,7 @@
 
 /////////////////
 
-try {
-    if ((typeof DPOInterface === 'function') && (Components.interfaces.dpoIData === undefined))
-        // great hack to check whether components still exisits
-        // if not, dom.omit_components_in_content has to be set!
-        alert("You seem to use a version of Firefox (22 or newer) where the \n" +
-              "Components object is disabled by default. To use River Trail \n" +
-              "please go to about:config and set the value for the key \n" +
-              "dom.omit_components_in_content to false and reload the page.");
-
-    }
-catch (ignore) {}
-
-
 var ParallelArray = function () {
-
 
 //    The array object has the following prototype methods that are also implemented
 //    for ParallelArray.
@@ -129,45 +121,31 @@ var ParallelArray = function () {
     // use Proxies to emulate square bracket index selection on ParallelArray objects
     var enableProxies = false;
 
-    // check whether the new extension is installed.
-    var useFF4Interface = false;
+    // Check whether the new extension is installed.
+    var extensionIsInstalled = false;
     try {
-        if (Components.interfaces.dpoIInterface !== undefined) {
-            useFF4Interface = true;
+        if (RiverTrail.runtime !== undefined) {
+            extensionIsInstalled = true;
         }
     } catch (ignore) {
-        // useFF4Interface = false;
+        console.log("It looks like the extension isn't installed.")
     }
+
     // check whether the OpenCL implementation supports double
     var enable64BitFloatingPoint = false;
-    if (useFF4Interface) { 
-        var extensions;
-        try {
-            extensions = RiverTrail.compiler.openCLContext.extensions;
-        } catch (ignore) {
-            // extensions = undefined;
+    try {
+        if (RiverTrail.runtime.is64BitFloatingPointEnabled !== undefined) {
+            enable64BitFloatingPoint = RiverTrail.runtime.is64BitFloatingPointEnabled;
         }
-        if (!extensions) {
-            var dpoI;
-            var dpoP;
-            var dpoC;
-            try {
-                // JS: Should these be cached and reused in driver.js ?
-                dpoI = new DPOInterface();
-                dpoP = dpoI.getPlatform();
-                dpoC = dpoP.createContext();
-                extensions = dpoC.extensions || dpoP.extensions;
-            } catch (e) {
-                console.log("Unable to query dpoInterface: "+e);
-                extensions = "";
-            }
-        }
-        enable64BitFloatingPoint = (extensions.indexOf("cl_khr_fp64") !== -1);
+    } catch (ignore) {
+        console.log("It looks like 64-bit floating point isn't supported.")
     }
+    console.log("enable64BitFloatingPoint: " + enable64BitFloatingPoint);
+
     // this is the storage that is used by default when converting arrays 
     // to typed arrays.
     var defaultTypedArrayConstructor 
-    = useFF4Interface ? (enable64BitFloatingPoint ? Float64Array : Float32Array)
+    = extensionIsInstalled ? (enable64BitFloatingPoint ? Float64Array : Float32Array)
                     : Array;
     // the default type assigned to JavaScript numbers
     var defaultNumberType = enable64BitFloatingPoint ? "double" : "float";
@@ -228,10 +206,13 @@ var ParallelArray = function () {
     // If this.data is a OpenCL memory object, grab the values and store the OpenCL memory 
     // object in the cache for later use.
     var materialize = function materialize() {
-        if (useFF4Interface && (this.data instanceof Components.interfaces.dpoIData)) {
+        /*
+        if (RiverTrail.Helper.isWebCLBufferObject(this.data) && RiverTrail.runtime.name === "WebCL") {
             // we have to first materialise the values on the JavaScript side
-            this.data = this.data.getValue();
+            RiverTrail.runtime.getValue(this.data, this.hostAllocatedObject);
+            this.data = this.hostAllocatedObject;
         }
+        */
     };
 
     // Returns true if the values for x an y are withing fuzz.
@@ -498,6 +479,37 @@ var ParallelArray = function () {
         this.offset   = 0;
         return this;
     };
+
+    var createHostAllocatedParallelArray = function (cdata, values, shape) {
+        if(!isTypedArray(values))
+            throw "Cannot Create ParallelArray: Invalid Typed Array Object";
+        // Get the contents of the underlying OpenCL buffer (cdata.id)
+        // and write them into the `values` TypedArray.  Return the
+        // results wrapped in a TypedArrayWrapper object.
+        // This should run right after `getValue` does its work.
+        var callback = function(typedArray) {
+            this.data = typedArray;
+        }
+        var boundCallback = callback.bind(this);
+
+        if(RiverTrail.Helper.isCData(cdata)) {
+            RiverTrail.runtime.getValue(cdata, values, boundCallback);
+        } else if(RiverTrail.Helper.isWebCLBufferObject(cdata)) {
+            RiverTrail.runtime.getValue(cdata, values);
+            this.data = values;
+        } else 
+            throw "Error creating new ParallelArray: Invalid CData object";
+
+
+        this.flat = shape.length === 1 ? true : false;
+        this.shape = shape;
+        this.strides = shapeToStrides(shape);
+        this.offset = 0;
+        this.isKnownRegular = true;
+
+        // FIXME (LK): we need to make `this.data` readable somehow.
+        return this;
+    };
     // Helper for constructor that takes a single element, an array, a typed array, a 
     // ParallelArray, or an image of values. The optional second argument unfluences which
     // kind of typed array is tried. 
@@ -571,6 +583,9 @@ var ParallelArray = function () {
             this.flat = true;
             this.offset = 0;
         }
+
+        // TODO (LK): do we need to do anything here to make sure
+        // `this.data` is readable?
         return this;
     };
 
@@ -1151,7 +1166,12 @@ var ParallelArray = function () {
                 callArguments[1] = movingArg;
                 rawResult[1] = f.apply(this, callArguments);
                 var last = rawResult[1];
-                if ((last.data instanceof Components.interfaces.dpoIData) && 
+
+                // FIXME: figure out what this instanceof check should
+                // really be
+
+                console.log("type of last.data: " + typeOf(last.data));
+                if ((last.data instanceof Object) &&
                     equalsShape(rawResult[0].getShape(), last.getShape())) {
                     // this was computed by openCL and the function is shape preserving.
                     // Try to preallocate and compute the result in place!
@@ -1503,7 +1523,11 @@ var ParallelArray = function () {
             var currImage = context.getImageData(0, 0, canvas.width, canvas.height);
             var imageData = context.createImageData(currImage.width, currImage.height);
             var data = imageData.data;
-            if (useFF4Interface && (this.data instanceof Components.interfaces.dpoIData)) {
+
+        // FIXME: figure out what this instanceof check should really
+        // be
+        console.log("type of this.data: " + typeOf(this.data));
+            if (extensionIsInstalled && (this.data instanceof Object)) {
                 this.data.writeTo(data);
             } else {
                 for (var i = 0; i < this.data.length; i++) {
@@ -1754,7 +1778,7 @@ var ParallelArray = function () {
         // TODO: deprecated, delete for good
         throw "inferType is no longer here!";
     };
-
+    
     var _fastClasses = function () {
 
         var Fast0DPA = function (pa) { 
@@ -1956,8 +1980,12 @@ var ParallelArray = function () {
             result.elementalType = arguments[1].elementalType;
             result.data = arguments[1].data;
             result.flat = arguments[1].flat;
-        } else if (useFF4Interface && (arguments[0] instanceof Components.interfaces.dpoIData)) {
-            result = createOpenCLMemParallelArray.apply(this, arguments);
+
+            // We get [CData, TypedArray, Shape].
+        } else if ((RiverTrail.Helper.isCData(arguments[0]) || 
+                    RiverTrail.Helper.isWebCLBufferObject(arguments[0])) && isTypedArray(arguments[1])) {
+            //result = createOpenCLMemParallelArray.apply(this, arguments);
+            result = createHostAllocatedParallelArray.call(this, arguments[0], arguments[1], arguments[2]);
         } else if (typeof(arguments[1]) === 'function' || arguments[1] instanceof low_precision.wrapper) {
             var extraArgs;
             if (arguments.length > 2) {
@@ -1994,7 +2022,7 @@ var ParallelArray = function () {
             } catch (ignore) {}
         }
 
-        if (useFF4Interface && (result.data instanceof Components.interfaces.dpoIData)) {
+        if (extensionIsInstalled && RiverTrail.Helper.isCData(result.data)) {
             if (useLazyCommunication) {
                 // wrap all functions that need access to the data
                 requiresData(result, "get");
@@ -2008,7 +2036,6 @@ var ParallelArray = function () {
                 result.materialize();
             }  
         }
-
         return result;
     };
 

@@ -38,6 +38,7 @@ if (RiverTrail === undefined) {
     var RiverTrail = {};
 }
 
+
 RiverTrail.compiler = (function () {
     // This is the compiler driver proper. 
     
@@ -63,26 +64,8 @@ RiverTrail.compiler = (function () {
 
     var reportVectorized = false;
 
-    var openCLContext; 
-    var dpoInterface; 
-    var dpoPlatform;
-    try {
-        dpoInterface = new DPOInterface();
-        if (dpoInterface instanceof Components.interfaces.dpoIInterface) {
-            dpoPlatform = dpoInterface.getPlatform();
-            openCLContext = dpoPlatform.createContext();
-        }
-    } catch (e) {
-        console.log ("Cannot initialise OpenCL interface. Please check the whether the extension was installed and try again.");
-        throw Error("Cannot initialise OpenCL Interface: " + JSON.stringify(e));
-    }
-
-    // check whether we have the right version of the extension; as the user has some extension installed, he probably wants to use
-    // the right one for this library, so we alert him
-    if (dpoInterface.version !== 2) {
-        alert("This webpage requires a newer version of the RiverTrail Firefox extension. Please visit http://github.com/rivertrail/rivertrail/downloads.");
-        throw Error("RiverTrail extension out of date");
-    }
+    // Create an OpenCL context on the extension side.
+    RiverTrail.runtime.initContext();
 
     var isTypedArray = RiverTrail.Helper.isTypedArray;
 
@@ -151,7 +134,7 @@ RiverTrail.compiler = (function () {
         args = Array.prototype.map.call(args, 
                                      function (object) {
                                          if (object instanceof Array) {
-                                             if ((typeof(openCLContext.canBeMapped) === 'function') && (openCLContext.canBeMapped(object))) {
+                                             if ((typeof(canBeMapped) === 'function') && (canBeMapped(object))) {
                                                  // we have found a JavaScript array that can be directly mapped, so we keep it
                                                  return object;
                                              } else {
@@ -297,10 +280,13 @@ RiverTrail.compiler = (function () {
                 // enable 64 bit extensions
                 kernelString = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n" + kernelString;
             }
-            kernel = RiverTrail.compiler.openCLContext.compileKernel(kernelString, "RT_" + kernelName);
+            // TODO (LK): see if "window" is redundant here
+            kernel = RiverTrail.runtime.compileKernel(kernelString, "RT_" + kernelName);
+            //console.log(kernel);
         } catch (e) {
             try {
-                var log = RiverTrail.compiler.openCLContext.buildLog;
+                var log = getBuildLog();
+                console.log(log);
             } catch (e2) {
                 var log = "<not available>";
             }
@@ -308,7 +294,7 @@ RiverTrail.compiler = (function () {
         }
         if (reportVectorized) {
             try {
-                var log = RiverTrail.compiler.openCLContext.buildLog;
+                var log = RiverTrail.runtime.getBuildLog();
                 if (log.indexOf("was successfully vectorized") !== -1) {
                     console.log(kernelName + "was successfully vectorized");
                 }
@@ -344,7 +330,7 @@ RiverTrail.compiler = (function () {
                                             argumentTypes, lowPrecision, useBufferCaching);
         } catch (e) {
             try {
-                RiverTrail.Helper.debugThrow(e + RiverTrail.compiler.openCLContext.buildLog);
+                RiverTrail.Helper.debugThrow(e + getBuildLog());
             } catch (e2) {
                 RiverTrail.Helper.debugThrow(e); // ignore e2. If buildlog throws, there simply is none.
             }
@@ -569,7 +555,6 @@ RiverTrail.compiler = (function () {
         verboseDebug: false,
         debug: false,
         compileAndGo: compileAndGo,
-        openCLContext: openCLContext
     };
 }());
 

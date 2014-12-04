@@ -1,0 +1,85 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" 
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<!--
+ Copyright (c) 2014, Intel Corporation
+ All rights reserved.
+ 
+ Redistribution and use in source and binary forms, with or without 
+ modification, are permitted provided that the following conditions are met:
+
+ - Redistributions of source code must retain the above copyright notice, 
+   this list of conditions and the following disclaimer.
+ - Redistributions in binary form must reproduce the above copyright notice, 
+   this list of conditions and the following disclaimer in the documentation 
+   and/or other materials provided with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+ THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<title>River Trail Firefox extension tests</title>
+
+<script type="application/javascript" src="../jslib/jit/compiler/runtimes.js"></script>
+<script type="text/javascript" src="../jslib/ParallelArray.js"></script>
+<script type="application/javascript" src="../jslib/jit/narcissus/jsdefs.js"></script>
+<script type="application/javascript" src="../jslib/jit/narcissus/jslex.js"></script>
+<script type="application/javascript" src="../jslib/jit/narcissus/jsparse.js"></script>
+<script type="application/javascript" src="../jslib/jit/narcissus/jsdecomp.js"></script>
+<script type="application/javascript" src="../jslib/jit/compiler/definitions.js"></script>
+<script type="application/javascript" src="../jslib/jit/compiler/helper.js"></script>
+<script type="application/javascript" src="../jslib/jit/compiler/driver.js"></script>
+<script type="application/javascript" src="../jslib/jit/compiler/dotviz.js"></script>
+<script type="application/javascript" src="../jslib/jit/compiler/typeinference.js"></script>
+<script type="application/javascript" src="../jslib/jit/compiler/rangeanalysis.js"></script>
+<script type="application/javascript" src="../jslib/jit/compiler/inferblockflow.js"></script>
+<script type="application/javascript" src="../jslib/jit/compiler/infermem.js"></script>
+<script type="application/javascript" src="../jslib/jit/compiler/genOCL.js"></script>
+<script type="application/javascript" src="../jslib/jit/compiler/runOCL.js"></script>
+</head>
+<body>
+  <p id="results1"> Test Results </p>
+  <p id="results2"> Test Results </p>
+  <script type="text/javascript">
+    var a = new ParallelArray(5, function(i) { return i*i; });
+    document.getElementById("results1").innerHTML = "Shape: " + a.getShape();
+
+    var b = new ParallelArray(4, function(i) { return i*i; });
+    document.getElementById("results2").innerHTML = "Shape: " + b.getShape();
+
+    // Sample code from the interactive shell page:
+
+    // Create your first array:
+    var first = new ParallelArray(1,2,3,4);
+
+    // Hit the run button and in the console, type "first" without quotes.
+    // You will get the string representation of your first ParallelArray as output:
+    // [1 2 3 4]
+
+    // Or you can create the same array using a comprehension
+    var second = new ParallelArray(4, function (idx) { return idx+1; });
+
+    // Some more idioms to play with:
+
+    /* Increment */
+    var inc_pa = first.map(function (val) {return val+1;});
+
+    /* add */
+    var add_pa = first.combine(function (idx,snd) {return this.get(idx)+snd.get(idx);}, second);
+
+    /* sum */
+    var sum_pa = first.reduce(function (a, b) {return a + b;});
+  </script>
+</body>
+</html>
+
