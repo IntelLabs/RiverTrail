@@ -151,7 +151,7 @@ function check(errorCode) {
         errorString = arguments.callee.caller.name +
             " called a function that returned with error code " +
             errorCode.value;
-        console.log(errorString);
+        log(errorString);
 
         // LK: Commented for now to make debugging easier.
         // throw errorString;
@@ -270,7 +270,7 @@ let RiverTrailFFI = (function() {
                                                null,
                                                numDevices.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         // Then, get a list of device IDs of to pass to
         // `clCreateContext`.
@@ -285,7 +285,7 @@ let RiverTrailFFI = (function() {
                                                deviceList, // *devices
                                                null); // *num_devices
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         // Create a three-element array of context properties to pass
         // to clCreateContext.
@@ -324,7 +324,7 @@ let RiverTrailFFI = (function() {
                                          null,
                                          err_code.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         failureMemCLBuffer = OpenCL.clCreateBuffer(context,
                                                    CL_MEM_READ_WRITE,
@@ -332,7 +332,7 @@ let RiverTrailFFI = (function() {
                                                    null,
                                                    err_code.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         // TODO (LK): Put these properties behind a flag.
         // let commandQueueProperties =
@@ -344,7 +344,7 @@ let RiverTrailFFI = (function() {
                                                    commandQueueProperties,
                                                    err_code.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
     };
 
     let canBeMapped = function(obj) {
@@ -383,7 +383,7 @@ let RiverTrailFFI = (function() {
                                                        // lengths,
                                                        err_code.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         // Apparently, the options argument to `clBuildProgram` is
         // always an empty string.
@@ -392,7 +392,7 @@ let RiverTrailFFI = (function() {
 
         err_code.value = OpenCL.clBuildProgram(program, 0, null, options, null, null);
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         // LK: BUILDLOG_SIZE might not be big enough, but we'll worry
         // about that later.
@@ -405,7 +405,7 @@ let RiverTrailFFI = (function() {
                                                       buildLogCString,
                                                       null);
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
         buildLog = buildLogCString.readString();
 
         // Finally, create the kernel.
@@ -414,15 +414,15 @@ let RiverTrailFFI = (function() {
                                        kernelNameCString,
                                        err_code.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         err_code.value = OpenCL.clReleaseProgram(program);
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         err_code.value = OpenCL.clSetKernelArg(kernel, 0, cl_mem.ptr.size, failureMemCLBuffer.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
         compiledKernels.push(kernel);
 
         let wrappedKernel = new GenericWrapper(kernel, "OpenCLKernel", compiledKernels.length-1);
@@ -455,7 +455,7 @@ let RiverTrailFFI = (function() {
                                     null,
                                     null);
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
 
         // Run the callback, which will take the TypedArray and assign it.
@@ -464,18 +464,13 @@ let RiverTrailFFI = (function() {
     };
 
     let mapData = function(source) {
-        console.log(source);
-        console.log(source.buffer);
-
-        OpenCL.init();
-
         let clbuffer = OpenCL.clCreateBuffer(context,
                                              CL_MEM_USE_HOST_PTR,
                                              source.byteLength,
                                              ctypes.voidptr_t(source.buffer),
                                              err_code.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
         mappedBuffers.push(clbuffer);
         return new GenericWrapper(null, "CData", mappedBuffers.length-1);
     };
@@ -489,7 +484,7 @@ let RiverTrailFFI = (function() {
                                                ctypes.cast(mappedBuffers[arg].address(),
                                                            cl_mem.ptr));
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
     };
 
     let setScalarArgument = function(kernel, index, arg, isInteger, is64BitPrecision) {
@@ -511,7 +506,7 @@ let RiverTrailFFI = (function() {
                                                argSize,
                                                argV.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
     };
 
     // FIXME (LK): We aren't using the `tile` argument.  Is it always null?
@@ -532,7 +527,7 @@ let RiverTrailFFI = (function() {
                                                      null,
                                                      writeEvent.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         let rankInteger = new cl_uint(rank|0);
         let runEvent = new cl_event();
@@ -551,14 +546,14 @@ let RiverTrailFFI = (function() {
                                                        writeEvent.address(),
                                                        runEvent.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         let numEvents = new cl_uint(1);
 
         err_code.value = OpenCL.clWaitForEvents(numEvents,
                                                 runEvent.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
         return err_code.value;
     };
 
@@ -851,7 +846,7 @@ let Platforms = {
 
         err_code.value = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         // All found platforms
         const PlatformsArray = new ctypes.ArrayType(cl_platform_id, nplatforms.value);
@@ -861,7 +856,7 @@ let Platforms = {
                                                  allPlatforms,
                                                  naplatforms.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         for (let i = 0; i < naplatforms.value; i++) {
 
@@ -911,7 +906,7 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
                                               null,
                                               length.address());
     check(err_code);
-    console.log(err_code.value);
+    log(err_code.value);
 
     // Now that we have a length, we can allocate space for the
     // actual results of the call, and call it for real.
@@ -927,7 +922,7 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
                                               propertyBuf,
                                               paramValueSizeRet);
     check(err_code);
-    console.log(err_code.value);
+    log(err_code.value);
 
     // Return the property as a JS string.
     let jsProperty = propertyBuf.readString();
@@ -949,7 +944,7 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
                                            null,
                                            ndevices.address());
     check(err_code);
-    console.log(err_code.value);
+    log(err_code.value);
 
     // Next, get all the device IDs.
     const DeviceIDArray = new ctypes.ArrayType(cl_device_id, ndevices.value);
@@ -961,7 +956,7 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
                                            deviceIDs,
                                            null);
     check(err_code);
-    console.log(err_code.value);
+    log(err_code.value);
 
     // Get device names.
     let jsDeviceNames = new Array();
@@ -978,7 +973,7 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
                                                 deviceNameBuf,
                                                 deviceNameSize.address());
         check(err_code);
-        console.log(err_code.value);
+        log(err_code.value);
 
         let jsDeviceName = deviceNameBuf.readString();
 
