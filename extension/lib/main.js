@@ -176,24 +176,6 @@ function GenericWrapper(_ctypesObj, _name, _id) {
     this.__exposedProps__ = {ctypesObj: "rw", name: "rw", id: "rw"};
 }
 
-// This wrapper makes it possible to return TypedArrays from
-// extension-side code to user-side code.
-function TypedArrayWrapper(_typedArray) {
-    console.log("Wrapping...");
-    this.typedArray = _typedArray;
-    this.typedArray.__exposedProps__ = {
-        name: "rw",
-        prototype: "rw",
-    };
-    this.typedArray.prototype.__exposedProps__ = {
-        buffer: "rw",
-        byteLength: "rw",
-        byteOffset: "rw",
-        length: "rw",
-    };
-    this.__exposedProps__ = { typedArray: "rw" };
-}
-
 let RiverTrailFFI = (function() {
 
     // A place to put all the error codes we encounter.
@@ -222,8 +204,6 @@ let RiverTrailFFI = (function() {
 
     let is64BitFloatingPointEnabled = function() {
 
-        OpenCL.init();
-
         let prefService = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefService);
         let prefBranch = prefService.getBranch("extensions.river-trail-extension.");
         let defaultPlatformPref = prefBranch.getIntPref("defaultPlatform");
@@ -246,7 +226,6 @@ let RiverTrailFFI = (function() {
 
     let initContext = function() {
 
-        OpenCL.init();
         let defaultPlatformPref = require('sdk/simple-prefs').prefs["defaultPlatform"];
         if (defaultPlatformPref < 0 || defaultPlatformPref === undefined) {
             defaultPlatformPref = 0;
@@ -358,7 +337,6 @@ let RiverTrailFFI = (function() {
 
     // Returns a GenericWrapper around a CData kernel.
     let compileKernel = function(sourceString, kernelName) {
-        OpenCL.init();
 
         // `sourceString` is a JS string; we change it to a C string.
         let sourceCString = ctypes.char.array()(sourceString);
@@ -438,8 +416,6 @@ let RiverTrailFFI = (function() {
     // We have an OpenCL buffer with id |bufferObjId| that was originally
     // made out of a TypedArray object |view|
     let getValue = function(bufferObjId, view, callback) {
-
-        OpenCL.init();
 
         let numEvents = new cl_uint(0);
 
@@ -893,8 +869,6 @@ function Platform(platform_id) {
 // paramName: one of the cl_platform_info variants
 Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelper(paramName) {
 
-    OpenCL.init();
-
     let err_code = new cl_int();
     let length = new ctypes.size_t();
 
@@ -931,8 +905,6 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
 };
 
 Platform.prototype.GetDeviceNames = function GetDeviceNames() {
-
-    OpenCL.init();
 
     let err_code = new cl_int();
     let ndevices = new cl_uint();
@@ -1107,4 +1079,3 @@ exports.onUnload = function(reason) {
     unloadLibraries();
     gInitialized = false;
   }};
-
