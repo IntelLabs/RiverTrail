@@ -371,7 +371,7 @@ let RiverTrailInterface = (function() {
                                                      0,
                                                      null,
                                                      writeEvent.address());
-        Debug.check(err_code, "clEnqueueWriteBuffer (in run)";
+        Debug.check(err_code, "clEnqueueWriteBuffer (in run)");
         Debug.log(err_code.value);
 
         let rankInteger = new CLTypes.cl_uint(rank|0);
