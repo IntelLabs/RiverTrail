@@ -49,7 +49,7 @@ if (RiverTrail === undefined) {
 var doIterationSpaceFlattening = false;
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = true;
+    const verboseDebug = false;
     const checkBounds = true;
     const checkall = false;
     const disableVectorization = false;
