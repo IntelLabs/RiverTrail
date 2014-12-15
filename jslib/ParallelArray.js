@@ -135,7 +135,7 @@ var ParallelArray = function () {
     var enable64BitFloatingPoint = false;
     try {
         if (RiverTrail.runtime.is64BitFloatingPointEnabled !== undefined) {
-            enable64BitFloatingPoint = RiverTrail.runtime.is64BitFloatingPointEnabled;
+            enable64BitFloatingPoint = RiverTrail.runtime.is64BitFloatingPointEnabled();
         }
     } catch (ignore) {
         console.log("It looks like 64-bit floating point isn't supported.")
