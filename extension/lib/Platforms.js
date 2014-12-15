@@ -58,7 +58,7 @@ let Platforms = {
         let numSupportedPlatforms = CLTypes.cl_uint(0);
 
         err_code.value = OpenCL.clGetPlatformIDs(0, null, nplatforms.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clGetPlatformIDs (in Platforms.init, call 1)");
         Debug.log(err_code.value);
 
         // All found platforms
@@ -68,7 +68,7 @@ let Platforms = {
         err_code.value = OpenCL.clGetPlatformIDs(nplatforms.value,
                                                  allPlatforms,
                                                  naplatforms.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clGetPlatformIDs (in Platforms.init, call 2)");
         Debug.log(err_code.value);
 
         for (let i = 0; i < naplatforms.value; i++) {
@@ -116,7 +116,7 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
                                               0,
                                               null,
                                               length.address());
-    Debug.check(err_code);
+    Debug.check(err_code, "clGetPlatformInfo (in GetPlatformPropertyHelper, call 1)");
     Debug.log(err_code.value);
 
     // Now that we have a length, we can allocate space for the
@@ -132,7 +132,7 @@ Platform.prototype.GetPlatformPropertyHelper = function GetPlatformPropertyHelpe
                                               length.value*ctypes.char.size, // size of propertyBuf
                                               propertyBuf,
                                               paramValueSizeRet);
-    Debug.check(err_code);
+    Debug.check(err_code, "clGetPlatformInfo (in GetPlatformPropertyHelper, call 2)");
     Debug.log(err_code.value);
 
     // Return the property as a JS string.
@@ -152,7 +152,7 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
                                            0,
                                            null,
                                            ndevices.address());
-    Debug.check(err_code);
+    Debug.check(err_code, "clGetDeviceIDs (in GetDeviceNames, call 1");
     Debug.log(err_code.value);
 
     // Next, get all the device IDs.
@@ -164,7 +164,7 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
                                            ndevices,
                                            deviceIDs,
                                            null);
-    Debug.check(err_code);
+    Debug.check(err_code, "clGetDeviceIDs (in GetDeviceNames, call 2");
     Debug.log(err_code.value);
 
     // Get device names.
@@ -181,7 +181,7 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
                                                 Constants.MAX_DEVICE_NAME_LENGTH,
                                                 deviceNameBuf,
                                                 deviceNameSize.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clGetDeviceInfo (in GetDeviceNames)");
         Debug.log(err_code.value);
 
         let jsDeviceName = deviceNameBuf.readString();

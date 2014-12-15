@@ -117,7 +117,7 @@ let RiverTrailInterface = (function() {
                                                0,
                                                null,
                                                numDevices.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clGetDeviceIDs (in initContext, call 1)");
         Debug.log(err_code.value);
 
         // Then, get a list of device IDs of to pass to
@@ -132,7 +132,7 @@ let RiverTrailInterface = (function() {
                                                1, // num_entries
                                                deviceList, // *devices
                                                null); // *num_devices
-        Debug.check(err_code);
+        Debug.check(err_code, "clGetDeviceIDs (in initContext, call 2)");
         Debug.log(err_code.value);
 
         // Create a three-element array of context properties to pass
@@ -171,7 +171,7 @@ let RiverTrailInterface = (function() {
                                          null,
                                          null,
                                          err_code.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clCreateContext (in initContext)");
         Debug.log(err_code.value);
 
         failureMemCLBuffer = OpenCL.clCreateBuffer(context,
@@ -179,7 +179,7 @@ let RiverTrailInterface = (function() {
                                                    4,
                                                    null,
                                                    err_code.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clCreateBuffer (in initContext)");
         Debug.log(err_code.value);
 
         // TODO (LK): Put these properties behind a flag.
@@ -191,7 +191,7 @@ let RiverTrailInterface = (function() {
                                                    deviceList[defaultDevicePref],
                                                    commandQueueProperties,
                                                    err_code.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clCreateCommandQueue (in initContext)");
         Debug.log(err_code.value);
     };
 
@@ -229,7 +229,7 @@ let RiverTrailInterface = (function() {
                                                        null,
                                                        // lengths,
                                                        err_code.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clCreateProgramWithSource (in compileKernel)");
         Debug.log(err_code.value);
 
         // Apparently, the options argument to `clBuildProgram` is
@@ -238,7 +238,7 @@ let RiverTrailInterface = (function() {
         let optionsCString = ctypes.char.array()(options);
 
         err_code.value = OpenCL.clBuildProgram(program, 0, null, options, null, null);
-        Debug.check(err_code);
+        Debug.check(err_code, "clBuildProgram (in compileKernel)");
         Debug.log(err_code.value);
 
         // LK: BUILDLOG_SIZE might not be big enough, but we'll worry
@@ -251,7 +251,7 @@ let RiverTrailInterface = (function() {
                                                       BUILDLOG_SIZE,
                                                       buildLogCString,
                                                       null);
-        Debug.check(err_code);
+        Debug.check(err_code, "clGetProgramBUildInfo (in compileKernel)");
         Debug.log(err_code.value);
         buildLog = buildLogCString.readString();
 
@@ -260,15 +260,15 @@ let RiverTrailInterface = (function() {
         kernel = OpenCL.clCreateKernel(program,
                                        kernelNameCString,
                                        err_code.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clCreateKernel (in compileKernel)");
         Debug.log(err_code.value);
 
         err_code.value = OpenCL.clReleaseProgram(program);
-        Debug.check(err_code);
+        Debug.check(err_code, "clReleaseProgram (in compileKernel)");
         Debug.log(err_code.value);
 
         err_code.value = OpenCL.clSetKernelArg(kernel, 0, CLTypes.cl_mem.ptr.size, failureMemCLBuffer.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clSetKernelArg (in compileKernel)");
         Debug.log(err_code.value);
         compiledKernels.push(kernel);
 
@@ -299,7 +299,7 @@ let RiverTrailInterface = (function() {
                                     numEvents,
                                     null,
                                     null);
-        Debug.check(err_code);
+        Debug.check(err_code, "clEnqueueReadBuffer (in getValue)");
         Debug.log(err_code.value);
 
 
@@ -314,7 +314,7 @@ let RiverTrailInterface = (function() {
                                              source.byteLength,
                                              ctypes.voidptr_t(source.buffer),
                                              err_code.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clCreateBuffer (in mapData)");
         Debug.log(err_code.value);
         mappedBuffers.push(clbuffer);
         return new GenericWrapper(null, "CData", mappedBuffers.length-1);
@@ -328,7 +328,7 @@ let RiverTrailInterface = (function() {
                                                argSize,
                                                ctypes.cast(mappedBuffers[arg].address(),
                                                            CLTypes.cl_mem.ptr));
-        Debug.check(err_code);
+        Debug.check(err_code, "clSetKernelArg (in setArgument)");
         Debug.log(err_code.value);
     };
 
@@ -350,7 +350,7 @@ let RiverTrailInterface = (function() {
                                                index+DPO_NUMBER_OF_ARTIFICIAL_ARGS,
                                                argSize,
                                                argV.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clSetKernelArg (in setScalarArgument)");
         Debug.log(err_code.value);
     };
 
@@ -371,7 +371,7 @@ let RiverTrailInterface = (function() {
                                                      0,
                                                      null,
                                                      writeEvent.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clEnqueueWriteBuffer (in run)";
         Debug.log(err_code.value);
 
         let rankInteger = new CLTypes.cl_uint(rank|0);
@@ -390,14 +390,14 @@ let RiverTrailInterface = (function() {
                                                        1,
                                                        writeEvent.address(),
                                                        runEvent.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clEnqueueNDRangeKernel (in run)");
         Debug.log(err_code.value);
 
         let numEvents = new CLTypes.cl_uint(1);
 
         err_code.value = OpenCL.clWaitForEvents(numEvents,
                                                 runEvent.address());
-        Debug.check(err_code);
+        Debug.check(err_code, "clWaitForEvents (in run)");
         Debug.log(err_code.value);
         return err_code.value;
     };

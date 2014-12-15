@@ -42,11 +42,11 @@ function log(x) {
 
 // Checks for non-CL_SUCCESS error codes.
 // errorCode should be a cl_int.
-function check(errorCode) {
+function check(errorCode, calledFunction) {
     if (gDebug) {
         if (errorCode.value != Constants.CL_SUCCESS) {
-            errorString = arguments.callee.caller.name +
-                " called a function that returned with error code " +
+            errorString = calledFunction +
+                " returned with error code " +
                 errorCode.value;
             log(errorString);
 
