@@ -251,7 +251,7 @@ let RiverTrailInterface = (function() {
                                                       BUILDLOG_SIZE,
                                                       buildLogCString,
                                                       null);
-        Debug.check(err_code, "clGetProgramBUildInfo (in compileKernel)");
+        Debug.check(err_code, "clGetProgramBuildInfo (in compileKernel)");
         Debug.log(err_code.value);
         buildLog = buildLogCString.readString();
 
