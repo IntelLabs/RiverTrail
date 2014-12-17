@@ -51,7 +51,7 @@ let RiverTrailInterface = (function() {
     let err_code = new CLTypes.cl_int();
 
     // A few handy constants.
-    const BUILDLOG_SIZE  = 4096;
+    const BUILDLOG_SIZE  = 8192;
     const DPO_NUMBER_OF_ARTIFICIAL_ARGS = 1;
 
     // A few bits of state that the below functions manipulate.
