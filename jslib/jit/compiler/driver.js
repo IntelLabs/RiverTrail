@@ -280,9 +280,7 @@ RiverTrail.compiler = (function () {
                 // enable 64 bit extensions
                 kernelString = "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n" + kernelString;
             }
-            // TODO (LK): see if "window" is redundant here
             kernel = RiverTrail.runtime.compileKernel(kernelString, "RT_" + kernelName);
-            //console.log(kernel);
         } catch (e) {
             try {
                 var log = getBuildLog();

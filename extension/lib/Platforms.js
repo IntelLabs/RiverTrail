@@ -171,14 +171,14 @@ Platform.prototype.GetDeviceNames = function GetDeviceNames() {
     let jsDeviceNames = new Array();
 
     // N.B.: This is enough space for *one* device name.
-    const DeviceNameArray = new ctypes.ArrayType(ctypes.char, Constants.MAX_DEVICE_NAME_LENGTH);
+    const DeviceNameArray = new ctypes.ArrayType(ctypes.char, Constants.RIVERTRAIL_MAX_DEVICE_NAME_LENGTH);
 
     for (let i = 0; i < ndevices.value; i++) {
         let deviceNameBuf = new DeviceNameArray();
         let deviceNameSize = new ctypes.size_t();
         err_code.value = OpenCL.clGetDeviceInfo(deviceIDs[i],
                                                 Constants.CL_DEVICE_NAME,
-                                                Constants.MAX_DEVICE_NAME_LENGTH,
+                                                Constants.RIVERTRAIL_MAX_DEVICE_NAME_LENGTH,
                                                 deviceNameBuf,
                                                 deviceNameSize.address());
         Debug.check(err_code, "clGetDeviceInfo (in GetDeviceNames)");

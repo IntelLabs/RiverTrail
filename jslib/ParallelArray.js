@@ -507,7 +507,6 @@ var ParallelArray = function () {
         this.offset = 0;
         this.isKnownRegular = true;
 
-        // FIXME (LK): we need to make `this.data` readable somehow.
         return this;
     };
     // Helper for constructor that takes a single element, an array, a typed array, a 
@@ -584,8 +583,6 @@ var ParallelArray = function () {
             this.offset = 0;
         }
 
-        // TODO (LK): do we need to do anything here to make sure
-        // `this.data` is readable?
         return this;
     };
 
@@ -1167,9 +1164,6 @@ var ParallelArray = function () {
                 rawResult[1] = f.apply(this, callArguments);
                 var last = rawResult[1];
 
-                // FIXME: figure out what this instanceof check should
-                // really be
-
                 console.log("type of last.data: " + typeOf(last.data));
                 if ((last.data instanceof Object) &&
                     equalsShape(rawResult[0].getShape(), last.getShape())) {
@@ -1524,8 +1518,6 @@ var ParallelArray = function () {
             var imageData = context.createImageData(currImage.width, currImage.height);
             var data = imageData.data;
 
-        // FIXME: figure out what this instanceof check should really
-        // be
         console.log("type of this.data: " + typeOf(this.data));
             if (extensionIsInstalled && (this.data instanceof Object)) {
                 this.data.writeTo(data);

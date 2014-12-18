@@ -35,6 +35,12 @@ let { OpenCL } = require("OpenCL.js");
 let { Platforms } = require("Platforms.js");
 let { Debug } = require("Debug.js");
 
+// Options to pass to clCreateCommandQueue.
+let commandQueueProperties =
+    // Constants.CL_QUEUE_PROFILING_ENABLE |
+    // Constants.CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE |
+    0;
+
 // A wrapper for CData values that are being returned to user-side
 // code, so that we can distinguish among them by name on the user
 // side.
@@ -49,10 +55,6 @@ let RiverTrailInterface = (function() {
 
     // A place to put all the error codes we encounter.
     let err_code = new CLTypes.cl_int();
-
-    // A few handy constants.
-    const BUILDLOG_SIZE  = 8192;
-    const DPO_NUMBER_OF_ARTIFICIAL_ARGS = 1;
 
     // A few bits of state that the below functions manipulate.
     let context;
@@ -162,9 +164,6 @@ let RiverTrailInterface = (function() {
             defaultDevicePref = 0;
         }
 
-        // TODO (LK): in the original code we passed a callback
-        // function that would log errors.  I'm not going to deal with
-        // that yet...
         context = OpenCL.clCreateContext(contextProps,
                                          1,
                                          (deviceList[defaultDevicePref]).address(),
@@ -182,12 +181,7 @@ let RiverTrailInterface = (function() {
         Debug.check(err_code, "clCreateBuffer (in initContext)");
         Debug.log(err_code.value);
 
-        // TODO (LK): Put these properties behind a flag.
-        // let commandQueueProperties =
-        //     Constants.CL_QUEUE_PROFILING_ENABLE | Constants.CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | 0;
-        let commandQueueProperties = 0;
         commandQueue = OpenCL.clCreateCommandQueue(context,
-                                                   // LK: Same thing here.
                                                    deviceList[defaultDevicePref],
                                                    commandQueueProperties,
                                                    err_code.address());
@@ -196,12 +190,11 @@ let RiverTrailInterface = (function() {
     };
 
     let canBeMapped = function(obj) {
-        // In the original code, this checked to see if obj was a
-        // nested dense array of floats.  However, it doesn't seem
-        // like we support mapping arrays at all now, so this just
-        // returns false.
+        // N.B.: In the original River Trail extension, `canBeMapped`
+        // checked to see if `obj` was a nested dense array of floats.
+        // However, it doesn't seem like we support mapping arrays at
+        // all now, so this just returns false.
         return false;
-
     };
 
     // Returns a GenericWrapper around a CData kernel.
@@ -215,19 +208,12 @@ let RiverTrailInterface = (function() {
         let source = new SourceArray();
         source[0] = sourceCString;
 
-        // other options: pass sourceCString.address() or pass source.
-        // the latter doesn't seem to work...
         let sourceptrptr = ctypes.cast(source.address().address(), ctypes.char.ptr.ptr);
-
-        // Something like this for `lengths`?
-        // let sizes = ctypes.size_t.array(1) ([sourceCString.length - 1]);
-        // ctypes.cast (sizes.address(), ctypes.size_t.ptr)
 
         let program = OpenCL.clCreateProgramWithSource(context,
                                                        1,
                                                        sourceptrptr,
                                                        null,
-                                                       // lengths,
                                                        err_code.address());
         Debug.check(err_code, "clCreateProgramWithSource (in compileKernel)");
         Debug.log(err_code.value);
@@ -241,14 +227,12 @@ let RiverTrailInterface = (function() {
         Debug.check(err_code, "clBuildProgram (in compileKernel)");
         Debug.log(err_code.value);
 
-        // LK: BUILDLOG_SIZE might not be big enough, but we'll worry
-        // about that later.
-        const BuildLogArray = new ctypes.ArrayType(ctypes.char, BUILDLOG_SIZE);
+        const BuildLogArray = new ctypes.ArrayType(ctypes.char, Constants.RIVERTRAIL_BUILDLOG_SIZE);
         let buildLogCString = new BuildLogArray();
         err_code.value = OpenCL.clGetProgramBuildInfo(program,
                                                       deviceList[defaultDevicePref],
                                                       Constants.CL_PROGRAM_BUILD_LOG,
-                                                      BUILDLOG_SIZE,
+                                                      Constants.RIVERTRAIL_BUILDLOG_SIZE,
                                                       buildLogCString,
                                                       null);
         Debug.check(err_code, "clGetProgramBuildInfo (in compileKernel)");
@@ -282,14 +266,14 @@ let RiverTrailInterface = (function() {
 
     };
 
-    // We have an OpenCL buffer with id |bufferObjId| that was originally
-    // made out of a TypedArray object |view|
+    // We have an OpenCL buffer with id `bufferObjId` that was
+    // originally made out of a TypedArray object `view`.
     let getValue = function(bufferObjId, view, callback) {
 
         let numEvents = new CLTypes.cl_uint(0);
 
-        // This call side-effects the contents of view.buffer, writing
-        // into it from bufferObjId.
+        // This call side-effects the contents of `view.buffer`,
+        // writing into it from bufferObjId.
         err_code.value = OpenCL.clEnqueueReadBuffer(commandQueue,
                                     mappedBuffers[bufferObjId],
                                     Constants.CL_TRUE,
@@ -302,10 +286,9 @@ let RiverTrailInterface = (function() {
         Debug.check(err_code, "clEnqueueReadBuffer (in getValue)");
         Debug.log(err_code.value);
 
-
-        // Run the callback, which will take the TypedArray and assign it.
+        // Run the provided callback, which will assign its argument
+        // to a variable on the user side.
         callback(view);
-
     };
 
     let mapData = function(source) {
@@ -324,7 +307,7 @@ let RiverTrailInterface = (function() {
 
         let argSize = ctypes.size_t.size;
         err_code.value = OpenCL.clSetKernelArg(compiledKernels[kernel],
-                                               index+DPO_NUMBER_OF_ARTIFICIAL_ARGS,
+                                               index+Constants.RIVERTRAIL_NUMBER_OF_ARTIFICIAL_ARGS,
                                                argSize,
                                                ctypes.cast(mappedBuffers[arg].address(),
                                                            CLTypes.cl_mem.ptr));
@@ -347,15 +330,14 @@ let RiverTrailInterface = (function() {
             argSize.value = 8;
         }
         err_code.value = OpenCL.clSetKernelArg(compiledKernels[kernel],
-                                               index+DPO_NUMBER_OF_ARTIFICIAL_ARGS,
+                                               index+Constants.RIVERTRAIL_NUMBER_OF_ARTIFICIAL_ARGS,
                                                argSize,
                                                argV.address());
         Debug.check(err_code, "clSetKernelArg (in setScalarArgument)");
         Debug.log(err_code.value);
     };
 
-    // FIXME (LK): We aren't using the `tile` argument.  Is it always null?
-    let run = function(kernel, rank, iterSpace, tile) {
+    let run = function(kernel, rank, iterSpace) {
 
         let offset = ctypes.size_t(0);
         let size = ctypes.size_t(4);

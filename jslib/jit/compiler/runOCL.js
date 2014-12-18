@@ -65,7 +65,6 @@ RiverTrail.compiler.runOCL = function () {
         var jsObjectToKernelArg = function (args, object) {
             if (object instanceof ParallelArray) {
 
-                // FIXME (LK): I'm not sure if this is correct.
                 if (object.name === "CData") {
                     // we already have an OpenCL value
                     args.push(object.data);
@@ -149,7 +148,6 @@ RiverTrail.compiler.runOCL = function () {
                 throw new Error("preallocated memory used more than once!");
             }
 
-            // FIXME (LK): I'm not sure if this is correct.
             if (paSource.updateInPlacePA.data.name !== "CData") {
                 if (paSource.updateInPlacePA.cachedOpenCLMem) {
                     paSource.updateInPlacePA.data = paSource.updateInPlacePA.cachedOpenCLMem;

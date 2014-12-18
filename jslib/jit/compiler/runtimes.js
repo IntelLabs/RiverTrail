@@ -70,13 +70,17 @@ RiverTrail.SupportedInterfaces.WebCLAdapter = function() {
     var commandQueue;
     var failureMem;
     var failureMemCLBuffer;
-    var _initContext = function () {
+    var _initContext = function() {
         context = webcl.createContext();
         device = context.getInfo(WebCL.CONTEXT_DEVICES)[0];
         commandQueue = context.createCommandQueue(device);
         failureMem = new Int32Array(1);
         failureMem[0] = 0;
         failureMemCLBuffer = null;
+    };
+    var _is64BitFloatingPointEnabled = function() {
+        // TODO: clGetPlatformInfo should tell us this.
+        return false;
     };
     var _compileKernel =
         function(kernelSource, kernelName) {
@@ -119,13 +123,13 @@ RiverTrail.SupportedInterfaces.WebCLAdapter = function() {
         }
         return clbuffer;
     };
-    var DPO_NUM_ARTIFICAL_ARGS = 1;
+    var RIVERTRAIL_NUM_ARTIFICAL_ARGS = 1;
     var _setArgument = function(k, i, a) {
         var ret;
         try {
-            ret = k.setArg(i+DPO_NUM_ARTIFICAL_ARGS, a);
+            ret = k.setArg(i+RIVERTRAIL_NUM_ARTIFICAL_ARGS, a);
         } catch (e) {
-            alert("SetArgument failed: " + e.message + " at index " + (i+DPO_NUM_ARTIFICAL_ARGS).toString());
+            alert("SetArgument failed: " + e.message + " at index " + (i+RIVERTRAIL_NUM_ARTIFICAL_ARGS).toString());
             throw e;
         }
         return ret;
@@ -140,9 +144,9 @@ RiverTrail.SupportedInterfaces.WebCLAdapter = function() {
             template = Float64Array;
         var ret;
         try {
-            ret = k.setArg(i+DPO_NUM_ARTIFICAL_ARGS, new template([a]));
+            ret = k.setArg(i+RIVERTRAIL_NUM_ARTIFICAL_ARGS, new template([a]));
         } catch (e) {
-            alert("SetScalarArgument failed: " + e.message + " at index " + (i+DPO_NUM_ARTIFICAL_ARGS).toString());
+            alert("SetScalarArgument failed: " + e.message + " at index " + (i+RIVERTRAIL_NUM_ARTIFICAL_ARGS).toString());
             throw e;
         }
         return ret;
@@ -172,7 +176,7 @@ RiverTrail.SupportedInterfaces.WebCLAdapter = function() {
     return {
         name: "WebCL",
         initContext: _initContext,
-        is64BitFloatingPointEnabled: false, // TODO: getInfo should tell us this.
+        is64BitFloatingPointEnabled: _is64BitFloatingPointEnabled,
         compileKernel: _compileKernel,
         mapData: _mapData,
         setArgument: _setArgument,
