@@ -71,7 +71,19 @@ RiverTrail.SupportedInterfaces.WebCLAdapter = function() {
     var failureMem;
     var failureMemCLBuffer;
     var _initContext = function() {
-        context = webcl.createContext();
+            
+        var availablePlatforms = webcl.getPlatforms ();
+        var supportedPlatform = null;
+        for (var i in availablePlatforms) {
+            if(availablePlatforms[i]
+                    .getInfo(WebCL.PLATFORM_NAME)
+                    .indexOf("Intel(R)") === 0)
+                supportedPlatform = availablePlatforms[i];
+        }
+        if(supportedPlatform === null)
+            throw "[WebCL Runtime] : No supported OpenCL platforms found!";
+
+        context = webcl.createContext(supportedPlatform);
         device = context.getInfo(WebCL.CONTEXT_DEVICES)[0];
         commandQueue = context.createCommandQueue(device);
         failureMem = new Int32Array(1);
