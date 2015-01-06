@@ -30,29 +30,12 @@
 <title>River Trail NBody Demo</title>  
 <meta http-equiv="content-script-type" content="text/javascript" />  
  
-    <script type="application/javascript" src="../../jslib/jit/compiler/runtimes.js"></script>
-    <script type="text/javascript" src="../../jslib/ParallelArray.js"></script>
-
-    <script type="text/javascript" src="NBody.js"> </script>    
-    <script type="application/javascript" src="../../jslib/jit/narcissus/jsdefs.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/narcissus/jslex.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/narcissus/jsparse.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/narcissus/jsdecomp.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/compiler/definitions.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/compiler/helper.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/compiler/driver.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/compiler/dotviz.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/compiler/typeinference.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/compiler/rangeanalysis.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/compiler/inferblockflow.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/compiler/infermem.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/compiler/genOCL.js"></script>
-    <script type="application/javascript" src="../../jslib/jit/compiler/runOCL.js"></script>
-       
+    <script type="application/javascript" src="../../dist/RiverTrail.js"></script>
+    <script type="text/javascript" src="NBody.js"> </script>
     <!-- helper code for nbodyGLDisplay.js -->
     <script type="text/javascript" src="contrib/glMatrix-0.9.5.js"></script> 
 
-<!- Some shader scripts needed by nbodyGLDisplay.js, how do I put these in the .js file? -->
+<!-- Some shader scripts needed by nbodyGLDisplay.js, how do I put these in the .js file? -->
 
 <script id="shader-fs" type="x-shader/x-fragment"> 
 #ifdef GL_ES
