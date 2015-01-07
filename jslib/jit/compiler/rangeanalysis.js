@@ -218,7 +218,7 @@ RiverTrail.RangeAnalysis = function () {
                          isInt);
     };
     Rp.cross = function (other, fn, isInt) {
-        debug && (isInt === undefined) && reportBug("Rp.map called without isInt argument");
+        debug && (isInt === undefined) && reportBug("Rp.cross called without isInt argument");
         return new Range(((this.lb === undefined) || (other.ub === undefined)) ? undefined : fn(this.lb, other.ub),
                          ((this.ub === undefined) || (other.lb === undefined)) ? undefined : fn(this.ub, other.lb),
                          isInt);
