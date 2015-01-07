@@ -217,6 +217,12 @@ RiverTrail.RangeAnalysis = function () {
                          ((this.ub === undefined) || (other.ub === undefined)) ? undefined : fn(this.ub, other.ub),
                          isInt);
     };
+    Rp.cross = function (other, fn, isInt) {
+        debug && (isInt === undefined) && reportBug("Rp.map called without isInt argument");
+        return new Range(((this.lb === undefined) || (other.ub === undefined)) ? undefined : fn(this.lb, other.ub),
+                         ((this.ub === undefined) || (other.lb === undefined)) ? undefined : fn(this.ub, other.lb),
+                         isInt);
+    };
     Rp.fixedValue = function () {
         return (this.lb !== undefined) && (this.lb === this.ub);
     };
@@ -534,7 +540,7 @@ RiverTrail.RangeAnalysis = function () {
                 } else {
                     var right = new Range(1,1, true);
                 }
-                result = left.map( right, function (a,b) { return a-b; }, left.isInt && right.isInt); 
+                result = left.cross( right, function (a,b) { return a-b; }, left.isInt && right.isInt); 
                 if (!rightAst) { // DECREMENT
                     varEnv.update(leftAst.value, result);
                 }

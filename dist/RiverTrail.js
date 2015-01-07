@@ -1,4 +1,4 @@
-/* File ./RiverTrail/jslib/jit/narcissus/jsdefs.js */
+/* File ../jslib/jit/narcissus/jsdefs.js */
 /* vim: set sw=4 ts=4 et tw=78: */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -707,7 +707,7 @@ Narcissus.definitions = (function(hostGlobal) {
         Stack: Stack
     };
 }(this));
-/* File ./RiverTrail/jslib/jit/narcissus/jslex.js */
+/* File ../jslib/jit/narcissus/jslex.js */
 /* vim: set sw=4 ts=4 et tw=78: */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -1296,7 +1296,7 @@ Narcissus.lexer = (function() {
     };
 
 }());
-/* File ./RiverTrail/jslib/jit/narcissus/jsparse.js */
+/* File ../jslib/jit/narcissus/jsparse.js */
 /* -*- Mode: JS; tab-width: 4; indent-tabs-mode: nil; -*-
  * vim: set sw=4 ts=4 et tw=78:
  * ***** BEGIN LICENSE BLOCK *****
@@ -3218,7 +3218,7 @@ Narcissus.parser = (function() {
     };
 
 }());
-/* File ./RiverTrail/jslib/jit/narcissus/jsdecomp.js */
+/* File ../jslib/jit/narcissus/jsdecomp.js */
 /* vim: set sw=4 ts=4 et tw=78: */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -3775,7 +3775,7 @@ Narcissus.decompiler = (function() {
     };
 
 }());
-/* File ./RiverTrail/jslib/jit/compiler/definitions.js */
+/* File ../jslib/jit/compiler/definitions.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -3827,7 +3827,7 @@ RiverTrail.definitions = function () {
 }();
 
 
-/* File ./RiverTrail/jslib/jit/compiler/helper.js */
+/* File ../jslib/jit/compiler/helper.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -4393,7 +4393,7 @@ RiverTrail.Helper = function () {
     };
 
 }();
-/* File ./RiverTrail/jslib/jit/compiler/runtimes.js */
+/* File ../jslib/jit/compiler/runtimes.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -4610,7 +4610,7 @@ RiverTrail.runtime = (function() {
 
 
 
-/* File ./RiverTrail/jslib/ParallelArray.js */
+/* File ../jslib/ParallelArray.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -6718,7 +6718,7 @@ low_precision.wrapper = function (f) {
 low_precision.wrapper.prototype = {
     "unwrap" : function () { return this.wrappedFun; }
 };
-/* File ./RiverTrail/jslib/jit/compiler/driver.js */
+/* File ../jslib/jit/compiler/driver.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -7277,7 +7277,7 @@ RiverTrail.compiler = (function () {
     };
 }());
 
-/* File ./RiverTrail/jslib/jit/compiler/dotviz.js */
+/* File ../jslib/jit/compiler/dotviz.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -7488,7 +7488,7 @@ RiverTrail.dotviz = function () {
         "plotTypes": plotTypes
     };
 }();
-/* File ./RiverTrail/jslib/jit/compiler/typeinference.js */
+/* File ../jslib/jit/compiler/typeinference.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -9471,7 +9471,7 @@ RiverTrail.Typeinference = function () {
         "typeOracle" : typeOracle
     };
 }();
-/* File ./RiverTrail/jslib/jit/compiler/rangeanalysis.js */
+/* File ../jslib/jit/compiler/rangeanalysis.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -9608,7 +9608,7 @@ RiverTrail.RangeAnalysis = function () {
                     type = LE;
                     break;
                 case GE:
-                    type = GT;
+                    type = LT;
                     break;
                 case EQ:
                 case STRICT_EQ:
@@ -9689,6 +9689,12 @@ RiverTrail.RangeAnalysis = function () {
         debug && (isInt === undefined) && reportBug("Rp.map called without isInt argument");
         return new Range(((this.lb === undefined) || (other.lb === undefined)) ? undefined : fn(this.lb, other.lb),
                          ((this.ub === undefined) || (other.ub === undefined)) ? undefined : fn(this.ub, other.ub),
+                         isInt);
+    };
+    Rp.cross = function (other, fn, isInt) {
+        debug && (isInt === undefined) && reportBug("Rp.map called without isInt argument");
+        return new Range(((this.lb === undefined) || (other.ub === undefined)) ? undefined : fn(this.lb, other.ub),
+                         ((this.ub === undefined) || (other.lb === undefined)) ? undefined : fn(this.ub, other.lb),
                          isInt);
     };
     Rp.fixedValue = function () {
@@ -10008,7 +10014,7 @@ RiverTrail.RangeAnalysis = function () {
                 } else {
                     var right = new Range(1,1, true);
                 }
-                result = left.map( right, function (a,b) { return a-b; }, left.isInt && right.isInt); 
+                result = left.cross( right, function (a,b) { return a-b; }, left.isInt && right.isInt); 
                 if (!rightAst) { // DECREMENT
                     varEnv.update(leftAst.value, result);
                 }
@@ -10016,8 +10022,8 @@ RiverTrail.RangeAnalysis = function () {
             case MUL:
                 var left = drive(leftAst, varEnv, doAnnotate);
                 var right = drive(rightAst, varEnv, doAnnotate);
-                var newLb = Math.min(left.lb * right.lb, left.ub * right.lb, left.ub * right.lb, left.ub * right.ub);
-                var newUb = Math.max(left.lb * right.lb, left.ub * right.lb, left.ub * right.lb, left.ub * right.ub);
+                var newLb = Math.min(left.lb * right.lb, left.ub * right.lb, left.lb * right.ub, left.ub * right.ub);
+                var newUb = Math.max(left.lb * right.lb, left.ub * right.lb, left.lb * right.ub, left.ub * right.ub);
 
                 result = new Range( isNaN(newLb) ? undefined : newLb,
                                     isNaN(newUb) ? undefined : newUb,
@@ -10028,8 +10034,8 @@ RiverTrail.RangeAnalysis = function () {
                 var left = drive(leftAst, varEnv, doAnnotate);
                 var right = drive(rightAst, varEnv, doAnnotate);
                 if ((left.lb !== undefined) && (left.ub !== undefined) && (Math.abs(right.lb) >= 1) && (Math.abs(right.ub) >= 1)) {
-                    var newLb = Math.min(left.lb / right.lb, left.ub / right.lb, left.ub / right.lb, left.ub / right.ub);
-                    var newUb = Math.max(left.lb / right.lb, left.ub / right.lb, left.ub / right.lb, left.ub / right.ub);
+                    var newLb = Math.min(left.lb / right.lb, left.ub / right.lb, left.lb / right.ub, left.ub / right.ub);
+                    var newUb = Math.max(left.lb / right.lb, left.ub / right.lb, left.lb / right.ub, left.ub / right.ub);
                     result = new Range( isNaN(newLb) ? undefined : newLb, isNaN(newUb) ? undefined : newUb, false);
                 } else {
                     result = new Range(undefined, undefined, false);
@@ -11126,7 +11132,7 @@ RiverTrail.RangeAnalysis = function () {
             "propagate" : propagate
         };
 }();
-/* File ./RiverTrail/jslib/jit/compiler/inferblockflow.js */
+/* File ../jslib/jit/compiler/inferblockflow.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -11571,7 +11577,7 @@ RiverTrail.InferBlockFlow = function () {
         "infer" : infer,
     };
 }();
-/* File ./RiverTrail/jslib/jit/compiler/infermem.js */
+/* File ../jslib/jit/compiler/infermem.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -12157,7 +12163,7 @@ RiverTrail.InferMem = function () {
         "infer" : doInfer
     };
 }();
-/* File ./RiverTrail/jslib/jit/compiler/genOCL.js */
+/* File ../jslib/jit/compiler/genOCL.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -14216,7 +14222,7 @@ RiverTrail.compiler.codeGen = (function() {
 
     return {"compile" : genKernel, "getError" : getError};
 }());
-/* File ./RiverTrail/jslib/jit/compiler/runOCL.js */
+/* File ../jslib/jit/compiler/runOCL.js */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.

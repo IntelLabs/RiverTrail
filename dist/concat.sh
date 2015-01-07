@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This is the pre-Commit hook for concat'ing scripts.
-# Move this to .git/hooks
+# Move this to .git/hooks and adjust paths below accordingly
 
 FILES="
     ../jslib/jit/narcissus/jsdefs.js
