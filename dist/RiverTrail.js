@@ -1,4 +1,4 @@
-/* File ../jslib/jit/narcissus/jsdefs.js */
+/* File jit/narcissus/jsdefs.js*/
 /* vim: set sw=4 ts=4 et tw=78: */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -707,7 +707,8 @@ Narcissus.definitions = (function(hostGlobal) {
         Stack: Stack
     };
 }(this));
-/* File ../jslib/jit/narcissus/jslex.js */
+
+/* File jit/narcissus/jslex.js*/
 /* vim: set sw=4 ts=4 et tw=78: */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -1296,7 +1297,8 @@ Narcissus.lexer = (function() {
     };
 
 }());
-/* File ../jslib/jit/narcissus/jsparse.js */
+
+/* File jit/narcissus/jsparse.js*/
 /* -*- Mode: JS; tab-width: 4; indent-tabs-mode: nil; -*-
  * vim: set sw=4 ts=4 et tw=78:
  * ***** BEGIN LICENSE BLOCK *****
@@ -3218,7 +3220,8 @@ Narcissus.parser = (function() {
     };
 
 }());
-/* File ../jslib/jit/narcissus/jsdecomp.js */
+
+/* File jit/narcissus/jsdecomp.js*/
 /* vim: set sw=4 ts=4 et tw=78: */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -3775,7 +3778,8 @@ Narcissus.decompiler = (function() {
     };
 
 }());
-/* File ../jslib/jit/compiler/definitions.js */
+
+/* File jit/compiler/definitions.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -3827,7 +3831,8 @@ RiverTrail.definitions = function () {
 }();
 
 
-/* File ../jslib/jit/compiler/helper.js */
+
+/* File jit/compiler/helper.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -4393,7 +4398,8 @@ RiverTrail.Helper = function () {
     };
 
 }();
-/* File ../jslib/jit/compiler/runtimes.js */
+
+/* File jit/compiler/runtimes.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -4610,7 +4616,8 @@ RiverTrail.runtime = (function() {
 
 
 
-/* File ../jslib/ParallelArray.js */
+
+/* File ParallelArray.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -6718,7 +6725,8 @@ low_precision.wrapper = function (f) {
 low_precision.wrapper.prototype = {
     "unwrap" : function () { return this.wrappedFun; }
 };
-/* File ../jslib/jit/compiler/driver.js */
+
+/* File jit/compiler/driver.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -7277,7 +7285,8 @@ RiverTrail.compiler = (function () {
     };
 }());
 
-/* File ../jslib/jit/compiler/dotviz.js */
+
+/* File jit/compiler/dotviz.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -7488,7 +7497,8 @@ RiverTrail.dotviz = function () {
         "plotTypes": plotTypes
     };
 }();
-/* File ../jslib/jit/compiler/typeinference.js */
+
+/* File jit/compiler/typeinference.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -9055,7 +9065,7 @@ RiverTrail.Typeinference = function () {
 
             case DEBUGGER:  // whatever this is...
             default:
-                throw "unhandled node type in analysis: " + ast.type + " is " + RiverTrail.Helper.wrappedPP(ast);
+                throw "unhandled node type in analysis: " + ast.type + "ï¿½is " + RiverTrail.Helper.wrappedPP(ast);
         }
         ast.typeInfo = tEnv.accu;
         debug && ast.typeInfo && console.log(Narcissus.decompiler.pp(ast) + " has type " + ast.typeInfo.toString());
@@ -9448,7 +9458,7 @@ RiverTrail.Typeinference = function () {
         ast.typeInfo = type;
         ast.symbols = tEnv;
 
-        // propagate address space qualifiers
+        //ï¿½propagate address space qualifiers
         propagateAddressSpaces(tEnv.getRoots());
         insertSpecialisations(ast);
                     
@@ -9471,7 +9481,8 @@ RiverTrail.Typeinference = function () {
         "typeOracle" : typeOracle
     };
 }();
-/* File ../jslib/jit/compiler/rangeanalysis.js */
+
+/* File jit/compiler/rangeanalysis.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -10683,7 +10694,7 @@ RiverTrail.RangeAnalysis = function () {
                 updateToNew(type.properties.elements, target, name);
                 type.updateOpenCLType();
             } else if (type.isBoolType()) {
-                // do nothing. bool and int work nicely together.
+                //ï¿½do nothing. bool and int work nicely together.
             } else {
                 reportBug("update to new called on unsupported type");
             }
@@ -11132,7 +11143,8 @@ RiverTrail.RangeAnalysis = function () {
             "propagate" : propagate
         };
 }();
-/* File ../jslib/jit/compiler/inferblockflow.js */
+
+/* File jit/compiler/inferblockflow.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -11577,7 +11589,8 @@ RiverTrail.InferBlockFlow = function () {
         "infer" : infer,
     };
 }();
-/* File ../jslib/jit/compiler/infermem.js */
+
+/* File jit/compiler/infermem.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -12163,7 +12176,8 @@ RiverTrail.InferMem = function () {
         "infer" : doInfer
     };
 }();
-/* File ../jslib/jit/compiler/genOCL.js */
+
+/* File jit/compiler/genOCL.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -14222,7 +14236,8 @@ RiverTrail.compiler.codeGen = (function() {
 
     return {"compile" : genKernel, "getError" : getError};
 }());
-/* File ../jslib/jit/compiler/runOCL.js */
+
+/* File jit/compiler/runOCL.js*/
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
