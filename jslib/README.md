@@ -1,4 +1,4 @@
-# River Trail source code
+# River Trail library source code
 
 This directory contains source files for the River Trail library.  **Don't include these files in your web page.  Instead, use `RiverTrail.js` or `RiverTrail.min.js` from the `../dist/` directory.**
 
