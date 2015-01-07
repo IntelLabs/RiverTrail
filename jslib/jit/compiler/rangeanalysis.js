@@ -134,7 +134,7 @@ RiverTrail.RangeAnalysis = function () {
                     type = LE;
                     break;
                 case GE:
-                    type = GT;
+                    type = LT;
                     break;
                 case EQ:
                 case STRICT_EQ:
@@ -542,8 +542,8 @@ RiverTrail.RangeAnalysis = function () {
             case MUL:
                 var left = drive(leftAst, varEnv, doAnnotate);
                 var right = drive(rightAst, varEnv, doAnnotate);
-                var newLb = Math.min(left.lb * right.lb, left.ub * right.lb, left.ub * right.lb, left.ub * right.ub);
-                var newUb = Math.max(left.lb * right.lb, left.ub * right.lb, left.ub * right.lb, left.ub * right.ub);
+                var newLb = Math.min(left.lb * right.lb, left.ub * right.lb, left.lb * right.ub, left.ub * right.ub);
+                var newUb = Math.max(left.lb * right.lb, left.ub * right.lb, left.lb * right.ub, left.ub * right.ub);
 
                 result = new Range( isNaN(newLb) ? undefined : newLb,
                                     isNaN(newUb) ? undefined : newUb,
@@ -554,8 +554,8 @@ RiverTrail.RangeAnalysis = function () {
                 var left = drive(leftAst, varEnv, doAnnotate);
                 var right = drive(rightAst, varEnv, doAnnotate);
                 if ((left.lb !== undefined) && (left.ub !== undefined) && (Math.abs(right.lb) >= 1) && (Math.abs(right.ub) >= 1)) {
-                    var newLb = Math.min(left.lb / right.lb, left.ub / right.lb, left.ub / right.lb, left.ub / right.ub);
-                    var newUb = Math.max(left.lb / right.lb, left.ub / right.lb, left.ub / right.lb, left.ub / right.ub);
+                    var newLb = Math.min(left.lb / right.lb, left.ub / right.lb, left.lb / right.ub, left.ub / right.ub);
+                    var newUb = Math.max(left.lb / right.lb, left.ub / right.lb, left.lb / right.ub, left.ub / right.ub);
                     result = new Range( isNaN(newLb) ? undefined : newLb, isNaN(newUb) ? undefined : newUb, false);
                 } else {
                     result = new Range(undefined, undefined, false);
