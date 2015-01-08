@@ -919,33 +919,12 @@ var ParallelArray = function () {
             extraArgs = new Array(0);
         } else {
             // depth is _not_ part of the arguments passed to the elemental function
-            extraArgs = new Array(arguments.length-extraArgOffset); // depth and function account for the 2
+            extraArgs = new Array(arguments.length-extraArgOffset);
+            // depth and function account for the 2
             for (i=0;i<extraArgs.length;i++) {
                extraArgs[i] = arguments[i+extraArgOffset];
             }
         }
-
-
-
-        /*
-        if ((typeof(depth) === 'function') || (depth instanceof low_precision.wrapper)) {
-            f = depth;
-            depth = 1;
-            extraArgOffset = 1;
-        }
-        if (!this.isRegular()) {
-            throw new TypeError("ParallelArray.combine this is not a regular ParallelArray.");
-        }
-        if (arguments.length == extraArgOffset) {
-            extraArgs = new Array(0);
-        } else {
-            // depth is _not_ part of the arguments passed to the elemental function
-            extraArgs = new Array(arguments.length-extraArgOffset); // depth and function account for the 2
-            for (i=0;i<extraArgs.length;i++) {
-               extraArgs[i] = arguments[i+extraArgOffset];
-            }
-        }
-        */
         paResult = RiverTrail.compiler.compileAndGo(this, f, "combine", depth, extraArgs, enable64BitFloatingPoint);
         return paResult;
     };
