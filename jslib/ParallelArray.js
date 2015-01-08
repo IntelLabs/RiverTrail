@@ -885,11 +885,49 @@ var ParallelArray = function () {
         pa.combine(function(i){return this.get(i);})
 
     ***/
-    var combine = function combine(depth, f) { // optional arguments follow
+    var combine = function combine() { // optional arguments follow
         var i;
         var paResult;
         var extraArgs; 
         var extraArgOffset = 2;
+        var depth;
+        var f;
+        var usage = "ParallelArray.combine(<optional depth>, function object, <optional extra arguments)";
+        if(arguments.length < 1)
+            throw "Not enough arguments to combine. Usage: " + usage;
+        // The case where depth is not specified
+        if(typeof(arguments[0]) === 'function'
+                || (arguments[0] instanceof low_precision.wrapper)) {
+            depth = 1;
+            f = arguments[0];
+            extraArgOffset = 1;
+        }
+        // The case where depth is specified
+        else if((typeof(arguments[1]) === 'function' 
+                    || (arguments[1] instanceof low_precision.wrapper))
+                && typeof(arguments[0]) === 'number') {
+            depth = arguments[0];
+            f = arguments[1];
+        }
+        else {
+            throw "Invalid arguments to combine. Usage: " + usage;
+        }
+        if (!this.isRegular()) {
+            throw new TypeError("ParallelArray.combine: This is not a regular ParallelArray.");
+        }
+        if (arguments.length == extraArgOffset) {
+            extraArgs = new Array(0);
+        } else {
+            // depth is _not_ part of the arguments passed to the elemental function
+            extraArgs = new Array(arguments.length-extraArgOffset); // depth and function account for the 2
+            for (i=0;i<extraArgs.length;i++) {
+               extraArgs[i] = arguments[i+extraArgOffset];
+            }
+        }
+
+
+
+        /*
         if ((typeof(depth) === 'function') || (depth instanceof low_precision.wrapper)) {
             f = depth;
             depth = 1;
@@ -907,7 +945,7 @@ var ParallelArray = function () {
                extraArgs[i] = arguments[i+extraArgOffset];
             }
         }
-
+        */
         paResult = RiverTrail.compiler.compileAndGo(this, f, "combine", depth, extraArgs, enable64BitFloatingPoint);
         return paResult;
     };
