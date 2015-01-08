@@ -10,14 +10,14 @@ module.exports = function(grunt) {
             },
             dist: {
                 // the files to concatenate
-                src: ['jit/narcissus/jsdefs.js',
+                src: ['jit/compiler/runtimes.js',
+                      'ParallelArray.js',
+                      'jit/narcissus/jsdefs.js',
                       'jit/narcissus/jslex.js',
                       'jit/narcissus/jsparse.js',
                       'jit/narcissus/jsdecomp.js',
                       'jit/compiler/definitions.js',
                       'jit/compiler/helper.js',
-                      'jit/compiler/runtimes.js',
-                      'ParallelArray.js',
                       'jit/compiler/driver.js',
                       'jit/compiler/dotviz.js',
                       'jit/compiler/typeinference.js',
