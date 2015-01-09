@@ -6,15 +6,9 @@
   "author": "Intel Labs",
   "version": "0.33",
   "preferences": [{
-    "name": "defaultPlatform",
-    "title": "Default OpenCL platform",
-    "type": "integer",
-    "value": 0
-  },
-  {
-    "name": "defaultDeviceType",
-    "title": "Default OpenCL device type",
-    "type": "integer",
-    "value": 0
+    "type": "control",
+    "label": "OpenCL Preferences...",
+    "name": "prefsButton",
+    "title": "OpenCL Preferences"
   }]
 }

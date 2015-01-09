@@ -28,6 +28,8 @@
 let { Cu } = require("chrome");
 
 let events = require("sdk/system/events");
+let prefs = require("sdk/simple-prefs");
+let panels = require("sdk/panel");
 
 let { OpenCL } = require("OpenCL.js");
 let { RiverTrailInterface } = require("RiverTrailInterface.js");
@@ -102,3 +104,15 @@ exports.onUnload = function(reason) {
         gInitialized = false;
     }
 };
+
+// This code handles the preferences panel.
+prefs.on("prefsButton", function() {
+    panel.show();
+});
+
+// TODO.
+let panel = panels.Panel({
+  width: 350,
+  height: 350,
+  contentURL: "http://todo"
+});
