@@ -30,6 +30,7 @@ let { Cu } = require("chrome");
 let events = require("sdk/system/events");
 let prefs = require("sdk/simple-prefs");
 let panels = require("sdk/panel");
+let self = require("sdk/self");
 
 let { OpenCL } = require("OpenCL.js");
 let { RiverTrailInterface } = require("RiverTrailInterface.js");
@@ -110,9 +111,18 @@ prefs.on("prefsButton", function() {
     panel.show();
 });
 
-// TODO.
 let panel = panels.Panel({
   width: 350,
   height: 350,
-  contentURL: "http://todo"
+  contentURL: self.data.url("prefs.html"),
+  contentScriptFile: self.data.url("prefs.js")
+});
+
+panel.port.on("platform-selected", function(text) {
+  console.log("Selected platform: " + text);
+});
+
+// Hide the panel when the "OK" button is clicked.
+panel.port.on("button-clicked", function() {
+  panel.hide();
 });
