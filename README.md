@@ -9,4 +9,4 @@ Please see the [wiki](https://github.com/RiverTrail/RiverTrail/wiki) for more de
 1. Install [OpenCL](http://www.intel.com/go/opencl)
 2. Install or open [Firefox](https://www.mozilla.org/en-US/firefox/new/)
 3. Install the [River Trail Add-On](https://github.com/IntelLabs/RiverTrail/releases/download/v34.0.0/river-trail-for-firefox.xpi) for Firefox
-4. Try out a demo. For example, [here is one](http://intellabs.github.io/RiverTrail/examples/idf-demo/Index.html)
+4. Load the program in Firefox. For example, [here is one](http://intellabs.github.io/RiverTrail/examples/idf-demo/Index.html)
