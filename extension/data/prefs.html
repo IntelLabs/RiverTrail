@@ -2,7 +2,10 @@
   <head>
     <style>
       th { text-align: left; }
-      td, th { padding: 10px; }
+      td, th { padding: 8px; }
+      fieldset { margin: 10px 7px 0px 7px; }
+      input#done { margin-top: 10px; }
+      p#button { margin: 0px 7px 0px 0px; padding; 0; text-align: right; }
     </style>
   </head>
   <body>
@@ -24,14 +27,10 @@
         <legend>Default OpenCL Device</legend>
 
         <table id="devices">
-          <tr>
-            <th>&nbsp;</th>
-            <th>Type</th>
-          </tr>
         </table>
       </fieldset>
 
-      <input type="button" id="done" value="OK" />
+      <p id="button"><input type="button" id="done" value="Save settings" /></p>
     </form>
   </body>
 </html>

@@ -39,35 +39,13 @@ self.port.on("platform-data", function(platforms) {
         // when a new platform is selected.  Device stuff gets
         // populated individually, per platform.
         platformRow.addEventListener('click', function onclick(event) {
-            // First, get rid of everything that's there
-            let deviceTable = document.getElementById("devices");
-            // j = 1 because we shouldn't delete the header row.
-            for (let j = 1; j < deviceTable.rows.length; j++) {
-                deviceTable.deleteRow(j);
-            }
-
-            // Now add the devices that should be there.
-            for (let j = 0; j < devices.length; j++) {
-                let type = devices[j].trim();
-                let deviceRow = deviceTable.insertRow(1); // insert after header row
-                let buttonCell = deviceRow.insertCell(0);
-                let input = document.createElement("input");
-                input.type = "radio";
-                input.name = "device";
-                input.id = "device_" + j;
-                input.value = j;
-                // Select the first item
-                if (j == 0) {
-                    input.checked = "checked";
-                }
-                buttonCell.appendChild(input);
-                let typeCell = deviceRow.insertCell(1);
-                let label = document.createElement("label");
-                label.setAttribute("for", input.id);
-                label.innerHTML = type;
-                typeCell.appendChild(label);
-            }
+            populateDevices(devices);
         }, false);
+
+        // Pre-populate device info for the currently selected platform.
+        if (i == 0) {
+            populateDevices(devices);
+        }
     };
 });
 
@@ -94,3 +72,33 @@ button.addEventListener('click', function onclick(event) {
     }
 
 }, false);
+
+function populateDevices(devices) {
+    // First, get rid of everything that's there
+    let deviceTable = document.getElementById("devices");
+    for (let j = 0; j < deviceTable.rows.length; j++) {
+        deviceTable.deleteRow(j);
+    }
+
+    // Now add the devices that should be there.
+    for (let j = 0; j < devices.length; j++) {
+        let type = devices[j].trim();
+        let deviceRow = deviceTable.insertRow(0);
+        let buttonCell = deviceRow.insertCell(0);
+        let input = document.createElement("input");
+        input.type = "radio";
+        input.name = "device";
+        input.id = "device_" + j;
+        input.value = j;
+        // Select the first item
+        if (j == 0) {
+            input.checked = "checked";
+        }
+        buttonCell.appendChild(input);
+        let typeCell = deviceRow.insertCell(1);
+        let label = document.createElement("label");
+        label.setAttribute("for", input.id);
+        label.innerHTML = type;
+        typeCell.appendChild(label);
+    }
+}

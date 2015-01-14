@@ -116,7 +116,7 @@ prefs.on("prefsButton", function() {
 
 let panel = panels.Panel({
   width: 600,
-  height: 500,
+  height: 350,
   contentURL: self.data.url("prefs.html"),
   contentScriptFile: self.data.url("prefs.js")
 });
