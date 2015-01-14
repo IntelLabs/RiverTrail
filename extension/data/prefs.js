@@ -90,6 +90,9 @@ function populateDevices(devices) {
     // Now add the devices that should be there.
     for (let i = 0; i < devices.length; i++) {
         let type = devices[i].trim();
+        if (devices[i] === "Unknown Device" || devices[i] === "") {
+            continue;
+        }
         let deviceRow = deviceTable.insertRow(0);
         let buttonCell = deviceRow.insertCell(0);
         let input = document.createElement("input");
