@@ -35,6 +35,7 @@ let self = require("sdk/self");
 let { OpenCL } = require("OpenCL.js");
 let { RiverTrailInterface } = require("RiverTrailInterface.js");
 let { Debug } = require("Debug.js");
+let { Platforms } = require("Platforms.js");
 
 function injectFunctions(event) {
     // event.subject is an nsIDOMWindow
@@ -92,6 +93,7 @@ exports.main = function(options, callbacks) {
         OpenCL.init();
         events.on("content-document-global-created", injectFunctions);
         gInitialized = true;
+        populatePrefs();
     }
 };
 
@@ -106,23 +108,37 @@ exports.onUnload = function(reason) {
     }
 };
 
-// This code handles the preferences panel.
+// This code handles populating and collecting user input from the
+// preferences panel.
 prefs.on("prefsButton", function() {
     panel.show();
 });
 
 let panel = panels.Panel({
-  width: 350,
-  height: 350,
+  width: 600,
+  height: 500,
   contentURL: self.data.url("prefs.html"),
   contentScriptFile: self.data.url("prefs.js")
 });
 
 panel.port.on("platform-selected", function(text) {
+  // TODO: this should make it back to the preferences settings
+  // instead of just being logged.
   console.log("Selected platform: " + text);
+});
+
+panel.port.on("device-selected", function(text) {
+  // TODO: this should make it back to the preferences settings
+  // instead of just being logged.
+  console.log("Selected device: " + text);
 });
 
 // Hide the panel when the "OK" button is clicked.
 panel.port.on("button-clicked", function() {
   panel.hide();
 });
+
+function populatePrefs() {
+    Platforms.init();
+    panel.port.emit("platform-data", Platforms.jsPlatforms);
+}
