@@ -4,7 +4,7 @@
   "id": "jid1-bDmQztb2AgWrHQ",
   "description": "Used by River Trail to interface with OpenCL from JavaScript",
   "author": "Intel Labs",
-  "version": "0.33",
+  "version": "0.35",
   "preferences": [{
     "type": "control",
     "label": "OpenCL Preferences...",
