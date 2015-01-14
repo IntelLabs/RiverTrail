@@ -10,5 +10,19 @@
     "label": "OpenCL Preferences...",
     "name": "prefsButton",
     "title": "OpenCL Preferences"
+  },
+  {
+    "name": "defaultPlatform",
+    "title": "Default OpenCL platform",
+    "type": "integer",
+    "value": 0,
+    "hidden": true
+  },
+  {
+    "name": "defaultDeviceType",
+    "title": "Default OpenCL device type",
+    "type": "integer",
+    "value": 0,
+    "hidden": true
   }]
 }

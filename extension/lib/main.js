@@ -121,16 +121,12 @@ let panel = panels.Panel({
   contentScriptFile: self.data.url("prefs.js")
 });
 
-panel.port.on("platform-selected", function(text) {
-  // TODO: this should make it back to the preferences settings
-  // instead of just being logged.
-  console.log("Selected platform: " + text);
+panel.port.on("platform-selected", function(prefString) {
+    prefs.prefs.defaultPlatform = parseInt(prefString);
 });
 
-panel.port.on("device-selected", function(text) {
-  // TODO: this should make it back to the preferences settings
-  // instead of just being logged.
-  console.log("Selected device: " + text);
+panel.port.on("device-selected", function(prefString) {
+    prefs.prefs.defaultDeviceType = parseInt(prefString);
 });
 
 // Hide the panel when the "OK" button is clicked.
