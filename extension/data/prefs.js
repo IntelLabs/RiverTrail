@@ -39,7 +39,11 @@ self.port.on("platform-data", function(platforms) {
         // when a new platform is selected.  Device stuff gets
         // populated individually, per platform.
         platformRow.addEventListener('click', function onclick(event) {
-            populateDevices(devices);
+            // If the clicked row isn't already selected...
+            let input = platformRow.cells[0].getElementsByTagName("input")[0];
+            if (!input.checked) {
+                populateDevices(devices);
+            }
         }, false);
 
         // Pre-populate device info for the currently selected platform.
