@@ -1,0 +1,1 @@
+This demo is based on Notch's "Minecraft in JavaScript" code.
