@@ -1,6 +1,8 @@
 Building the Firefox River Trail Extension
 ==========================================
 
+**This README is for extension developers.**  If you just want to install the River Trail extension, you can [install a pre-built version](https://github.com/IntelLabs/RiverTrail/releases).
+
 Preliminaries: OpenCL SDK
 -------------------------
 
@@ -11,7 +13,7 @@ MacOS X 10.6 and later already provide the required OpenCL stack as part of the 
 Building the extension
 ----------------------
 
-This extension is based on the [Firefox Add-on SDK](https://developer.mozilla.org/en-US/Add-ons/SDK).  In order to build and test the extension, first install the Add-on SDK and activate it in the Addon SDK's directory. For example, on Linux, Mac OS and MinGW on Windows:
+This extension is based on the [Firefox Add-on SDK](https://developer.mozilla.org/en-US/Add-ons/SDK).  In order to build and test the extension, first install the Add-on SDK and activate it in the Add-on SDK's directory. For example, on Linux, Mac OS and MinGW on Windows:
 ```
 cd addon-sdk
 source bin/activate
@@ -26,4 +28,4 @@ You can then test, run, and package the extension using the [cfx](https://develo
 cd RiverTrail/extension
 cfx xpi
 ```
-This will create an XPI file. Load this file as an addon in Firefox and try out one of the examples.
+This will create an XPI file. Load this file as an add-on in Firefox and try out one of the examples.
