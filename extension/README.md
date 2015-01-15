@@ -14,18 +14,20 @@ Building the extension
 ----------------------
 
 This extension is based on the [Firefox Add-on SDK](https://developer.mozilla.org/en-US/Add-ons/SDK).  In order to build and test the extension, first install the Add-on SDK and activate it in the Add-on SDK's directory. For example, on Linux, Mac OS and MinGW on Windows:
-```
+```bash
 cd addon-sdk
 source bin/activate
 ```
 On Windows with the native shell:
-```
+```bash
 cd addon-sdk
 bin\activate
 ```
-You can then test, run, and package the extension using the [cfx](https://developer.mozilla.org/en-US/Add-ons/SDK/Tools/cfx) tool that comes with the Add-on SDK.
-```
+You can then test, run, and package the extension using the [cfx](https://developer.mozilla.org/en-US/Add-ons/SDK/Tools/cfx) tool that comes with the Add-on SDK.  (Note: as of this writing, cfx is due to be replaced with [jpm](https://www.npmjs.com/package/jpm) in the near future.)
+
+```bash
 cd RiverTrail/extension
-cfx xpi
+cfx run # launches an instance of Firefox with the extension
+cfx xpi # creates an installable XPI file
 ```
-This will create an XPI file. Load this file as an add-on in Firefox and try out one of the examples.
+Once you have the extension up and running, test it out with one of our [demos](https://github.com/IntelLabs/RiverTrail/wiki#sample-applications).
