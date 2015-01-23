@@ -1,0 +1,2 @@
+The Syntax Highlighter tool is licensed under the terms of the MIT license
+contained in the files MIT-LICENSE. The home page for this tool is at https://github.com/alexgorbatchev/SyntaxHighlighter
