@@ -1,7 +1,7 @@
 River Trail
 ===========
 
-River Trail is a JavaScript library and a Firefox add-on that together provide support for **data-parallel programming in JavaScript**, targeting multi-core CPUs and vector SSE/AVX instructions.
+River Trail is a JavaScript library and a Firefox add-on that together provide support for **data-parallel programming in JavaScript**, targeting multi-core CPUs, GPUs and vector SSE/AVX instructions.
 
 Please see the [project wiki](https://github.com/IntelLabs/RiverTrail/wiki) for more details.
 
