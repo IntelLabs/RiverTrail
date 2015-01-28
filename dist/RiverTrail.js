@@ -7100,9 +7100,17 @@ RiverTrail.compiler = (function () {
         }
         return ast;
     }
-    
+    var fillInTypeAndShapeIfMissing = function(a) {
+        if(a.inferredType !== undefined && a.dimSize !== undefined)
+            return;
+        var tiA = RiverTrail.Helper.inferPAType(a);
+        a.inferredType = tiA.inferredType;
+        a.dimSize = tiA.dimSize;
+    }
     var getCacheEntry = function (f, construct, paType, argumentTypes, lowPrecision, rankOrShape) {
         var argumentMatches = function (argTypeA, argTypeB) {
+            fillInTypeAndShapeIfMissing(argTypeA);
+            fillInTypeAndShapeIfMissing(argTypeB);
             return ((argTypeA.inferredType === argTypeB.inferredType) &&
                     equalsShape(argTypeA.dimSize, argTypeB.dimSize));
         };
@@ -7120,7 +7128,8 @@ RiverTrail.compiler = (function () {
                 (entry.source === f) &&
                 argumentsMatch(argumentTypes, entry.argumentTypes) &&
                 (((construct !== "comprehension") && (construct !== "comprehensionScalar")
-                  && argumentMatches(paType, entry.paType)) || equalsShape(rankOrShape, entry.iterSpace))
+                  && argumentMatches(paType, entry.paType) && equalsShape(paType.shape, entry.paType.dimSize)) || 
+                 ((construct == "comprehension" || construct == "comprehensionScalar") && equalsShape(rankOrShape, entry.iterSpace)))
                ) {
                 return f.openCLCache[i];
             }
@@ -12246,7 +12255,7 @@ if (RiverTrail === undefined) {
 var doIterationSpaceFlattening = false;
 
 RiverTrail.compiler.codeGen = (function() {
-    const verboseDebug = true;
+    const verboseDebug = false;
     const checkBounds = true;
     const checkall = false;
     const disableVectorization = false;

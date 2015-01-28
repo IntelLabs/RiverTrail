@@ -292,14 +292,11 @@ function cutPathVertically(buf, path) {
 }
 
 var buildOneElement = function buildOneElement(idx, aPA) { 
-    return [aPA.get(idx[1], idx[0], 0),
-            aPA.get(idx[1], idx[0], 1),
-            aPA.get(idx[1], idx[0], 2),
-            aPA.get(idx[1], idx[0], 3)]; 
+    return aPA.get(idx[1], idx[0], idx[2]);
 }
 
 function transpose(aPA) {
-    return new ParallelArray([aPA.getShape()[1], aPA.getShape()[0]], buildOneElement, aPA);
+    return new ParallelArray([aPA.getShape()[1], aPA.getShape()[0], 4], buildOneElement, aPA);
 }  
 
 function reduceOneHorizontal(canvas) {
