@@ -200,6 +200,11 @@ let RiverTrailInterface = (function() {
     // Returns a GenericWrapper around a CData kernel.
     let compileKernel = function(sourceString, kernelName) {
 
+        // Our first step is to clear the build log so that what's
+        // there is not left over from the last kernel that was
+        // compiled.
+        buildLog = "";
+
         // `sourceString` is a JS string; we change it to a C string.
         let sourceCString = ctypes.char.array()(sourceString);
 
