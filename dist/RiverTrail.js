@@ -6722,6 +6722,11 @@ var ParallelArray = function () {
     };
     
     // SAH: Tie up fast classes with the PA prototype. 
+
+    // TODO(LK): Firefox raises the "mutating the [[Prototype]] of an
+    // object will cause your code to run very slowly; instead create
+    // the object with the correct initial [[Prototype]] value using
+    // Object.create" warning for the next line.  Cause for concern?
     _fastClasses.forEach( function (fc) {fc.prototype.__proto__ = ParallelArray.prototype});
 
     return ParallelArray;
