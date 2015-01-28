@@ -232,12 +232,28 @@ let RiverTrailInterface = (function() {
         Debug.check(err_code, "clBuildProgram (in compileKernel)");
         Debug.log(err_code.value);
 
-        const BuildLogArray = new ctypes.ArrayType(ctypes.char, Constants.RIVERTRAIL_BUILDLOG_SIZE);
-        let buildLogCString = new BuildLogArray();
+        // Before getting the build info, figure out how big the build
+        // log is so we know how big a buffer we need to create for
+        // it.
+        let buildLogSize = new ctypes.size_t;
         err_code.value = OpenCL.clGetProgramBuildInfo(program,
                                                       deviceList[defaultDevicePref],
                                                       Constants.CL_PROGRAM_BUILD_LOG,
-                                                      Constants.RIVERTRAIL_BUILDLOG_SIZE,
+                                                      0,
+                                                      null,
+                                                      buildLogSize.address());
+        Debug.check(err_code, "clGetProgramBuildInfo (in compileKernel)");
+        Debug.log(err_code.value);
+
+        // Now that we have the build log size, read the build log
+        // into an appropriately sized buffer.
+        const BuildLogArray = new ctypes.ArrayType(ctypes.char, buildLogSize.value);
+        let buildLogCString = new BuildLogArray();
+
+        err_code.value = OpenCL.clGetProgramBuildInfo(program,
+                                                      deviceList[defaultDevicePref],
+                                                      Constants.CL_PROGRAM_BUILD_LOG,
+                                                      buildLogSize.value,
                                                       buildLogCString,
                                                       null);
         Debug.check(err_code, "clGetProgramBuildInfo (in compileKernel)");
