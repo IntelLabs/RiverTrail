@@ -60,25 +60,21 @@ this.ParallelArrayTests = {
     'pa6': function(test) {
         var pa6 = new ParallelArray(3, function (i) { return [i, i+1]; });
 
-        // currently failing because pa6.toString() doesn't work -- LK
-
         test.expect(2);
         test.equal(pa6.toString(),
-                   "[0, 0, 0, 1, 0, 2]",
-                   "create a 1D ParallelArray using the comprehension constructor");
+                   "[0, 1, 1, 2, 2, 3]",
+                   "create a ParallelArray using the comprehension constructor");
         test.equal(pa6.shape.toString(), "3,2", "with shape 3,2");
         test.done();
     },
 
     'pa7': function(test) {
-        var pa7 = new ParallelArray(3, function (iv) { return iv[0] + iv[1]; });
-
-        // currently failing because pa7.toString() doesn't work -- LK
+        var pa7 = new ParallelArray([3,2], function (iv) { return iv[0] * iv[1]; });
 
         test.expect(2);
         test.equal(pa7.toString(),
-                   "[0, 1, 1, 2, 2, 3]",
-                   "create a 2D ParallelArray using the comprehension constructor");
+                   "[0, 0, 0, 1, 0, 2]",
+                   "create a ParallelArray with a shape vector");
         test.equal(pa7.shape.toString(), "3,2", "with shape 3,2");
         test.done();
     },
