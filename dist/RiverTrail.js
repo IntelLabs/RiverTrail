@@ -4737,6 +4737,9 @@ var ParallelArray = function () {
 //    There are other patterns that can be easily derived from these patterns for example max of a ParallelArray
 //    is nothing more that a reduce using the binary max function.
 
+// N.B.: A ParallelArray's `flat` attribute should be `true` if it is
+// either a JS array of numbers or a TypedArray.  If it is a nested JS
+// array, `flat` should be set to `false`.
     
     // use Proxies to emulate square bracket index selection on ParallelArray objects
     var enableProxies = false;
@@ -5120,8 +5123,8 @@ var ParallelArray = function () {
         } else 
             throw "Error creating new ParallelArray: Invalid CData object";
 
-
-        this.flat = shape.length === 1 ? true : false;
+        // TypedArrays are always considered "flat".
+        this.flat = true;
         this.shape = shape;
         this.strides = shapeToStrides(shape);
         this.offset = 0;
