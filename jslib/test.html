@@ -1,0 +1,18 @@
+<html>
+  <head>
+    <title>River Trail Test Suite</title>
+    <script src="../dist/RiverTrail.js"></script>
+    <link rel="stylesheet" href="node_modules/nodeunit/dist/browser/nodeunit.css" type="text/css" />
+    <script src="node_modules/nodeunit/dist/browser/nodeunit.js"></script>
+    <script src="tests.js"></script>
+  </head>
+  <body>
+    <h1 id="nodeunit-header">River Trail Test Suite</h1>
+    <script>
+      nodeunit.run({
+        'ParallelArray() Test Suite': ParallelArrayTests,
+        'map() Test Suite': mapTests,
+      });
+    </script>
+  </body>
+</html>
