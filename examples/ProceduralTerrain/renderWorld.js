@@ -138,7 +138,7 @@ function init() {
         pixels.data[i * 4 + 3] = 255;
     }
 
-    setInterval(clock, 0);
+    requestAnimationFrame(clock);
 };
 function MineKernel(index, w, h, xRot, yRot, yCos, ySin, xCos, xSin, ox, oy, oz, f, map, texmap) {
     var x = index[0];
@@ -274,6 +274,7 @@ function clock() {
     else {
         document.getElementById("fps").innerHTML = "-- fps";
     }
+    requestAnimationFrame(clock);
 }
 
 var f = 0;

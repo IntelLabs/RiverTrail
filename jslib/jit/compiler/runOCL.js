@@ -90,7 +90,8 @@ RiverTrail.compiler.runOCL = function () {
                     throw new Error("Cannot transform regular array to OpenCL kernel arguments");
                 }
                 // Add the offset as an additional integer argument. Use the Integer Object here.
-                args.push(new RiverTrail.Helper.Integer(object.offset));
+                //args.push(new RiverTrail.Helper.Integer(object.offset));
+                args.push(new RiverTrail.Helper.Integer(0));
             } else if (object instanceof RiverTrail.Helper.FlatArray) {
                 // these are based on a flat array, so we can just push the data over
                 args.push(RiverTrail.runtime.mapData(object.data));
