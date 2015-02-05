@@ -110,3 +110,15 @@ this.mapTests = {
 
 };
 
+this.issueTests = {
+    'issue48': function(test) {
+        var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
+
+        test.expect(3);
+        test.equal(pa.get(1).toString(), "[10, 11, 12, 13, 14]", "get the array at index 1 of a nested ParallelArray");
+        test.equal(pa.get(1).map(function(e) { return e; }).toString(), "[10, 11, 12, 13, 14]", "and map the identity function over it");
+        test.equal(pa.get(1).map(function(e) { return e+1; }).toString(), "[11, 12, 13, 14, 15]", "and map the increment function over it");
+        test.done();
+    },
+
+};
