@@ -1,8 +1,4 @@
 <!DOCTYPE html>
-<!--
-Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
-         Stephan Herhut stephan.a.herhut@intel.com
--->
 <html>
 
     <head>
@@ -26,7 +22,7 @@ Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
       <!-- HEADER -->
       <div id="header_wrap" class="outer">
           <header class="inner">
-          <a id="forkme_banner" href="https://github.com/rivertrail/rivertrail">View on GitHub</a>
+          <a id="forkme_banner" href="https://github.com/IntelLabs/RiverTrail/">View on GitHub</a>
 
           <h1 id="project_title">Bringing Parallelism to the Web with River
           Trail</h1>
@@ -75,360 +71,444 @@ Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
 
 
 
-          <h1><a name="motivation"></a>Motivation and Background</h1>
+          <h2><a name="motivation"></a>Motivation and Background</h2>
 
-          <p>The goal of Intel Lab's River Trail project (Parallel Extensions for JavaScript*, code named River Trail) is to enable
-          data-parallelism in web applications. In a world where the web
+          <p>The goal of Intel Labs' River Trail project, also known as Parallel JavaScript, is to enable
+          data parallelism in web applications. In a world where the web
           browser is the user's window into computing, browser applications
           must leverage all available computing resources to provide the best
           possible user experience. Today web applications do not take full
           advantage of parallel client hardware due to the lack of appropriate
           programming models. River Trail puts the parallel compute power of
-          client's hardware into the hands of the web developer while staying
+          the client's hardware into the hands of the web developer while staying
           within the safe and secure boundaries of the familiar JavaScript
           programming paradigm. River Trail gently extends JavaScript with
           simple deterministic data-parallel constructs that are translated at
           runtime into a low-level hardware abstraction layer. By leveraging
           multiple CPU cores and vector instructions, River Trail programs can achieve significant speedup over sequential JavaScript.
-          <!--
-          The River Trail API is being considered for
-          standardization by the ECMA TC39 committee. You can to read the API
-          documentation and follow progress on standardization <a
-          href="http://wiki.ecmascript.org/doku.php?id=strawman:data_parallelism">here</a>. You are
-          also invited to get involved and join the discussion on <a
-          href="https://mail.mozilla.org/listinfo/es-discuss">ES-Discuss</a>.
-          -->
           </p>
 
           <p>
           An open-source prototype implementation of River Trail for
-          Firefox* is available on <a href="http://github.com/rivertrail/rivertrail">Github</a> and
-          instructions for installing it are available on the River Trail <a
-          href="http://github.com/rivertrail/rivertrail/wiki">wiki</a>. This
-          prototype implements a variant of the full River Trail API that
-          compiles down to OpenCL* and can be executed on CPUs and GPUs.
+          Firefox is
+          available <a href="http://github.com/IntelLabs/RiverTrail/">on
+          GitHub</a> (see
+          the <a href="https://github.com/IntelLabs/RiverTrail#quick-start">quick
+          start instructions</a>).
+          This
+          prototype implements a version of the River Trail API that
+          compiles to OpenCL and can be executed on CPUs and GPUs.
           </p>
           <p>
           This tutorial is a gentle introduction to the River Trail language
           extensions and API.
-          Note that this tutorial describes the River Trail API as
-          implemented by this prototype and <em>not</em> the strawman API being
-          considered for standardization.
           </p>
 
           <h2><a name="pa"></a>The <em>ParallelArray</em> type</h2>
-          <!--<h1>API</h1>-->
+
           <p>
-          The central component of River Trail is the <em>ParallelArray</em>
-          type. ParallelArray objects are essentially <em> ordered collections of
-              scalar values </em>.
+          The central component of River Trail is the <code>ParallelArray</code>
+          type. <code>ParallelArray</code> objects are essentially <em>ordered collections of
+              scalar values</em>.
 
           <h3>Multi-Dimensional and Uniform</h3>
-          <p> ParallelArray objects can represent
+          <p><code>ParallelArray</code> objects can represent
           multi-dimensional collections of scalars.
-          All ParallelArray objects have a <em>shape</em> that
-          succintly describes the dimensionality and size of the object. The
-          shape of a ParallelArray is defined as an array of numbers in which
-          the value of the ith element is the number of elements in the ith dimension.
-          So a 4x5 matrix of numbers can be represented as a ParallelArray
-          object whose shape is [4, 5]. Similarly, a 2D image in which each
-          pixel has RGBA values can be represented as a ParallelArray object
-          with shape [height, width, 4].
+          All <code>ParallelArray</code> objects have a <em>shape</em> that
+          succinctly describes the dimensionality and size of the object.</p>
+
+          <p>The
+          shape of a <code>ParallelArray</code> is specified as an array of numbers in which
+          the value of the <em>i</em>th element is the number of elements in the <em>i</em>th
+          dimension of the <code>ParallelArray</code>.
+          So, for instance a 4x5 matrix of numbers can be represented as a <code>ParallelArray</code>
+          object whose shape is <code>[4, 5]</code>. Similarly, a 2D image in which each
+          pixel has an RGBA value can be represented as a <code>ParallelArray</code> object
+          with shape <code>[height, width, 4]</code>.  An empty <code>ParallelArray</code> has
+          shape <code>[0]</code>, and a one-dimensional <code>ParallelArray</code> with three elements
+          has shape <code>[3]</code>.
           </p>
           <p>
           Multi-dimensional ParallelArrays are also required to be <em>uniform</em> (also called
           <em>rectangular</em>). That is, the length of all inner arrays in a
           particular dimension must be the same. For example, 
-          <code>&lt;&lt;0, 1&gt;, &lt;2&gt;, &lt;3, 4&gt;&gt;</code> would be a non-uniform ParallelArray and is not
+          <code>[[0, 1], [2], [3, 4]]</code> would be non-uniform and is not
           allowed.
           </p>
           <h3>Immutable</h3>
-          ParallelArrays are immutable once they are created. ParallelArrays
-          are manipulated by invoking methods on them which produce new
-          ParallelArray objects.
+          <code>ParallelArray</code>s are immutable once they are created. <code>ParallelArray</code>s
+          are manipulated by invoking methods on them, which produce and return new
+          <code>ParallelArray</code> objects.
           </p>
-          <h2><a name="constructors"></a> Constructors </h2>
-<pre class="brush: js;first-line: 1">
-// Create an empty Parallel Array
-var pa0 = new ParallelArray();
-// pa0 = <>
+          <h2><a name="constructors"></a> Constructors</h2>
 
-// Create a ParallelArray out of a nested JS array.
-// Note that the inner arrays are also ParallelArrays
-var pa1 = new ParallelArray([ [0,1], [2,3], [4,5] ]);
-// pa1 = <<0,1>, <2,3>, <4.5>>
+          <code>ParallelArray</code> objects can be created in a variety of ways.
+          To create an empty <code>ParallelArray</code>, call the
+          constructor with no arguments:
 
-// Create a ParallelArray from another ParallelArray
-var pa2 = new ParallelArray(pa1);
-// pa2 = <<0,1>, <2,3>, <4.5>>
+          <pre class="brush: js;">
+            // Create an empty Parallel Array
+            var pa0 = new ParallelArray();
+          </pre>
+          <p>We can pass a regular JavaScript array to
+            the <code>ParallelArray</code> constructor, as well.  Here,
+            we are creating a <code>ParallelArray</code> out of a nested
+            JS array.  The inner arrays are
+            also <code>ParallelArray</code>s.</p>
 
-// Create a ParallelArray from several other
-// ParallelArrays
-var pa3 = new ParallelArray([0,1], [2,3]);
-// pa3 = <<0,1>,<2,3>>
+          <pre class="brush: js;">
+            // Create a ParallelArray out of a nested JS array.
+            // Note that the inner arrays are also ParallelArrays.
+            var pa1 = new ParallelArray([ [0,1], [2,3], [4,5] ]);
+            // pa1 has shape [3,2]
+          </pre>
 
-// Create a one-dimensional ParallelArray of length
-// 3 using the "comprehension" constructor
-var pa6 = new ParallelArray(3, 
+          <p>We can also create a new <code>ParallelArray</code>
+            object from an existing one. The below example creates the
+            new <code>ParallelArray</code> <code>pa2</code> from an existing
+            one, <code>pa1</code>. Since <code>ParallelArray</code>s are
+            immutable, it does not matter to us at this point whether this creates
+            a copy of <code>pa1</code> or whether it simply returns a new
+            reference to <code>pa1</code>. We are guaranteed that
+            both <code>pa1</code> and <code>pa2</code> will have the same
+            structure and the same data in them for their lifetime.</p>
+
+          <pre class="brush: js;">
+            // Create a ParallelArray from another ParallelArray
+            var pa2 = new ParallelArray(pa1);
+            // pa2 has the same contents and shape as pa1
+          </pre>
+
+          <p>We can also pass multiple arrays to
+            the <code>ParallelArray</code> constructor.  Here, the
+            arguments <code>[0, 1]</code> and <code>[2, 3]</code> each
+            have the shape <code>[2]</code>. The
+            resulting <code>ParallelArray</code> object will therefore
+            have the shape <code>[2,2]</code>: it contains two
+            elements, each of which contain two elements.</p>
+
+
+          <pre class="brush: js;">
+            // Create a ParallelArray from several other
+            // ParallelArrays
+            var pa3 = new ParallelArray([0,1], [2,3]);
+            // pa3 has shape [2,2]
+          </pre>
+
+          <p>Yet another way to create <code>ParallelArray</code>
+            objects is by using a <em>comprehension
+            constructor</em>. We specify the length of
+            the <code>ParallelArray</code> we want to construct, and
+            an <em>elemental function</em>.  This elemental function
+            is invoked once for each element in the result array, with
+            that element's index as its argument.<p>
+
+          <p>In the below example, the length is <code>3</code> and
+            the elemental function is <code>function(i) { return [i,
+            i+1]; }</code>.  For every index <code>i</code>, the
+            elemental function returns a two-element array consisting
+            of <code>i</code> and <code>i+1</code>. After the
+            elemental function has been invoked for
+            every <code>i</code>, we have the resulting
+            new <code>ParallelArray</code> <code>[[0, 1], [1, 2], [2,
+            3]]</code> (where the inner arrays are
+            all <code>ParallelArray</code>s as well). Note that the
+            order in which the calls to the elemental function occur
+            is irrelevant.  We will learn more about writing elemental
+            functions in the next section.</p>
+
+          <pre class="brush: js;">
+            // Create a ParallelArray of length 3 and
+            // shape [3,2], using the "comprehension" constructor
+            var pa6 = new ParallelArray(3, 
             function(i){return [i, i+1];});
-// pa6 = <<0,1>, <1,2>, <2,3>>
+          </pre>
 
-// Create a two-dimensional ParallelArray with shape
-// [3, 2] using the comprehension constructor
-var pa7 = new ParallelArray([3, 2], 
-            function(iv){return iv[0] * iv[1];});
-// pa7 = <<0,0>, <0,1>, <0,2>>
+          <p>The comprehension constructor can also create
+            multi-dimensional arrays. We need to supply a <em>shape
+            vector</em> instead of a length as the first argument to
+            the constructor, and an elemental function that takes a
+            <code>vector index</code> as an argument. In this case,
+            the shape we specify is <code>[3,2]</code>, and the
+            elemental function will be invoked with a two-element
+            vector argument <code>iv</code>:</p>
 
-// Create a ParallelArray from canvas.
-// This creates a PA with shape [w, h, 4],
-// corresponding to the width and height of the
-// canvas and the RGBA values for each pixel.
-var pa8 = new ParallelArray(document.createElement("canvas"));
-// pa8 = CanvasPixelArray
+          <pre class="brush: js;">
+            // Create a two-dimensional ParallelArray with shape
+            // [3,2] using the comprehension constructor
+            var pa7 = new ParallelArray([3, 2], 
+              function(iv) { return iv[0] * iv[1]; });
+          </pre>
 
-        </pre>
-         ParallelArray objects can be created in a variety of different ways
-as listed below.
-The constructor form in line 7 creates a new ParallelArray
-object <code>pa1</code> out of an existing JavaScript array. We could have also
-explicitly created the JavaScript array separately and used it to
-create <code>pa1</code>.
-The form in line 11 shows how to create a new ParallelArray
-object <code>pa2</code> from another ParallelArray object <code>pa1</code>. Since ParallelArrays
-are immutable, it does not matter to us at this point whether
-this creates a copy of <code>pa1</code> or whether it simply returns a new reference
-to <code>pa1</code>. We are guaranteed that both <code>pa1</code> and
-<code>pa2</code> will have
-the same structure and the same data in them for their lifetime.
-The constructor in line 16 returns a new ParallelArray object
-created by putting together two other ParallelArray objects. The
-arguments <0, 1> and <2, 3> each have the shape [2]. The
-new ParallelArray object will therefore have the shape [2, 2] - it
-contains two elements each of which contain 2 elements.
+          <p>Finally, we can also create a
+            new <code>ParallelArray</code> object directly from an
+            HTML5 <code>&lt;canvas&gt;</code> object. The canvas
+            object is used for drawing 2D shapes, pictures and video
+            on a web page. We will see how this is useful later when
+            we build a video web app.</p>
 
-We can also create ParallelArray objects using a comprehension
-constructor shown in line 21. We specify the length of the ParallelArary
-we want (3), and an elemental function. As the name suggests
-this elemental function is invoked for every index <code>i</code> within the
-length of the ParallelArray, i.e., for i=0, i=1 and i=2. This function
-then returns a 2 element array consisting of i and i+1. After the
-elemental function has been invoked for every i, we have the resulting
-new ParallelArray <<0, 1>, <1, 2>, <2, 3>>. Note
-that the order in which the elemental function is called is irrelevant.
-We will learn more about writing these functions in the next
-section.
-The comprehension constructor can also create multi-dimensional
-array as shown in line 27. We simply need to supply a shape vector
-instead of a length and an elemental function that takes a vector
-index as an argument. In this case, the shape we specify is [3, 2]
-and the elemental function will be invoked with a 2-element vector
-argument iv.
-Finally, we can also create a new ParallelArray object directly
-from an HTML5 canvas object. The canvas object is used for
-drawing 2D shapes, pictures and video on a webpage. We will see
-how this is useful later when we build a video web app. 
+          <pre class="brush: js;">
+            // This creates a ParallelArray with shape
+            // [height, width, 4],
+            // corresponding to the height and width of the
+            // canvas and the RGBA value for each pixel.
+            var pa8 = new ParallelArray(document.createElement("canvas"));
+          </pre>
+
           <h2><a name="methods"></a> Methods </h2>
-          ParallelArray objects created with the above constructors come with several methods to
-          manipulate them. These methods typically produce a new ParallelArray
-          object (except the <em>reduce</em> method which produces a scalar
-          value).
 
-          <h3> Map </h3>
+          <p><code>ParallelArray</code> objects created with the above
+          constructors come with several methods to manipulate
+          them. These methods typically produce a
+          new <code>ParallelArray</code> object (except
+          the <code>reduce</code> method, which produces a scalar
+          value).</p>
+
+          <h3>Map</h3>
           <p>
-          The first method we will discuss is <em>map</em>, probably the most prominent and well known data-parallel skeleton.
-          The <em>map</em> method expects a function as its first argument that given a single value produces a new value as its result.
-          In the following, we will call such function <em>elemental function</em> as it is used to produce the elements of a ParallelArray object.
-          The <em>map</em> method computes a new ParallelArray object out of an existing ParallelArray object by applying the provided
-          elemental function to each element of the source array and storing the result in the corresponding position in the result array.
-          Let us look at a simple example: increment
-          </p>
-          <pre class="brush: js;first-line: 1">
+          The first method we will discuss is <code>map</code>,
+          probably the most prominent and well-known data-parallel
+          skeleton.  The <code>map</code> method expects a function as its
+          first argument that, given a single value, produces a new
+          value as its result.  We call such
+          functions <em>elemental functions</em>, since they are used to
+          produce the elements of a <code>ParallelArray</code> object.
+          The <code>map</code> method computes a new <code>ParallelArray</code> object
+          from an existing <code>ParallelArray</code> object by applying the
+          provided elemental function to each element of the source
+          array and storing the result in the corresponding position
+          in the result array.  Let us look at a simple example:</p>
+
+          <pre class="brush: js;">
           var source = new ParallelArray([1,2,3,4,5]);
           var plusOne = source.map(function inc(v) { return v+1; });
           </pre>
+
           <p>
-          First, we define a new ParallelArray object <code>source</code> that contains the numbers 1 to 5. We then call the <em>map</em> method
-          of our source array with the function <code>inc</code> that computes the one increment of its argument. Thus, <code>plusOne</code> contains
-          the values 2 to 6. Also note that <code>plusOne</code> has the same shape as the original array <code>source</code>. The <em>map</em> method is 
-          shape preserving.
-          </p><p>
-          As you may have noticed, the <em>map</em> method does not provide an index to the elemental function it calls. We refer to this as <em>index free</em>
-          computations. Not using an index has the advantage that no indexing errors can be made. However, this added simplicity comes at the cost of expressiveness.
-          With map, one can not inspect neighboring values, as commonly required for convolution style codes. 
+          Here, we define a new <code>ParallelArray</code> object <code>source</code> that contains the numbers 1 to 5. We then call the <code>map</code> method
+          of our source array with the function <code>inc</code> that returns its argument, incremented by one. Thus, <code>plusOne</code> contains
+          the values 2 to 6. Also note that <code>plusOne</code> has the same shape as the original array <code>source</code>. The <code>map</code> method is 
+          shape-preserving.</p>
+
+          <p>
+          As you may have noticed, the <code>map</code> method does not provide an index to the elemental function it calls. Not using an index has the advantage that no indexing errors can be made. However, this added simplicity comes at the cost of expressiveness: with <code>map</code>, one can not inspect neighboring values in the array, as is commonly required for convolution-style computations. 
           </p>
-          <h3> Combine </h3>
+
+          <h3>Combine</h3>
+
           <p>
-          The <em>combine</em> method addresses this issue. Similar to map, <em>combine</em> can be used to compute a new ParallelArray object by inspecting an
-          existing ParallelArray object's element. Other than <em>map</em>, the elemental function of <em>combine</em> is provided with access to the current index
+          The <code>combine</code> method addresses this issue. Like <code>map</code>, <code>combine</code> can be used to compute a new <code>ParallelArray</code> object by inspecting an
+          existing <code>ParallelArray</code> object's elements. Unlike <code>map</code>, the elemental function of <code>combine</code> is provided with access to the current index
           in the source array, along with a reference to the source array itself.
-          Let us revisit the increment example from the previous section. When using <em>combine</em>, increment can be expressed as follows:
+          Let us revisit the increment example from the previous section. When using <code>combine</code>, the program can be expressed as follows:
           </p>
-          <pre class="brush: js;first-line: 1">
+
+          <pre class="brush: js;">
           var source = new ParallelArray([1,2,3,4,5]);
-          var plusOne = source.combine(function inc(i) { return this.get(i)+1; });
+          var plusOne =
+            source.combine(function inc(i) { return this.get(i)+1; });
           </pre>
+
           <p>
-          As before, we first produce our source array holding the values 1 to 5. We then apply the <em>combine</em> method using a slightly modified 
-          version of the <code>inc</code> function. It now expects an index <code>i</code> as argument. Furthermore, the collection, i.e., the source 
-          ParallelArray object is bound to the variable <code>this</code> within the elemental function's body. 
-          We then compute the one increment of the value at index <code>i</code>. This element is computed by calling the <em>get</em> method 
-          of the source ParallelArray object with index <code>i</code> as argument.
-          </p><p>
-          As this example shows, using <em>combine</em> requires more code to implement increment. However, we have gained expressiveness. As an example, 
-          consider the following implementation of <em>reverse</em>:
+          As before, we first produce our source array holding the values 1 to 5. We then apply the <code>combine</code> method using a slightly modified 
+          version of the <code>inc</code> function. It now expects an index <code>i</code> as argument. Furthermore, <code>source</code> is bound to the variable <code>this</code> within the elemental function's body. 
+          We can access the value at index <code>i</code> of the source <code>ParallelArray</code> by calling the <code>get</code> method with index <code>i</code> as argument.
           </p>
-          <pre class="brush: js;first-line: 1">
+
+          <p>
+          As this example shows, using <code>combine</code> requires more code to implement <code>inc</code>. However, we have gained expressiveness. As an example, 
+          consider the following code, which reverses the order of elements in an array:
+          </p>
+
+          <pre class="brush: js;">
           var source = new ParallelArray([1,2,3,4,5]);
           var reverse = source.combine(function rev(i) {
               return this.get(this.length-i[0]-1); });
           </pre>
+
           <p>
-          In the elemental function <code>rev</code> we exploit the access to the index to compute the reversed index in the source array. Note that
-          computations are driven by the index position in the result, not the index that is read. We therefore use the expression <code>this.length-i[0]-1</code> 
-          to compute the source index of the reversed element for position <code>i</code> in the result array. This code makes use of the <em>length</em> 
-          property of the ParallelArray object that, similar to JavaScript's Array object, gives the number of elements in the array.
-          </p><p>
+          In the elemental function <code>rev</code>, we exploit the access to the index that <code>combine</code> provides to compute the reversed index in the source array. Note that
+          computations are driven by the index position in the <em>result</em> array, not the source array. We therefore use the expression <code>this.length-i[0]-1</code> 
+          to compute the source index of the reversed element for position <code>i</code> in the result array. This code makes use of the <code>length</code> 
+          property of the ParallelArray object that gives the number of elements in the array.
+          </p>
+
+          <p>
           It is important to note here that the index <code>i</code> is not a scalar value but actually a vector of indices. In the above example, we therefore 
-          have to use <code>i[0]</code> in the computation of the source index. So far, all our examples computed on vectors and the use of an index vector
-          in <em>combine</em> was of no help. However, ParallelArray objects in River Trail can have multiple dimensions. The <em>map</em> method always 
-          operates on the outermost dimension only, i.e., on
-          the dimension that corresponds to the first element of the shape vector. With <em>combine</em>, the programmer can choose how deep to traverse. For
-          this, an optional first argument to the <em>combine</em> method is used. As an example, let us generalise the above reverse operation into a transpose
+          have to use <code>i[0]</code> in the computation of the source index.
+
+          <p>So far, all our examples have used one-dimensional arrays, and the use of an index vector
+          in <code>combine</code> has been of no help. However, <code>ParallelArray</code> objects in River Trail can have multiple dimensions. The <code>map</code> method always 
+          operates on the outermost dimension only, that is, on
+          the dimension that corresponds to the first element of the shape vector. With <code>combine</code>, the programmer can choose how deep to traverse, using an optional first argument to the <code>combine</code> method. As an example, let us generalise the above array-reversal operation into a transpose operation
           on matrices:
           </p>
-          <pre class="brush: js;first-line: 1">
+
+          <pre class="brush: js;">
           var source = new ParallelArray([4,4], function (iv) {
               return iv[0]*iv[1]; });
           var transpose = source.combine(2, function rev(iv) {
-              return this.get([this.getShape()[0]-iv[0]-1,
-              this.getShape()[1]-iv[1]-1]); });
+                return this.get([this.getShape()[0]-iv[0]-1,
+                                 this.getShape()[1]-iv[1]-1]); });
           </pre>
+
           <p>
           We use a depth of 2 and, consequently, the index vector <code>iv</code> passed to the elemental function contains two indices, corresponding to the 
-          two outer most dimensions of the source array. We also use the <em>getShape</em> method, which is the multi dimensional counterpart to <em>length</em>: 
-          It returns a vector that gives the length for each dimension of a ParallelArray object. With <code>this.getShape()[0]-iv[0]-1</code> we thus compute 
-          the index at the transposed position within the source array for the first dimension. Note here that <em>get</em> also accepts an index vector as argument.
+          two outermost dimensions of the source array. This example also uses the <code>getShape</code> method, which is the multi-dimensional counterpart to <code>length</code>: 
+          it returns a vector that gives the length for each dimension of a <code>ParallelArray</code> object. With <code>this.getShape()[0]-iv[0]-1</code>, we compute 
+          the index at the transposed position within the source array for the first dimension. Note here that <code>get</code> also accepts an index vector as argument.
           </p>
-          <h3> Reduce </h3>
+
+          <h3>Reduce</h3>
+
           <p>
-          So far we have concentrated on parallel patterns that produce a new array out of an existing array. The <em>reduce</em> method implements a further 
-          important parallel pattern: reduction operations. As the name suggest, a reduction operation reduces the elements from an array to a single result. A
+          So far we have concentrated on parallel patterns that produce a new array out of an existing array. The <code>reduce</code> method implements another
+          important parallel pattern: reduction operations. As the name suggests, a reduction operation reduces the elements in an array to a single result. A
           good example to start with is computing the sum of all elements of an array:
           </p>
-          <pre class="brush: js;first-line: 1">
+
+          <pre class="brush: js;">
           var source = new ParallelArray([1,2,3,4,5]);
           var sum = source.reduce(function plus(a,b) {
               return a+b; });
           </pre>
+
           <p>
-          As the example shows, the <em>reduce</em> method expects an elemental function as first argument that, given two values as parameters, produces a new
-          value as its result. In our example, we use <code>plus</code> which adds two values. A reduction over plus then defines the sum operation.
-          </p><p>
+          As the example shows, the <code>reduce</code> method expects as its first argument an elemental function that, given two values as arguments, produces a new
+          value as its result. In our example, we use <code>plus</code>, which adds two values, as the elemental function. A reduction over <code>plus</code> then defines the <code>sum</code> operation.
+          </p>
+
+          <p>
           Note here that the reduction may be computed in any order. In particular, this means that the elemental function has to be commutative and associative
-          to ensure deterministic results. The River Trail runtime will not check this property but results might be different between calls even on the same
+          to ensure deterministic results. The River Trail runtime will not check this property, but results might be different between calls even on the same
           platform.
           </p>
-          <h3> Scan </h3>
+
+          <h3>Scan</h3>
+
           <p>
-          The <em>reduce</em> methods reduces an array into a single value. For some uses cases, it can be interesting to also store the intermediate results. 
-          One commonly used example is the prefix sum operation that, given a vector of numbers, computes another vector of numbers that at each position contains
-          the sum of all elements of the source vector up to that position. To implement this parallel pattern, River Trail's ParallelArray features the 
+          The <code>reduce</code> operation reduces an array into a single value. For some use cases, it can be interesting to also store the intermediate results of a reduction.
+          An example is the <em>prefix-sum</em> operation that, given a vector of numbers, computes another vector of numbers that each position contains
+          the sum of all elements of the source vector up to that position. To implement this parallel pattern, <code>ParallelArray</code>s support a
           <em>scan</em> method.
           </p>
-          <pre class="brush: js;first-line: 1">
+
+          <pre class="brush: js;">
           var source = new ParallelArray([1,2,3,4,5]);
           var psum = source.scan(function plus(a,b) { return a+b; });
           </pre>
+
           <p>
-          As we are still computing a sum, the elemental function has not changed. We still use the <code>plus</code> operation from the previous reduction 
-          example. However, when used with <em>scan</em> it now produces the prefix sum of the <code>source</code> array.
-          <p><p>
-          The same rules of parallel execution that apply to <em>reduce</em> also apply to <em>scan</em>. Although less obvious, <em>scan</em> can be computed in 
-          parallel by reordering the reduction steps. Therefore, we only
+          Here, we again use the <code>plus</code> elemental function from the previous reduction 
+          example. However, when used with <em>scan</em>, it now produces the prefix-sum array of the <code>source</code> array.
+          </p>
+
+          <p>
+          The same rules of parallel execution that apply to <code>reduce</code> also apply to <code>scan</code>: the result of a <code>scan</code> operation can be computed in 
+          parallel, and therefore, we only
           guarantee a deterministic result if the elemental function is
           commutative and associative.
           </p>
-          <h3> Scatter </h3>
+
+          <h3>Scatter</h3>
+
           <p>
-          So far we have seen <em>map</em> and <em>combine</em> that can be used to produce new arrays out of existing arrays. However, both methods are driven
-          by result indices, i.e., they define for each index position in the result how it is to be computed. Sometimes, this mapping is difficult to specify or
-          costly to compute. Instead, it is preferable to specify for a certain source index where it should be stored in the result array. This pattern is supported
+          We have seen that <code>combine</code> can be used to produce new arrays out of existing arrays. However, with <code>combine</code> we must define for each index position in the result array how it is to be computed from the source array. Sometimes, this mapping is difficult to specify or
+          costly to compute. Instead, it is preferable to specify for a certain <em>source</em> index where it should be stored in the result array. This pattern is supported
           by the <em>scatter</em> method in River Trail. Here is an example:
           </p>
-          <pre class="brush: js;first-line: 1">
+          <pre class="brush: js;">
           var source = new ParallelArray([1,2,3,4,5]);
           var reorder = source.scatter([4,0,3,1,2]);
           </pre>
+
           <p>
-          We again first compute our source array <code>source</code>. In a second step, we apply the <em>scatter</em> method with a single argument: the 
+          We first compute our source array <code>source</code>. In a second step, we apply the <em>scatter</em> method with a single argument: the 
           <em>scatter vector</em> <code>[4,0,3,1,2]</code>. Thereby, we specify
           that the first element of <code>source</code> is to become the fifth element 
-          of the result (indexing starts with 0), the second value in <code>source</code> becomes the first in the result and so on. Overall, the above example 
+          of the result (indexing starts with 0), the second value in <code>source</code> becomes the first in the result, and so on. Overall, the above example 
           produces the array <code>[2, 4, 5, 3, 1]</code>.
-          </p><p>
-          But what happens if we assign two source values to the same position of the result? As <em>scatter</em> is potentially computed in parallel, the
-          result would be non-deterministic. Therefore, by default, the River Trail runtime will throw an exception on conflict. However, in practise, 
+          </p>
+
+          <p>
+          What happens if we assign two source values to the same position of the result? As <code>scatter</code> is potentially computed in parallel, the
+          result would be non-deterministic. Therefore, by default, the River Trail runtime will throw an exception when result positions conflict. However, in practice, 
           conflicts often are meaningful and can be deterministically resolved.
-          For these scenarios, <em>scatter</em> accepts an optional second argument: the 
-          <em>conflict function</em> that, given two conflicting values, produces a single resolution. 
-          </p><p>
-          On closer inspection, a conflict function is not enough to produce a fully defined result. If the scatter vector contains the same target index more 
-          than once, inevitably it will not fill all indices of the target array. To remedy this, we allow the programmer to specify an optional default value
+          For these scenarios, <code>scatter</code> accepts an optional second argument: a
+          <code>conflict function</code> that, given two conflicting values, produces a single resolution. 
+          </p>
+
+          <p>
+          On closer inspection, a conflict function is not enough to produce a fully specified result. If the scatter vector contains the same target index more 
+          than once, inevitably it will not fill all indices of the target array. To remedy this, we also allow the programmer to specify an optional default value
           that will be used for all index positions that are not defined otherwise.
           </p>
-          <pre class="brush: js;first-line: 1">
+
+          <pre class="brush: js;">
           var source = new ParallelArray([1,2,3,4,5]);
           var reorder = source.scatter([4,0,3,4,2], 3, function max(a, b) {
               return a&gt;b?a:b; });
           </pre>
+
           <p>
-          In the above example, the first and fourth element of the source array are both written to the fifth element of the result and no value is scattered
-          to the second index position. However, we provide the default of <code>3</code> as second argument. Lastly, we use a maximum as the conflict resolution 
-          function. Thus, the fifth position in the result is the maximum of <code>1</code> and <code>4</code>, which is <code>4</code>. Overall we get
+          In the above example, the first and fourth element of the source array are both written to the fifth element of the result array, and no value is written
+          to the second index position. However, we provide the default of <code>3</code> as the second argument to <code>scatter</code>. Lastly, we use a maximum as the conflict resolution 
+          function. Thus, the fifth position in the result is the maximum of <code>1</code> and <code>4</code>, which is <code>4</code>. Overall, we get
           <code>[2, 3, 5, 3, 4]</code>.
           </p>
-          <p><em>scatter</em> has a final optional argument: the result length. By default, the length of the result will be the same as the source array's. 
+
+          <p><code>scatter</code> has a final optional argument: the result length. By default, the length of the result will be the same as the source array's. 
           Using a scatter index outside of the result's length will lead to a range error. To spread elements out or reduce the total number of elements,
           the new length has to be explicitly provided.
-          </p><p>
-          Putting it all together, we can write an <em>histogram </em> by means
-          of <em>scatter</em>. A histogram computes the frequency or number of
+          </p>
+
+          <p>
+          Putting it all together, we can implmenet a <em>histogram</em> by means
+          of <code>scatter</code>. A histogram computes the frequency or number of
           occurrences of
-          a value with in a sample. Lets assume we have some source data that contains values from zero to five. We also need a second vector that contains
+          a value within a sample. Let's assume we have some source data that contains values from zero to five. We also need a second vector that contains
           weights. We will just use a vector of ones here. Here is the setup:
           </p>
-          <pre class="brush: js;first-line: 1">
+
+          <pre class="brush: js;">
           var source = new ParallelArray([1,2,2,4,2,4,5]);
           var ones = source.map(function one(v) { return 1; });
           </pre>
+
           <p>
-          We can then express histogram as scattering the ones we have just produced to the correct buckets, i.e., we interpret the source data as scatter indices. 
+          We can then implement a histogram by scattering the ones we have just produced to the correct buckets, that is, we interpret the source data as scatter indices. 
           Conflicts are resolved by adding values, ultimately counting how many times a one has been written to a certain position. The natural default value
-          is <code>0</code>. Lastly, we have to provide a new length, as we reduce multiple source values into a single frequency value. Here is what it looks
+          is <code>0</code>. Lastly, we have to provide a new length, since we reduce multiple source values into a single frequency value. Here is what it looks
           like:
           </p>
-          <pre class="brush: js;first-line: 1">
-          var hist = ones.scatter(source, 0, function plus(a,b) { return a+b;}, 6)
+          <pre class="brush: js;">
+          var hist = ones.scatter(source,
+                                  0,
+                                  function plus(a,b) { return a+b;},
+                                  6);
           </pre>
-          <h3> Filter </h3>
+
+          <h3>Filter</h3>
+
           <p>
-          With <em>scatter</em>, we can now create new ParallelArray objects by reordering the elements of an existing ParallelArray object. However, the result
+          With <code>scatter</code>, we can now create new <code>ParallelArray</code> objects by reordering the elements of an existing <code>ParallelArray</code> object. However, the result
           still contains all elements of the source array, modulo conflicts. We are still missing a means to simply drop elements from an array. This is where
-          the <em>filter</em> methods comes in. It expects an elemental function as its sole argument. The elemental function has the same signature as in 
-          <em>combine</em>, i.e., it gets the current index as an argument and the source object is bound to <code>this</code>. However, other than in <em>combine</em>,
-          the elemental function in <em>filter</em> is expected to return a truth value that indicates whether the source array's element at the given index 
+          the <code>filter</code> method comes in. It expects an elemental function as its sole argument. The elemental function has the same signature as
+          <code>combine</code>: it gets the current index as an argument, and the source object is bound to <code>this</code> within its body. However, unlike with <code>combine</code>,
+          the elemental function passed to <code>filter</code> is expected to return a truth value that indicates whether the source array's element at the given index 
           position should be included in the result. Let us look at an example:
           </p>
-          <pre class="brush: js;first-line: 1">
+
+          <pre class="brush: js;">
           var source = new ParallelArray([1,2,3,4,5]);
           var even = source.filter(function even(iv) {
               return (this.get(iv) % 2) == 0; });
           </pre>
-          <p>
-          As before, we first produce a source array containing the values one to five. Next, we apply the <em>filter</em> method using <code>even</code> as elemental
-          function, which returns true for all even elements. Thus, we remove all odd elements from the source array, leading to the result <code>[2, 4]</code>.
-          </p>
 
+          <p>
+          As before, we first produce a source array containing the values one to five. Next, we apply the <code>filter</code> method using <code>even</code> as the elemental
+          function, which returns <code>true</code> for all even elements. Thus, we remove all odd elements from the source array, leading to the result <code>[2, 4]</code>.
+          </p>
 
           <h2><a name="filters"></a>Parallel Video filters with River Trail</h2>
 
@@ -542,7 +622,7 @@ how this is useful later when we build a video web app.
 
             So for example to get the color values of a pixel in the 100th row and
             50th column in the image, we would do:
-            <pre class="brush: js;first-line: 1">
+            <pre class="brush: js;">
             var red   = frame.data[100*w*4 + 50*4 + 0];
             var green = frame.data[100*w*4 + 50*4 + 1];
             var blue  = frame.data[100*w*4 + 50*4 + 2];
@@ -617,7 +697,7 @@ function sepia_sequential(frame, len, ctx) {
           takes a canvas object as an argument and returns a freshly minted
           ParallelArray object containing the pixel data.</p>
 
-          <pre class="brush: js;first-line: 1">
+          <pre class="brush: js;">
 var pa = new ParallelArray(canvas);
           </pre>
           This creates a 3-dimensional ParallelArray <code>pa</code> with shape
@@ -686,7 +766,7 @@ var pa = new ParallelArray(canvas);
          powerful ParallelArray constructor or by using the combine method.
          Let us look at the constructor approach first. <br>
          Recall the the comprehension constructor has the following form:
-         <pre class="brush: js;first-line: 1">
+         <pre class="brush: js;">
          var pa = new ParallelArray(shape_vector, elemental_function,
             arg1, arg2..);
          </pre>
@@ -739,7 +819,7 @@ var pa = new ParallelArray(canvas);
         when supplied indices, produces the ParallelArray elements at those indices.
 
         Create a function called <code>sepia_parallel</code> in filters.js as follows:
-        <pre class="brush: js;first-line: 1">
+        <pre class="brush: js;">
         // elemental function for sepia
         function sepia_parallel (indices, frame) {
         }
@@ -756,7 +836,7 @@ var pa = new ParallelArray(canvas);
         argument to the constructor above.<br>
         Now let's fill in the body of the elemental function.
 
-        <pre class="brush: js;first-line: 1;
+        <pre class="brush: js;;
         highlight:[3,4,5,6,7,8,9,10,11,12,13]">
         // elemental function for sepia
         function sepia_parallel (indices, frame) {
@@ -800,7 +880,7 @@ var pa = new ParallelArray(canvas);
 
 
         <!--
-        <pre class="brush: js;first-line: 1">
+        <pre class="brush: js;">
         stage_output = stage_input.combine(1, function(index) {
             var old_r = this.get(index, 0);
             var old_g = this.get(index, 1);
@@ -899,7 +979,7 @@ var pa = new ParallelArray(canvas);
         </pre>
     Then create the elemental function in <code>filters.js</code> as follows:
 
-        <pre class="brush: js;first-line: 1; highlight:[1,2,3,4,5]">
+        <pre class="brush: js;; highlight:[1,2,3,4,5]">
         // elemental function for 3D
         function A3D_parallel (indices, frame, w, h, dist) {
             var i = indices[0];
@@ -924,7 +1004,7 @@ var pa = new ParallelArray(canvas);
         the argument dist (which is updated everytime the 3D slider on the UI is
         moved):
 
-        <pre class="brush: js;first-line: 1; highlight:[5,6]">
+        <pre class="brush: js; highlight:[5,6]">
         // elemental function for 3D
         function A3D_parallel (indices, frame, w, h, dist) {
             var i = indices[0];
@@ -945,7 +1025,7 @@ var pa = new ParallelArray(canvas);
         that is appropriately masked for the right and left eyes. For details
         on these functions, read about the <a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=941256&tag=1">Dubois method</a>.
 
-        <pre class="brush: js;first-line: 1; highlight:[7,8,9,10,11,12,13,14]">
+        <pre class="brush: js; highlight:[7,8,9,10,11,12,13,14]">
         // elemental function for 3d
         function a3d_parallel (indices, frame, w, h, dist) {
             var i = indices[0];
@@ -965,7 +1045,7 @@ var pa = new ParallelArray(canvas);
 
         Now we have the separately masked and blended left and right eye pixels. We now
         blend these two pixels together to produce the final color values.
-        <pre class="brush: js;first-line: 1; highlight:[15,16,17,18]">
+        <pre class="brush: js; highlight:[15,16,17,18]">
         // elemental function for 3d
         function a3d_parallel (indices, frame, w, h, dist) {
             var i = indices[0];
