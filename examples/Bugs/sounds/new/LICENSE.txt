@@ -1,0 +1,13 @@
+The sounds files in this folder are redistributed under their respective license.
+
+The following files are licensed under CC0 1.0 Universal (published at http://creativecommons.org/publicdomain/zero/1.0/):
+
+giggles.wav (available at http://www.freesound.org/people/martian/sounds/19260/)
+aww.wav (available at http://www.freesound.org/people/phmiller42/sounds/124996/)
+smallcrowd.wav (available at http://www.freesound.org/people/sagetyrtle/sounds/32260/)
+squelch.wav (available at http://www.freesound.org/people/Adam_N/sounds/148974/)
+
+The following files are licensed under CC By 3.0 Unported (available at http://creativecommons.org/licenses/by/3.0/)
+
+cheer.wav by Lonemonk (available at http://www.freesound.org/people/lonemonk/sounds/72836/)
+eat.way by Bender (available at http://www.freesound.org/people/--Bender--/sounds/160980/)
