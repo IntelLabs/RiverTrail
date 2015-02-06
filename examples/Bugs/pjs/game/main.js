@@ -237,6 +237,25 @@ function processFrameSeq() {
   timer.end("processFrameSeq");
 }
 
+
+// N.B.: This try/catch is necessary to handle a bug in Firefox; see
+// http://stackoverflow.com/q/18580844/415518 .
+function drawVideo() {
+  var captureContext=getCaptureContext();
+  var captureVideo=getCaptureVideo();
+  try {
+    captureContext.drawImage(captureVideo, 0, 0, captureContext.canvas.width, captureContext.canvas.height);
+  } catch (e) {
+    if (e.name == "NS_ERROR_NOT_AVAILABLE") {
+      // Wait a bit before trying again; you may wish to change the
+      // length of this delay.
+      setTimeout(drawVideo, 100);
+    } else {
+      throw e;
+    }
+  }
+}
+
 function processFramePar() {
   setup();
   timer.start("processFramePar");
@@ -244,9 +263,7 @@ function processFramePar() {
   edgeManager=edgeManagerPar;
   var captureCanvas = getCaptureCanvas();
   timer.start("getCaptureImage");
-  var captureContext=getCaptureContext();
-  var captureVideo=getCaptureVideo();
-  captureContext.drawImage(captureVideo, 0, 0, captureContext.canvas.width, captureContext.canvas.height);
+  drawVideo();
   var captureImage = new ParallelArray(captureCanvas);
   timer.end("getCaptureImage");
 
