@@ -11,3 +11,4 @@ Please see the [project wiki](https://github.com/IntelLabs/RiverTrail/wiki) or t
   2. Install or open [Firefox](https://www.mozilla.org/en-US/firefox/new/).
   3. Install the [River Trail Firefox add-on](https://github.com/IntelLabs/RiverTrail/releases/).
   4. Using Firefox with the River Trail add-on enabled, try one of our [live demos](https://github.com/IntelLabs/RiverTrail/wiki#sample-applications), or the [interactive shell](http://intellabs.github.io/RiverTrail-interactive/)!
+  5. A good way to get started with programming with the River Trail API is to go through our [tutorial](http://intellabs.github.io/RiverTrail/tutorial/).
