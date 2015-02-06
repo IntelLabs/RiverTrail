@@ -541,70 +541,104 @@ Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
           function, which returns <code>true</code> for all even elements. Thus, we remove all odd elements from the source array, leading to the result <code>[2, 4]</code>.
           </p>
 
-          <h2><a name="filters"></a>Parallel Video filters with River Trail</h2>
+          <h2><a name="filters"></a>Parallel Video Filters with River Trail</h2>
 
-
-          In this hands-on tutorial we will use River Trail to parallelize the
+          <p>In this hands-on tutorial we will use River Trail to parallelize the
           computationally intensive parts of a HTML5
-          video application. If you haven't already, read the <a
-              href="index.html">API description</a> and come back. It is also a
-          good idea to have this API description to refer to while reading
-          through this tutorial.
+          video application. If you haven't already, read the above <a
+              href="index.html#methods">API method descriptions</a> and come back. It is also a
+          good idea to have the method descriptions to refer to while reading
+          through this tutorial.</p>
 
           <h2><a name="setup"></a>Setup</h2>
-          <h3>Download and Install</h3>If you have not already, download
-              and install River Trail (see [1] and [2]). For this tutorial, you do
+
+          <h3>Download and Install</h3>
+
+          <p>If you have not done so already, download
+              and install the <a href="https://github.com/IntelLabs/RiverTrail/releases">River Trail Firefox extension</a>. For this tutorial, you do
               <strong>not</strong> need
-              to build the extension. You only need the
-              River Trail distribution and the River Trail binary
-              extension for Firefox.
+              to build the extension from source; you only need to install the pre-built extension.</p>
 
-          To be able to manipulate video from a webcam you will also need
-          to install the Rainbow extension.
-          <h3>Configure</h3>
-          Because of Firefox's security policies, you may have to
-          install Apache (or another webserver) and configure it so that
-          it serves files from the River Trail directory.
+          <p>Also, clone
+          the <a href="https://github.com/IntelLabs/RiverTrail">River
+          Trail repository</a>,
+          or <a href="https://github.com/IntelLabs/RiverTrail/archive/master.zip">download
+          and unzip a snapshot of it</a>.</p>
+
+          <p>Finally, we will use the
+          10-minute film <em><a href="https://peach.blender.org/">Big Buck
+          Bunny</a></em> for the tutorial. Download an <a href="http://upload.wikimedia.org/wikipedia/commons/4/41/Big_Buck_Bunny_medium.ogv">.ogv file</a> of the movie,
+          and save it in the <code>tutorial/src/media/</code>
+          directory of the River Trail repository that you just cloned or unzipped.</p>
+
+          <h3>Serving the Tutorial Files</h3>
+
+          <p>Because of Firefox's security policies, for this tutorial
+          you will need to run a web server that serves files from the
+          River Trail directory.  For instance, if you have Python
+          installed, running the shell command <code>python -m SimpleHTTPServer</code>
+          in the directory where you cloned or unzipped the River
+          Trail repository is one way to quickly serve files:</p>
+
+          <p>
+          <pre class="brush:bash;">
+~/repos/RiverTrail$ python -m SimpleHTTPServer
+Serving HTTP on 0.0.0.0 port 8000 ...</pre>
+          </p>
+
+          <p>Note that you need to serve the files from <strong>the
+          top-level directory</strong> where you cloned or unzipped the repo,
+          not the <code>tutorial/src/</code> directory!  You should
+          then be able to navigate
+          to, e.g., <a href="http://localhost:8000/tutorial/src/">http://localhost:8000/tutorial/src/</a>
+          in your browser and see the tutorial skeleton.</p>
+
           <h3>Verify</h3>
-          To verify that extension is installed, go to the <a
-          href="http://rivertrail.github.com/RiverTrail/interactive/">interactive shell</a>.
-          On the last line, you should see a message saying:<br><br>
-          <code>It appears that you have River Trail installed. Enabling
-          compiled mode...</code> <br><br>
-          If you see this, then the extension has been installed correctly.
-          However if you only see something like:<br><br> 
-          <code>PS: This page uses the sequential library implementation of
-          River Trail. You won't need the extension but there will be no
-          speedup either.</code><br><br> then the extension isn't installed properly.
-          See the River Trail <a href="http://github.com/rivertrail/rivertrail/wiki">wiki</a> for instructions on installing.<br>
 
-          Once the extension is installed correctly, try running one of the
-          included examples in <em>rivertrail/examples/</em>. For instance, the
-          n-body simulation example in <em>idf-demo</em>.
+          <p>To verify that the River Trail extension is installed, go to the <a
+          href="http://intellabs.github.io/RiverTrail-interactive/">interactive shell</a>.
+          You should see a message saying:</p>
 
-          <!--Check if you can run the examples in
-          <em>rivertrail/examples </em> by loading them in Firefox. If you can,
-          you are good to go. -->
-          <h2><a name="skeleton"></a>The Skeleton </h2>
-          The directory <em>rivertrail/tutorial/src</em> contains a
-          skeleton for the video application that you can start with. Load up
-          <code>index.html</code> in this directory in Firefox and you should see the
+          <p>
+          <code>River Trail Extension loaded. Enabling parallel mode...</code>
+          </p>
+
+          <p>If you see this, then the extension has been installed correctly.
+          However if you only see something like:</p>
+
+          <p>
+          <code>River Trail not found. Enabling sequential mode...</code>
+          </p>
+
+          <p>then the extension isn't installed, or is disabled.  In
+          the Firefox Add-ons Manager, make sure that the extension is
+          installed and enabled, and try reloading the page.</p>
+
+          <p>Once the extension is installed correctly, try running one of the
+          <a href="https://github.com/IntelLabs/RiverTrail/wiki#sample-applications">sample applications</a>.</p>
+
+          <h2><a name="skeleton"></a>The Skeleton</h2>
+
+          <p>In the River Trail repo, the <code>tutorial/src/</code> directory contains a
+          skeleton for the video application that you can start with.  If you've followed the above directions for serving the tutorial files, you should already be able to load up, e.g., <a href="http://localhost:8000/tutorial/src/">http://localhost:8000/tutorial/src/</a> in Firefox and see the
           default screen for the application skeleton:
           <img src="images/skeleton3.png"/>
           The large box in the center is a 
-              <a href="https://developer.mozilla.org/en-US/docs/Canvas_tutorial">Canvas</a> that is used for rendering the video output. The
-          video input is either a HTML5 video stream embedded in a 
-              <a href="https://developer.mozilla.org/en-US/docs/HTML/Element/video">video</a> tag or live video captured by a webcam. On the
-          right of the screen you will see the various filters that can applied
-          to this input video stream - sepia toning, lightening, desaturation
-          etc. Click on the box in the center screen to start playback and try
-          out these filters. To switch to webcam video, click the "Webcam" toggle in
-          the top-left corner.
+              <a href="https://developer.mozilla.org/en-US/docs/Canvas_tutorial">canvas</a> that is used for rendering the video output. The
+          video input is either an HTML5 video stream embedded in a
+              <a href="https://developer.mozilla.org/en-US/docs/HTML/Element/video">video</a> tag, or live video captured by a webcam.</p>
 
-          The sequential JavaScript versions of the filters on the right are already
-          implemented and in this tutorial we will implement the "parallel"
-          versions using River Trail. Before we dive into implementation, lets
-          look at the basics of manipulating video using the Canvas API.
+          <p>On the
+          right of the screen, you will see the various filters that can applied
+          to this input video stream: sepia toning, lightening, desaturation,
+          and so on. Click on the box in the center screen to start playback of the <em>Big Buck Bunny</em> video and try
+          out these filters. To switch to webcam video, click the "Webcam" toggle in
+          the top left corner.</p>
+
+          <p>The sequential JavaScript versions of the filters on the right are already
+          implemented.  In this tutorial, we will implement the parallel
+          versions using River Trail. Before we dive into implementation, let's
+          look at the basics of manipulating video using the Canvas API.</p>
 
           <h2><a name="manip"></a> Manipulating pixels on Canvas </h2>
           Open up <code>main.js</code> in your favorite code editor. This file implements
