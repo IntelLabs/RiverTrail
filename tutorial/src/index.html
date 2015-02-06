@@ -101,7 +101,7 @@ index.html : Application interface and controls
                 padding:0px;
                 margin:0px;
                 border:0px;
-                background-image:url('media/img7.jpg');
+                background-image:url('../media/img7.jpg');
                 color:#CCCCCC; 
                 font-family: "Calibri", Helvetica, sans-serif;
             }
@@ -223,9 +223,9 @@ index.html : Application interface and controls
 
 
         </style>
-        <link type="text/css" href="css/ui-darkness/jquery-ui-1.8.22.custom.css" rel="Stylesheet" />	
-        <script type="text/javascript" src="js/jquery-1.7.2.min.js"></script>
-        <script type="text/javascript" src="js/jquery-ui-1.8.22.custom.min.js"></script>
+        <link type="text/css" href="../css/ui-darkness/jquery-ui-1.8.22.custom.css" rel="Stylesheet" />
+        <script type="text/javascript" src="../js/jquery-1.7.2.min.js"></script>
+        <script type="text/javascript" src="../js/jquery-ui-1.8.22.custom.min.js"></script>
 
         
         <script>
@@ -314,9 +314,9 @@ index.html : Application interface and controls
             window.onbeforeunload = endit;
         </script>
 
-        <script type="text/javascript" src="../../dist/RiverTrail.js"></script>
-        <script type="text/javascript;version=1.8" src="filters-skeleton.js"></script>
-        <script type="text/javascript;version=1.8" src="main-skeleton.js"></script>
+        <script type="text/javascript" src="../../../dist/RiverTrail.js"></script>
+        <script type="text/javascript;version=1.8" src="filters.js"></script>
+        <script type="text/javascript;version=1.8" src="main.js"></script>
     </head>
     <body class="image" onload="doLoad()">
         <div id="header_wrap" class="outer"
@@ -398,14 +398,15 @@ index.html : Application interface and controls
             <div>
                 <input type="checkbox" id="A3D" class="buttoncheckid" /><label
                     for="A3D" class="buttoncheckid">3D 
-                    <img class="icon3d" src="media/3d.png" height="20px"/></label>
+                    <img class="icon3d" src="../media/3d.png" height="20px"/></label>
                 <div id="dist"></div>
             </div>
             
                 </div> <!-- menu -->
                 <div id="inputdiv" style="display: none">
-                    <video id="video" src="media/Big_Buck_Bunny_medium.ogv" controls="false" type="video/ogv"/>
+                    <video id="video" src="../media/Big_Buck_Bunny_medium.ogv" controls="false" type="video/ogv"/>
                 </div>
+                <video id="webcamvideo" width="640" height="480" style="position:absolute;visibility:hidden" autoplay></video>
                 <canvas id="webcaminput" width="640" height="480" style="position:absolute;visibility:hidden"></canvas>
                 <canvas id="hist" width=896 height=50 class="hist"></canvas>
             </div> <!-- body -->

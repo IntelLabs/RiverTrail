@@ -94,7 +94,7 @@ function isSkinYCrCb(xr, xg, xb) {
 
 }
 
-function dofaceparallel(input, w, h, image_pa, ctx, ow, oh) {
+function dofaceparallel(input, w, h, image_pa, frm, ctx, ow, oh) {
     var row_sums_pa = new ParallelArray(h, rowSum, input, w, h);
     var col_sums_pa = new ParallelArray(w, colSum, input, w, h);
 
@@ -135,8 +135,7 @@ function dofaceparallel(input, w, h, image_pa, ctx, ow, oh) {
             break;
         }
     }
-    image_pa.materialize();
-    RiverTrail.compiler.openCLContext.writeToContext2D(ctx, image_pa.data, ow, oh);
+    writePAtoCanvasContext(image_pa, frm, ctx);
     ctx.strokeStyle = "rgba(20,254,0,1)";
     ctx.lineWidth = 5;
     ctx.strokeRect(face_col_start, face_row_start, 100, 100);
@@ -167,8 +166,10 @@ function colSum(index, pix, w, h) {
 var Filters = function() {
 
     function lighten_parallel(index, frame, w, h, grey_factor) {
-    }
 
+        /* Add your code here... */
+
+    }
     function lighten_sequential(frame, len, w, h, grey_factor, ctx) {
         var pix = frame.data;
         var r, g, b;
@@ -193,6 +194,9 @@ var Filters = function() {
     };
 
     function color_adjust_parallel(index, frame, w, h, ri, gi, bi) {
+
+        /* Add your code here... */
+
     }
 
     function color_adjust_sequential(frame, len, w, h, ri, gi, bi, ctx) {
@@ -223,7 +227,7 @@ var Filters = function() {
         var kernel = [[1,4,7,4,1], [4,16,26,16,4], [7,26,41,26,7],[4,16,26,16,4],[1,1,1,1,1]];
         var norm_factor = 273;
         var kernel_width = (kernel.length-1)/2; // how many elements in each direction
-
+        var frame_shape = frame.getShape();
         var neighbor_sum_r = 0;
         var neighbor_sum_g = 0;
         var neighbor_sum_b = 0;
@@ -233,8 +237,8 @@ var Filters = function() {
         for(var i = -1*kernel_width; i <= kernel_width; i++) {
             for(var j = -1*kernel_width; j <= kernel_width; j++) {
                 x = m+i; y = n+j;
-                x = (x < 0 || x > h-1) ? 0 : x;
-                y = (y < 0 || y > w-1) ? 0 : y;
+                x = (x < 0 || x > frame_shape[0]-1) ? 0 : x;
+                y = (y < 0 || y > frame_shape[1]-1) ? 0 : y;
                 weight = kernel[i+kernel_width][j+kernel_width];
                 neighbor_sum_r += frame[x][y][0] * weight;
                 neighbor_sum_g += frame[x][y][1] * weight;
@@ -360,6 +364,9 @@ var Filters = function() {
     }
 
     function A3D_parallel(index, frame, w, h, dist) {
+
+        /* Add your code here... */
+
     }
 
     function A3D_sequential(frame, len, w, h, dist, ctx) {
@@ -415,9 +422,15 @@ var Filters = function() {
     }
 
     function sepia_parallel (index, frame, w, h) {
+
+        /* Add your code here... */
+
     }
 
     function desaturate_parallel(index, frame, w, h) {
+
+        /* Add your code here... */
+
     }
 
     function desaturate_sequential(frame, len, w, h, ctx) {
@@ -433,6 +446,9 @@ var Filters = function() {
     }
 
     function sharpen_parallel (index, frame, w, h) {
+
+        /* Add your code here... */
+
     }
 
     function sharpen_sequential(frame, len, w, h, ctx) {
@@ -549,6 +565,9 @@ var Filters = function() {
     }
 
     function edge_detect_parallel (index, frame, w, h) {
+
+        /* Add your code here... */
+
     }
 
     function edge_detect_parallel_unrolled (index, frame, w, h) {

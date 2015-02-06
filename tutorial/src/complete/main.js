@@ -281,7 +281,7 @@ function computeFrame() {
     if(frames > 0)
         start_time = new Date().getTime();
     if (execution_mode === "sequential" || (numActiveFilters === 0)) {
-        frame = input_context.getImageData(0, 0, input_canvas.width, input_canvas.height);
+        frame = output_context.getImageData(0, 0, input_canvas.width, input_canvas.height);
         len = frame.data.length;
         w = frame.width; h = frame.height;
     } else if (execution_mode === "parallel") {
@@ -309,6 +309,7 @@ function computeFrame() {
                     dofaceparallel(face_pa, w, h, stage_input, frame, output_context, w, h);
                     //stage_output = stage_input;
                     break;
+                case "sepia":
                 case "edge_detect":
                 case "sharpen":
                     stage_output = new ParallelArray([h, w], low_precision(kernelName), stage_input, w, h);
