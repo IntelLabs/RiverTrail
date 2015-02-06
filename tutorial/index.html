@@ -640,71 +640,98 @@ Serving HTTP on 0.0.0.0 port 8000 ...</pre>
           versions using River Trail. Before we dive into implementation, let's
           look at the basics of manipulating video using the Canvas API.</p>
 
-          <h2><a name="manip"></a> Manipulating pixels on Canvas </h2>
-          Open up <code>main.js</code> in your favorite code editor. This file implements
+          <h2><a name="manip"></a>Manipulating Pixels on Canvas</h2>
+
+          <p>
+          Open up <code>tutorial/src/main-skeleton.js</code> in your favorite code editor. This file implements
           all the functionality in this web application except the filters
           themselves. When you load the page, the <code>doLoad()</code> function is called
-          after the body of the webpage has been loaded. This function sets up
-          the drawing contexts, initializes the list of filters (or kernels)
-          and assigns a click event handler for the output canvas.
+          after the body of the page has been loaded. This function sets up
+          the drawing contexts, initializes the list of filters (or kernels),
+          and assigns a click event handler for the output canvas.</p>
 
+          <p>
           The <code>computeFrame()</code> function is the workhorse that reads an input
-          video frame, applies all the selected filters on it to produce an
+          video frame, applies all the selected filters on it, and produces an
           output frame that is written to the output canvas context.
-          The code below shows how a single frame from a HTML video element is
-          drawn to a 2D context associated with a canvas element.<br><br>
+          The code below shows how a single frame from an HTML video element is
+          drawn to a 2D context associated with a canvas element.</p>
 
-          <!--<p><script
-              src="http://gist.github.com/3419413.js#L2"></script></p>-->
-            <pre class="brush: js;first-line: 240">
-            // main.js : computeFrame()
+          <p>
+            <pre class="brush: js;">
+            // main-skeleton.js: computeFrame() (excerpt)
             output_context.drawImage(video, 0, 0, output_canvas.width,
                 output_canvas.height);
             </pre>
+          </p>
+
+          <p>
                   After this video frame is drawn to canvas, we need to capture the
                   pixels so that we can apply our filters. This is done by calling
-                  getImageData() on the context containing the image we want to
+                  <code>getImageData()</code> on the context containing the image we want to
                   capture.
-            <pre class="brush: js;first-line: 248">
-            // main.js : computeFrame(), line number 249
+          </p>
+
+          <p>
+            <pre class="brush: js;">
+            // main-skeleton.js: computeFrame() (excerpt)
             frame = input_context.getImageData(0, 0, input_canvas.width,
                 input_canvas.height);
             len = frame.data.length;
-            w = frame.width ; h = frame.height;
+            w = frame.width;
+            h = frame.height;
             </pre>
+          </p>
 
-            Now we have an <a href="https://developer.mozilla.org/en-US/docs/HTML/Canvas/Pixel_manipulation_with_canvas">ImageData</a> object called <code>frame</code>. The <code>data</code> attribute of this
-            object contains the pixel information and the "width"/"height" attributes
+          <p>
+            Now we have an <a href="https://developer.mozilla.org/en-US/docs/HTML/Canvas/Pixel_manipulation_with_canvas"><code>ImageData</code></a> object called <code>frame</code>. The <code>data</code> attribute of <code>frame</code>
+            contains the pixel information, and the <code>width</code> and <code>height</code> attributes
             contain the dimensions of the image we have captured.
+          </p>
 
-            The data attribute contains RGBA values for each pixel in a row-major format.
-            That is, for a frame with h rows of pixels and w columns, it contains a
-            1-dimensional array
-            of length w * h * 4 as shown below:<br>
-            <div align="center">
-            <img src="images/imgdata.png" width="350"/><br>
-            </div>
+          <p>
+            The <code>data</code> attribute contains RGBA values for each pixel in a row-major format.
+            That is, for a frame with <em>h</em> rows of pixels and <em>w</em> columns, it contains a
+            one-dimensional array
+            of length <em>w</em> * <em>h</em> * 4, as shown below:</p>
 
-            So for example to get the color values of a pixel in the 100th row and
-            50th column in the image, we would do:
+          <p style="text-align: center;">
+            <img src="images/imgdata.png" width="350"/>
+          </p>
+
+          <p>
+            So, for example, to get the color values of a pixel in the 100th row and
+            50th column in the image, we could write the following code:</p>
+
+          <p>
             <pre class="brush: js;">
             var red   = frame.data[100*w*4 + 50*4 + 0];
             var green = frame.data[100*w*4 + 50*4 + 1];
             var blue  = frame.data[100*w*4 + 50*4 + 2];
             var alpha = frame.data[100*w*4 + 50*4 + 3];
             </pre>
+          </p>
 
-            To set, for example the red value of this pixel, simply write the new value at the
+          <p>
+            To set, for example, the red value of this pixel, simply write the new value at the
             offset shown above in the <code>frame.data</code> buffer.
+          </p>
 
-          <h2><a name="sepia"></a> Sepia Toning </h2>
-          <a href="https://developer.mozilla.org/en-US/docs/HTML/Canvas/Pixel_manipulation_with_canvas">Sepia Toning</a> is a process performed on black-and-white print
+          <h2><a name="sepia"></a>Sepia Toning</h2>
+
+          <p>
+            Sepia toning is a process performed on black-and-white print
           photographs to give them a warmer color. This filter simulates the
           sepia toning process on digital photographs or video.
+          </p>
 
+          <p>
           Let us first look at the sequential implementation of this filter in
-          the function called <code>sepia_sequential()</code> in filters.js.
-          <pre class="brush: js;first-line: 820">
+          the function called <code>sepia_sequential()</code> in <code>tutorial/src/filters-skeleton.js</code>.
+          </p>
+
+              <p>
+          <pre class="brush: js;">
 function sepia_sequential(frame, len, ctx) {
     var pix = frame.data;
     var r = 0, g = 0, b = 0;
@@ -728,13 +755,15 @@ function sepia_sequential(frame, len, ctx) {
     ctx.putImageData(frame, 0, 0);
 } 
           </pre>
+          </p>
 
-          Remember from the previous snippet that the frame.data buffer
-          contains color values as a linear sequence of <strong>rgba</strong> values. The
-          <code>for</code> loop in line 823
-          iterates over this buffer and for each pixel it reads the red, green
+          <p>
+          Recall that the <code>frame.data</code> buffer
+          contains color values as a linear sequence of RBGA values. The
+          <code>for</code> loop in <code>sepia_sequential()</code>
+          iterates over this buffer, and for each pixel it reads the red, green
           and blue values (which are in <code>pix[i]</code>,
-          <code>pix[i+1]</code> and <code>pix[i+2]</code> respectively).
+          <code>pix[i+1]</code>, and <code>pix[i+2]</code>, respectively).
           It computes a weighted average of these colors to produce the new
           red, green, blue values for that pixel. It then clamps the new
           red, green and blue values to [0, 255] and writes them back into the
