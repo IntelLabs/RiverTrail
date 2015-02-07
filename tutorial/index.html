@@ -155,7 +155,7 @@ Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
           So, for instance a 4x5 matrix of numbers can be represented as a <code>ParallelArray</code>
           object whose shape is <code>[4, 5]</code>. Similarly, a 2D image in which each
           pixel has an RGBA value can be represented as a <code>ParallelArray</code> object
-          with shape <code>[height, width, 4]</code>.  An empty <code>ParallelArray</code> has
+          with shape <code>[h, w, 4]</code>.  An empty <code>ParallelArray</code> has
           shape <code>[0]</code>, and a one-dimensional <code>ParallelArray</code> with three elements
           has shape <code>[3]</code>.
           </p>
@@ -280,7 +280,7 @@ Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
 
           <pre class="brush: js;">
             // This creates a ParallelArray with shape
-            // [height, width, 4],
+            // [h, w, 4],
             // corresponding to the height and width of the
             // canvas and the RGBA value for each pixel.
             var pa8 = new ParallelArray(document.createElement("canvas"));
@@ -675,7 +675,7 @@ Serving HTTP on 0.0.0.0 port 8000 ...</pre>
           <p>
             <pre class="brush: js;">
             // main-skeleton.js: computeFrame() (excerpt)
-            frame = input_context.getImageData(0, 0, input_canvas.width,
+            frame = output_context.getImageData(0, 0, input_canvas.width,
                 input_canvas.height);
             len = frame.data.length;
             w = frame.width;
@@ -765,175 +765,197 @@ function sepia_sequential(frame, len, ctx) {
           and blue values (which are in <code>pix[i]</code>,
           <code>pix[i+1]</code>, and <code>pix[i+2]</code>, respectively).
           It computes a weighted average of these colors to produce the new
-          red, green, blue values for that pixel. It then clamps the new
-          red, green and blue values to [0, 255] and writes them back into the
-          "data" buffer. When the loop is finished, we have replaced the RGB
+          red, green, and blue values for that pixel. It then clamps the new
+          red, green and blue values to the range [0, 255] and writes them back into the
+          <code>frame.data</code> buffer. When the loop is finished, we have replaced the RGB
           values for all the pixels with their sepia-toned values and we can
           now write the image back into the output context <code>ctx</code>
           with the <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/the-canvas-element.html#dom-context-2d-putimagedata">putImageData()</a>
           method. The result should look like this (image on the left is the
-          original frame, image on the right is the output): <br>
+          original frame, image on the right is the output):
+          </p>
 
-          <div align="center">
+          <p style="text-align: center;">
           <img src="images/se1.png" height="170"/>
           <img src="images/se2.png" height="170"/>
-          </div>
+          </p>
 
           <h3> Can we make this parallel? </h3>
-          If you look closely at the <code>sepia_sequential</code> function
+          
+          <p>
+          If you look closely at the <code>sepia_sequential()</code> function
           above, you'll notice that each pixel can be processed independently
-          of all other pixels as its new RGB values depend only on its current
-          RGB values. And each iteration of the <code>for</code> loop does
-          not produce or consume side-effects. This makes it easy to
-          parallelize this operation with River Trail.
+          of all other pixels, as its new RGB values depend only on its current
+          RGB values. Furthermore, each iteration of the <code>for</code> loop does
+          not produce or consume side effects. This makes it easy to
+          parallelize this operation with River Trail.</p>
 
-          <p>Recall that the <em>ParallelArray</em> type has a constructor that
+          <p>Recall that the <code>ParallelArray</code> type has a constructor that
           takes a canvas object as an argument and returns a freshly minted
-          ParallelArray object containing the pixel data.</p>
+          <code>ParallelArray</code> object containing the pixel data from that canvas.</p>
 
+          <p>
           <pre class="brush: js;">
 var pa = new ParallelArray(canvas);
           </pre>
-          This creates a 3-dimensional ParallelArray <code>pa</code> with shape
-          [h, w, 4] that looks like the following: <br> 
+          </p>
+
+          <p>
+          This creates a three-dimensional <code>ParallelArray</code> <code>pa</code> with shape
+          [h, w, 4] that looks like the following:</p>
+
+          <p>
           <img src="images/pacanvas1.png" height="300" style="margin:auto;display:block;"/>
+          </p>
 
-          So for pixel on the canvas at coordinates (x, y), pa.get(x, y, 0)
-          will contain the red value, pa.get(x, y, 1) will contain the green
-          value and pa.get(x, y, 2) will contain the blue value.
+          <p>
+          So, for the pixel on the canvas at coordinates <code>(x, y)</code>, <code>pa.get(x, y, 0)</code>
+          will contain the red value, <code>pa.get(x, y, 1)</code> will contain the green
+          value, and <code>pa.get(x, y, 2)</code> will contain the blue value.
+          In <code>computeFrame()</code>, we create a new <code>ParallelArray</code> from this canvas:</p>
 
-          The input ParallelArray that is given to the filter(s) (line 253, main.js): 
-
-          <pre class="brush: js;first-line: 253">
+          <p>
+          <pre class="brush: js;">
+            // main-skeleton.js: computeFrame() (excerpt)
             else if (execution_mode === "parallel") {
+                frame = output_context.getImageData(0, 0, input_canvas.width, input_canvas.height);
                 stage_output = stage_input = new ParallelArray(input_canvas);
                 w = input_canvas.width; h = input_canvas.height;
             }
           </pre>
-          <code>stage_input</code> and <code>stage_output</code> are
-          ParallelArray objects that contain the input and output pixel data
-          for each filtering "stage". Now lets look at the code that causes the
-          filters to be applied (line 271, main.js):
 
-          <pre class="brush: js;first-line: 271">
-          if(execution_mode === "parallel") {
+
+          <p>
+          Here, <code>stage_input</code> and <code>stage_output</code> are
+          <code>ParallelArray</code> objects that contain the input and output pixel data
+          for each filtering "stage". Now let's look at the code that causes the
+          filters to be applied:</p>
+
+          <p>
+          <pre class="brush: js;">
+        // main-skeleton.js: computeFrame() (excerpt)
+        if(execution_mode === "parallel") {
             switch(filterName) {
+                ...
+
                 case "sepia":
-                case "lighten":
-                case "desaturate":
-                case "color_adjust":
-                case "edge_detect":
-                case "sharpen":
-                case "A3D":
-                case "face_detect":
+                    /* Add your code here... */
+
                     break;
-                default:
+
+                ...
+
             }
             // Make this filter's output the input to the next filter.
             stage_input = stage_output;
-          }
+        }
           </pre>
-          You will see that this code block is wrapped in a <code>for</code>
-          loop that iterates over all the available filters.
+          </p>
 
+          <p>
           To implement a
-          particular filter, we add code to produce a new ParallelArray object
+          particular filter, we add code to produce a new <code>ParallelArray</code> object
           containing the transformed pixel data and assign it to
-          <code>stage_output</code>.
+          <code>stage_output</code>.  For example, for the sepia filter, we would write:
 
+          <p>
+          <pre class="brush: js;">
+        case "sepia":
+            stage_output = /* new ParallelArray containing
+                              transformed pixel data */;
 
-          So for example, for the sepia filter, we would write:
-          <pre class="brush: js;first-line: 272; highlight:[275,276,277]">
-            ...
-            switch(filterName) {
-            case "sepia":
-                stage_output = /*new parallel array containing
-                transformed pixel data */;
-                break;
-            ...
+            break;
          </pre>
+          </p>
 
-         Now, all we have to do above is produce a new ParallelArray object
-         on the right-hand-side of the statement above.
+          <p>
+         Now, all we have to do above is produce a new <code>ParallelArray</code> object
+         on the right-hand side of the statement above.
+         We can produce this new <code>ParallelArray</code> one of two ways: by using the
+         powerful <code>ParallelArray</code> constructor, or by using the <code>combine</code> method.
+         Let us look at the constructor approach first.</p>
 
-         We can produce this new ParallelArray one of two ways - by using the
-         powerful ParallelArray constructor or by using the combine method.
-         Let us look at the constructor approach first. <br>
-         Recall the the comprehension constructor has the following form:
+          <p>
+         Recall that the comprehension constructor has the following form:</p>
+
+          <p>
          <pre class="brush: js;">
          var pa = new ParallelArray(shape_vector, elemental_function,
-            arg1, arg2..);
+            arg1, arg2, ...);
          </pre>
-         where elemental_function is a JavaScript function that produces the
-         value of an element at a particular index in <code>pa</code>.
+         </p>
 
-         Recall that the input to our filter <code>stage_input</code> is a [h,
-         w, 4] shaped ParallelArray. You can think of it as a two-dimensional
-         ParallelArray with shape [h, w] in which each element (which corresponds to
-         a single pixel) is itself a ParallelArray of shape [4].
+          <p>
+         where <code>elemental_function</code> is a JavaScript function that produces the
+         value of an element at a particular index in <code>pa</code>.</p>
 
-         <!--
-         where the first two dimensions correspond to the
-         2D corrdinates of the pixel in the image and the 3rd dimension
-         corresponds to the color values.
-         -->
-
+          <p>
+         Recall that the input to our filter <code>stage_input</code> is a 
+          <code>ParallelArray</code> with shape <code>[h, w, 4]</code>. You can think of it as a two-dimensional
+         <code>ParallelArray</code> with shape <code>[h, w]</code> in which each element (which corresponds to
+         a single pixel) is itself a <code>ParallelArray</code> of shape <code>[4]</code>.
          The output ParallelArray we will
-         produce will have this same shape - we will produce a new
-         ParallelArray of shape [h, w] in which each element has a shape of
-         [4], thereby making the ParallelArray have a final shape of [h, w, 4].
+         produce will have this same shape: we will produce a new
+         <code>ParallelArray</code> of shape <code>[h, w]</code> in which each element has a shape of
+         <code>[4]</code>, thereby making the <code>ParallelArray</code> have a final shape of <code>[h, w, 4]</code>.  We can do so as follows:</p>
 
-         Modify line 275 to this:
+          <p>
+          <pre class="brush: js;">
+        case "sepia":
+            stage_output = new ParallelArray([h, w], kernelName, stage_input);
 
-        <pre class="brush: js;first-line: 272; highlight: [275, 276]">
-        ...
-        switch(filterName) {
-            case "sepia":
-                stage_output = new ParallelArray([h, w], kernelName,
-                    stage_input);
-                break;
-        ...
-        </pre>
+            break;
+         </pre>
+          </p>
 
-        The first argument [h, w] specifies the shape of the new
-        ParallelArray we want to create.
+
+          <p>
+        The first argument, <code>[h, w]</code>, specifies the shape of the new
+        <code>ParallelArray</code> we want to create.
         <code>kernelName</code> is a Function object pointing to the
-        sepia elemental function (that we will talk about in a moment) and
+        elemental function for the sepia filter (which we will talk about in a moment), and
         <code>stage_input</code> is an argument to this elemental
-        function. This line of code creates a new
-        ParallelArray object of shape [h, w] in which each element is
+        function. Hence this line of code creates a new
+        <code>ParallelArray</code> object of shape <code>[h, w]</code> in which each element is
         produced by executing the function <code>kernelName</code>. This
-        new ParallelArray is then assigned to <code>stage_output</code>.
-        <br>
+        new <code>ParallelArray</code> is then assigned to <code>stage_output</code>.</p>
 
+          <p>
+        Finally, we have to write the elemental function that produces the
+        color values for each pixel. We can think of it as a function that,
+        when supplied indices, produces the <code>ParallelArray</code> elements at those indices.</p>
 
+          <p>Open the
+          file <code>tutorial/src/filters-skeleton.js</code> in your
+          editor and find the stub for the <code>sepia_parallel</code>
+          function:</p>
 
-        Finally, we have to create the elemental function that produces the
-        color values for each pixel. You can think of it as a function that
-        when supplied indices, produces the ParallelArray elements at those indices.
-
-        Create a function called <code>sepia_parallel</code> in filters.js as follows:
+          <p>
         <pre class="brush: js;">
-        // elemental function for sepia
-        function sepia_parallel (indices, frame) {
-        }
-        </pre>
-        The first argument <code>indices</code> is a vector of indices from the
-        iteration space [h, w]. indices[0] is the index along
-        the 1st dimension (from 0 to h-1) and indices[1] is the index along
-        the 2nd dimension (from 0 to w-1).
-        <!--
-        [gray gradient kernel to show how these indices map to pixel coords,
-        although it is not strictly required for sepia] <br>
-        -->
-        The <code>frame</code> parameter is the ParallelArray object that was passed as an
-        argument to the constructor above.<br>
-        Now let's fill in the body of the elemental function.
+    function sepia_parallel (indices, frame) {
 
-        <pre class="brush: js;;
-        highlight:[3,4,5,6,7,8,9,10,11,12,13]">
-        // elemental function for sepia
-        function sepia_parallel (indices, frame) {
+        /* Add your code here... */
+
+    }
+    </pre>
+        </p>
+
+          <p>
+        The first argument <code>indices</code> is a vector of indices from the
+        iteration space <code>[h, w]</code>. <code>indices[0]</code> is the index along
+        the 1st dimension (from <code>0</code> to </code>h-1</code>) and <code>indices[1]</code> is the index along
+        the 2nd dimension (from <code>0</code> to <code>w-1</code>).</p>
+
+          <p>
+        The <code>frame</code> argument is the <code>ParallelArray</code> object that was passed as an
+        argument to the constructor above.</p>
+
+          <p>
+        Now let's fill in the body of the elemental function:</p>
+
+          <p>
+        <pre class="brush: js;">
+        function sepia_parallel(indices, frame) {
             var i = indices[0];
             var j = indices[1];
 
@@ -949,29 +971,31 @@ var pa = new ParallelArray(canvas);
             return [r, g, b, a];
         }
         </pre>
+        </p>
 
-        In lines 3-9, we grab the indices and read the RGBA values from the
-        input ParallelArray <code>frame</code>. then, just like in the
-        sequential version we mix these colors in lines 11-13 and return a
-        4-element array consisting of the new color values for the pixel at
-        position <code>i, j</code>. 
+          <p>
+        In this code, we grab the indices <code>i</code> and <code>j</code> and read the RGBA values from the
+        input <code>frame</code>. Then, just like in the
+        sequential version of the code, we mix these colors and return a
+        four-element array consisting of the new color values for the pixel at
+        position (<code>i</code>, <code>j</code>).</p>
 
-        And thats it. Select the "River Trail" toggle on the top-right of the
-        app screen and play the video. You should see the same sepia toning
-        effect you saw with the sequential implementation.<p>
+          <p>
+        And that's it. After filling in the <code>sepia_parallel</code> implementation, select the "River Trail" toggle on the top right of the
+        app screen and play the video (perhaps after restarting your web server). You should see the same sepia toning
+        effect you saw with the sequential implementation.</p>
 
+          <p>
         The River Trail compiler takes your elemental function and parallelizes
         its application over the iteration space. Note that you did not have to
-        create or manage threads, write any non-JavaScript code or deal with
-        race conditions and deadlocks.
+        create or manage threads, write any non-JavaScript code, or deal with
+        race conditions and deadlocks.</p>
 
-
-
-        <h2>Exercise</h2>
-        We could have also implemented the sepia filter by calling the
-        <code>combine</code> method on the <code>stage_input</code> ParallelArray.
-        Let us try and write that.
-
+          <p>We could have also implemented the sepia filter by calling the
+        <code>combine</code> method on
+        the <code>stage_input</code> <code>ParallelArray</code>.  As
+        an optional exercise, try implementing a version of the sepia
+        filter using <code>combine</code>.</p>
 
         <!--
         <pre class="brush: js;">
@@ -988,9 +1012,17 @@ var pa = new ParallelArray(canvas);
         });
         </pre>
         -->
-        <!--
-        [Do we have time to explain the combine alternative?]
-        -->
+
+          <p>
+            One last thing to note: although the sepia filter is being
+            applied to every pixel in parallel, instead of in a
+            sequential loop as before, there may not be any obvious
+            parallel speedup, because the cost of allocating
+            new <code>ParallelArray</code>s overtakes the advantage of
+            parallel speedup for this particular filter.  Next, we'll
+            look at a more sophisticated video filter for which
+            parallel speedup is more evident.
+          </p>
 
        <h2><a name="3D"></a> Stereoscopic 3D</h2>
        Let's consider a slightly more complicated filter - one that transforms
