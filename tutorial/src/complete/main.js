@@ -326,6 +326,7 @@ function computeFrame() {
                 default:
                     stage_output = new ParallelArray([h, w], low_precision(kernelName), stage_input, w, h);
             }
+            // Make this filter's output the input to the next filter.
             stage_input = stage_output;
         }
         else if(execution_mode === "sequential") {

@@ -421,7 +421,7 @@ var Filters = function() {
         ctx.putImageData(frame, 0, 0);
     }
 
-    function sepia_parallel (index, frame, w, h) {
+    function sepia_parallel(indices, frame) {
 
         /* Add your code here... */
 
