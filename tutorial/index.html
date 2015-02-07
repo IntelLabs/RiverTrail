@@ -1019,9 +1019,11 @@ var pa = new ParallelArray(canvas);
             sequential loop as before, there may not be any obvious
             parallel speedup, because the cost of allocating
             new <code>ParallelArray</code>s overtakes the advantage of
-            parallel speedup for this particular filter.  Next, we'll
-            look at a more sophisticated video filter for which
-            parallel speedup is more evident.
+            parallel speedup for this particular filter.  In general,
+            parallel execution is worthwhile only when the amount of
+            work done is enough to offset the overhead of doing so.
+            Next, we'll look at a more sophisticated video filter for
+            which parallel execution is more worth the cost.
           </p>
 
        <h2><a name="3D"></a> Stereoscopic 3D</h2>
