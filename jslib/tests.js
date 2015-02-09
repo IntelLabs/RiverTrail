@@ -235,6 +235,29 @@ this.combineTests = {
 
 };
 
+this.filterTests = {
+
+    'f0': function(test) {
+        var pa = new ParallelArray([1,2,3,4,5]);
+        var paIdentical = pa.filter(function(){return true;})
+
+        test.expect(2);
+        test.equal(pa.toString(), "[1, 2, 3, 4, 5]", "given a ParallelArray");
+        test.equal(paIdentical.toString(), "[1, 2, 3, 4, 5]", "use `filter` to create an identical ParallelArray");
+        test.done();
+    },
+
+    'f1': function(test) {
+        var source = new ParallelArray([1,2,3,4,5]);
+        var even = source.filter(function even(iv) { return (this.get(iv) % 2) == 0; });
+
+        test.expect(2);
+        test.equal(source.toString(), "[1, 2, 3, 4, 5]", "given a ParallelArray of integers");
+        test.equal(even.toString(), "[2, 4]", "use `filter` to filter out the odd ones");
+        test.done();
+    },
+};
+
 this.issueTests = {
     'issue48': function(test) {
         var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
