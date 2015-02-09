@@ -445,7 +445,7 @@ var Filters = function() {
         ctx.putImageData(frame, 0, 0);
     }
 
-    function sharpen_parallel (index, frame, w, h) {
+    function sharpen_parallel(index, frame, w, h) {
 
         /* Add your code here... */
 
@@ -564,13 +564,13 @@ var Filters = function() {
         ctx.putImageData(frame, 0, 0);
     }
 
-    function edge_detect_parallel (index, frame, w, h) {
+    function edge_detect_parallel(index, frame, w, h) {
 
         /* Add your code here... */
 
     }
 
-    function edge_detect_parallel_unrolled (index, frame, w, h) {
+    function edge_detect_parallel_unrolled(index, frame, w, h) {
 
         var c = -1/8; var weight = 1/c;
         var i = index[0]; var j = index[1];

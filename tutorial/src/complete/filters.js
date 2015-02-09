@@ -436,7 +436,7 @@ var Filters = function() {
         ctx.putImageData(frame, 0, 0);
     }
 
-    function sepia_parallel (index, frame, w, h) {
+    function sepia_parallel(index, frame, w, h) {
         var i = index[0]; var j = index[1];
         var oor = frame[i][j][0];
         var oog = frame[i][j][1];
@@ -468,7 +468,7 @@ var Filters = function() {
         ctx.putImageData(frame, 0, 0);
     }
 
-    function sharpen_parallel (index, frame, w, h) {
+    function sharpen_parallel(index, frame, w, h) {
         var ekernel = [[0,0,0,0,0], [0,0,-1,0,0], [0,-1,5,-1,0], [0,0,-1,0,0], [0,0,0,0,0]];
         var m = index[0]; var n = index[1];
         var kernel_width = (ekernel.length-1)/2; // how many elements in each direction
@@ -606,7 +606,7 @@ var Filters = function() {
         ctx.putImageData(frame, 0, 0);
     }
 
-    function edge_detect_parallel (index, frame, w, h) {
+    function edge_detect_parallel(index, frame, w, h) {
         var ekernel = [[1,1,1,1,1], [1,2,2,2,1], [1,2,-32,2,1], [1,2,2,2,1], [1,1,1,1,1]];
         var m = index[0]; var n = index[1];
         var kernel_width = (ekernel.length-1)/2; // how many elements in each direction
@@ -632,7 +632,7 @@ var Filters = function() {
         return neighbor_sum;
     }
 
-    function edge_detect_parallel_unrolled (index, frame, w, h) {
+    function edge_detect_parallel_unrolled(index, frame, w, h) {
 
         var c = -1/8; var weight = 1/c;
         var i = index[0]; var j = index[1];
