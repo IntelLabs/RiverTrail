@@ -164,6 +164,77 @@ this.flattenTests = {
 
 };
 
+this.combineTests = {
+
+    'c0': function(test) {
+        var pa = new ParallelArray([1,2,3,4,5]);
+        var paIdentical = pa.combine(function(i){return this.get(i);});
+
+        test.expect(2);
+        test.equal(pa.toString(), "[1, 2, 3, 4, 5]", "given a ParallelArray");
+        test.equal(paIdentical.toString(), "[1, 2, 3, 4, 5]", "use `combine` to create an identical ParallelArray");
+        test.done();
+    },
+
+    'c1': function(test) {
+
+        var pa1 = new ParallelArray([1,2,3,4,5]);
+        var pa2 = new ParallelArray([1,2,3,4,5]);
+        var res = pa1.combine(function(iv, pa2){return this.get(iv) + pa2.get(iv);}, pa2);
+
+        test.expect(1);
+        test.equal(res.toString(), "[2, 4, 6, 8, 10]", "add the elements of two ParallelArrays using `combine`");
+        test.done();
+    },
+
+    'c2': function(test) {
+
+        var source = new ParallelArray([1,2,3,4,5]);
+        var plusOne = source.combine(function inc(i) { return this.get(i)+1; });
+
+        test.expect(1);
+        test.equal(plusOne.toString(), "[2, 3, 4, 5, 6]", "increment each element of a ParallelArray by 1 using `combine`");
+        test.done();
+    },
+
+    'c3': function(test) {
+
+        var source = new ParallelArray([1,2,3,4,5]);
+        var reverse = source.combine(function rev(i) { return this.get(this.length-i[0]-1); });
+
+        test.expect(1);
+        test.equal(reverse.toString(), "[5, 4, 3, 2, 1]", "reverse the elements in a ParallelArray using `combine`");
+        test.done();
+    },
+
+    'c4': function(test) {
+
+        // LK: This used to appear on the `combine` wiki page:
+
+        // transpose a matrix using a depth of 2
+        var source = new ParallelArray([4,4], function (iv) { return iv[0]*iv[1]; });
+        var transpose = source.combine(2, function rev(iv) {
+            return this.get([this.getShape()[0]-iv[0]-1,
+                             this.getShape()[1]-iv[1]-1]); });
+
+        // I don't think it's correct.
+
+        // Original matrix:
+        // [[0, 0, 0, 0],
+        //  [0, 1, 2, 3],
+        //  [0, 2, 4, 6],
+        //  [0, 3, 6, 9]]
+
+        // Wouldn't the transposed be the same as the original? Is this a bug in `get`?
+
+        test.expect(0);
+        // TODO: figure out how to write a test for this.
+        test.done();
+
+    },
+
+};
+
 this.issueTests = {
     'issue48': function(test) {
         var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
