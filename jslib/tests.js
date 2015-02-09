@@ -137,6 +137,33 @@ this.mapTests = {
 
 };
 
+this.flattenTests = {
+    'f0': function(test) {
+        var pa = new ParallelArray([ [1,2], [3,4] ]);
+        var paFlat = pa.flatten();
+
+        test.expect(4);
+        test.equal(pa.shape.toString(), "2,2", "given a 2x2 ParallelArray");
+        test.equal(paFlat.toString(), "[1, 2, 3, 4]", "flatten it");
+        test.equal(paFlat.shape.toString(), "4", "to one dimension with four elements");
+        test.equal(paFlat.get(0).toString(), "1", "where 1 is the first element");
+        test.done();
+    },
+
+    'f1': function(test) {
+        var pa = new ParallelArray([ [ [1, 1], [2, 2] ], [ [3, 3], [4, 4] ] ]);
+        var paFlat = pa.flatten();
+
+        test.expect(4);
+        test.equal(pa.shape.toString(), "2,2,2", "given a 2x2x2 ParallelArray");
+        test.equal(paFlat.toString(), "[1, 1, 2, 2, 3, 3, 4, 4]", "flatten it");
+        test.equal(paFlat.shape.toString(), "4,2", "to two dimensions");
+        test.equal(paFlat.get(0).toString(), "[1, 1]", "where [1, 1] is the first element");
+        test.done();
+    },
+
+};
+
 this.issueTests = {
     'issue48': function(test) {
         var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
