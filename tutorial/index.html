@@ -1,208 +1,230 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" 
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-<!--
- Copyright (c) 2015, Intel Corporation
- All rights reserved.
- 
- Redistribution and use in source and binary forms, with or without 
- modification, are permitted provided that the following conditions are met:
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <!--
+        Copyright (c) 2015, Intel Corporation
+        All rights reserved.
+        
+        Redistribution and use in source and binary forms, with or without 
+        modification, are permitted provided that the following conditions are met:
 
- - Redistributions of source code must retain the above copyright notice, 
-   this list of conditions and the following disclaimer.
- - Redistributions in binary form must reproduce the above copyright notice, 
-   this list of conditions and the following disclaimer in the documentation 
-   and/or other materials provided with the distribution.
+        - Redistributions of source code must retain the above copyright notice, 
+        this list of conditions and the following disclaimer.
+        - Redistributions in binary form must reproduce the above copyright notice, 
+        this list of conditions and the following disclaimer in the documentation 
+        and/or other materials provided with the distribution.
 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
- LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
- THE POSSIBILITY OF SUCH DAMAGE.
--->
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+        AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+        ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+        CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+        SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+        INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+        CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+        ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF 
+        THE POSSIBILITY OF SUCH DAMAGE.
+      -->
 
-<!--
-Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
-         Stephan Herhut stephan.a.herhut@intel.com
-         Lindsey Kuper lindsey.kuper@intel.com
---->
-        <meta http-equiv="X-UA-Compatible" content="chrome=1" />
-        <meta name="description" content="Jsreeram.github.com : jsreeram.github.com" />
+    <!--
+        Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
+        Stephan Herhut stephan.a.herhut@intel.com
+        Lindsey Kuper lindsey.kuper@intel.com
+      --->
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Jsreeram.github.com : jsreeram.github.com" />
 
-        <link rel="stylesheet" type="text/css" media="screen" href="css/stylesheet.css">
+    <link rel="stylesheet" type="text/css" media="screen" href="css/stylesheet.css">
 
-        <title>River Trail</title>
-        <script type="text/javascript" src="js/XRegExp.js"></script> <!-- XRegExp is bundled with the final shCore.js during build -->
-        <script type="text/javascript" src="js/shCore.js"></script>
-        <script type="text/javascript" src="js/shBrushJScript.js"></script>
-        <link type="text/css" rel="stylesheet" href="css/shCoreDefault.css"/>
-        <link type="text/css" rel="Stylesheet" href="css/shThemeDefault.css" />
-        <script type="text/javascript">SyntaxHighlighter.all();</script>
+      <title>River Trail</title>
+      <script type="text/javascript" src="js/XRegExp.js"></script> <!-- XRegExp is bundled with the final shCore.js during build -->
+      <script type="text/javascript" src="js/shCore.js"></script>
+      <script type="text/javascript" src="js/shBrushJScript.js"></script>
+      <link type="text/css" rel="stylesheet" href="css/shCoreDefault.css"/>
+      <link type="text/css" rel="stylesheet" href="css/shThemeDefault.css" />
+      <script type="text/javascript">SyntaxHighlighter.all();</script>
 
-<!-- Add "1.1", "1.2", etc., numbering in sublists. -->
-        <style>
-ol {
-    counter-reset: item;
-}
-ol li {
-    display: block;
-}
-ol li:before {
-    content: counters(item, ".")". ";
-    counter-increment: item;
-}
-        </style>
-  </head>
-
-  <body>
+      <!-- Add "1.1", "1.2", etc., numbering in sublists. -->
+      <style>
+        ol {
+            counter-reset: item;
+        }
+        ol li {
+            display: block;
+        }
+        ol li:before {
+            content: counters(item, ".")". ";
+            counter-increment: item;
+        }
+      </style>
+    </head>
+    <body>
 
       <!-- HEADER -->
       <div id="header_wrap" class="outer">
-          <header class="inner">
+        <header class="inner">
           <a id="forkme_banner" href="https://github.com/IntelLabs/RiverTrail/">View on GitHub</a>
-
-          <h1 id="project_title">Bringing Parallelism to the Web with River
-          Trail</h1>
-
-
-          </header>
+          <h1 id="project_title">Bringing Parallelism to the Web with River Trail</h1>
+        </header>
       </div>
 
       <!-- MAIN CONTENT -->
       <div id="main_content_wrap" class="outer">
-      <div style="float:left; margin:30px;">
-        <h2>Index</h2>
+        <div style="float:left; margin:30px;">
+          <h2>Index</h2>
 
-        <ol>
-          <li><a href="#motivation">Motivation and Background</a></li>
-          <li><a href="#pa">The <em>ParallelArray</em> type</a>
-            <ol>
-              <li><a href="#constructors">Constructors</a></li>
-              <li><a href="#methods">Methods</a></li>
-            </ol>
-          </li>
-          <li><a href="#filters">Parallel Video Filters with River Trail</a>
-            <ol>
-              <li><a href="#setup">Setup</a></li>
-              <li><a href="#skeleton">The Skeleton</a></li>
-              <li><a href="#manip">Manipulating Pixels on Canvas</a></li>
-              <li><a href="#sepia">Sepia Toning</a></li>
-              <li><a href="#3D">Stereoscopic 3D</a></li>
-              <li><a href="#edge">Edge Detection/Sharpening</a></li>
-            </ol>
-          </li>
-          <li><a href="#summary">Summary</a></li>
-          <li><a href="#references">References</a></li>
-        </ol>
-      </div>
-
-
-          <section id="main_content" class="inner">
-
-
-
-
+          <ol>
+            <li><a href="#motivation">Motivation and Background</a></li>
+            <li><a href="#pa">The <em>ParallelArray</em> type</a>
+              <ol>
+                <li><a href="#constructors">Constructors</a></li>
+                <li><a href="#methods">Methods</a></li>
+              </ol>
+            </li>
+            <li><a href="#filters">Parallel Video Filters with River Trail</a>
+              <ol>
+                <li><a href="#setup">Setup</a></li>
+                <li><a href="#skeleton">The Skeleton</a></li>
+                <li><a href="#manip">Manipulating Pixels on Canvas</a></li>
+                <li><a href="#sepia">Sepia Toning</a></li>
+                <li><a href="#3D">Stereoscopic 3D</a></li>
+                <li><a href="#edge">Edge Detection/Sharpening</a></li>
+              </ol>
+            </li>
+            <li><a href="#summary">Summary</a></li>
+          </ol>
+        </div>
+        
+        <section id="main_content" class="inner">
           <h2><a name="motivation"></a>Motivation and Background</h2>
 
-          <p>The goal of Intel Labs' River Trail project, also known as Parallel JavaScript, is to enable
-          data parallelism in web applications. In a world where the web
-          browser is the user's window into computing, browser applications
-          must leverage all available computing resources to provide the best
-          possible user experience. Today web applications do not take full
-          advantage of parallel client hardware due to the lack of appropriate
-          programming models. River Trail puts the parallel compute power of
-          the client's hardware into the hands of the web developer while staying
-          within the safe and secure boundaries of the familiar JavaScript
-          programming paradigm. River Trail gently extends JavaScript with
-          simple deterministic data-parallel constructs that are translated at
-          runtime into a low-level hardware abstraction layer. By leveraging
-          multiple CPU cores and vector instructions, River Trail programs can achieve significant speedup over sequential JavaScript.
+          <p>
+            The goal of Intel Labs' River Trail project, also known as
+            Parallel JavaScript, is to enable data parallelism in web
+            applications. In a world where the web browser is the
+            user's window into computing, browser applications must
+            leverage all available computing resources to provide the
+            best possible user experience. Today web applications do
+            not take full advantage of parallel client hardware due to
+            the lack of appropriate programming models. River Trail
+            puts the parallel compute power of the client's hardware
+            into the hands of the web developer while staying within
+            the safe and secure boundaries of the familiar JavaScript
+            programming paradigm. River Trail gently extends
+            JavaScript with simple deterministic data-parallel
+            constructs that are translated at runtime into a low-level
+            hardware abstraction layer. By leveraging multiple CPU
+            cores and vector instructions, River Trail programs can
+            achieve significant speedup over sequential JavaScript.
           </p>
 
           <p>
-          An open-source prototype implementation of River Trail for
-          Firefox is
-          available <a href="http://github.com/IntelLabs/RiverTrail/">on
-          GitHub</a> (see
-          the <a href="https://github.com/IntelLabs/RiverTrail#quick-start">quick
-          start instructions</a>).
-          This
-          prototype implements a version of the River Trail API that
-          compiles to OpenCL and can be executed on CPUs and GPUs.
+            An open-source prototype implementation of River Trail for
+            Firefox is
+            available <a href="http://github.com/IntelLabs/RiverTrail/">on
+              GitHub</a> (see
+            the <a href="https://github.com/IntelLabs/RiverTrail#quick-start">quick
+              start instructions</a>).  This prototype implements a
+            version of the River Trail API that compiles to OpenCL and
+            can be executed on CPUs and GPUs.
           </p>
+
           <p>
-          This tutorial is a gentle introduction to the River Trail language
-          extensions and API.
+            This tutorial is a gentle introduction to the River Trail
+            language extensions and API.
           </p>
 
           <h2><a name="pa"></a>The <em>ParallelArray</em> type</h2>
 
           <p>
-          The central component of River Trail is the <code>ParallelArray</code>
-          type. <code>ParallelArray</code> objects are essentially <em>ordered collections of
-              scalar values</em>.
+            The central component of River Trail is
+            the <code>ParallelArray</code>
+            type. <code>ParallelArray</code> objects are
+            essentially <em>ordered collections of scalar values</em>.
+          </p>
 
           <h3>Multi-Dimensional and Uniform</h3>
-          <p><code>ParallelArray</code> objects can represent
-          multi-dimensional collections of scalars.
-          All <code>ParallelArray</code> objects have a <em>shape</em> that
-          succinctly describes the dimensionality and size of the object.</p>
 
-          <p>The
-          shape of a <code>ParallelArray</code> is specified as an array of numbers in which
-          the value of the <em>i</em>th element is the number of elements in the <em>i</em>th
-          dimension of the <code>ParallelArray</code>.
-          So, for instance a 4x5 matrix of numbers can be represented as a <code>ParallelArray</code>
-          object whose shape is <code>[4, 5]</code>. Similarly, a 2D image in which each
-          pixel has an RGBA value can be represented as a <code>ParallelArray</code> object
-          with shape <code>[h, w, 4]</code>.  An empty <code>ParallelArray</code> has
-          shape <code>[0]</code>, and a one-dimensional <code>ParallelArray</code> with three elements
-          has shape <code>[3]</code>.
-          </p>
           <p>
-          Multi-dimensional ParallelArrays are also required to be <em>uniform</em> (also called
-          <em>rectangular</em>). That is, the length of all inner arrays in a
-          particular dimension must be the same. For example, 
-          <code>[[0, 1], [2], [3, 4]]</code> would be non-uniform and is not
-          allowed.
+            <code>ParallelArray</code> objects can represent
+            multi-dimensional collections of scalars.
+            All <code>ParallelArray</code> objects have
+            a <em>shape</em> that succinctly describes the
+            dimensionality and size of the object.
           </p>
+
+          <p>
+            The shape of a <code>ParallelArray</code> is specified as
+            an array of numbers in which the value of the <em>i</em>th
+            element is the number of elements in the <em>i</em>th
+            dimension of the <code>ParallelArray</code>.  So, for
+            instance, a 4x5 matrix of numbers can be represented as
+            a <code>ParallelArray</code> object whose shape
+            is <code>[4, 5]</code>. Similarly, a 2D image in which
+            each pixel has an RGBA value can be represented as
+            a <code>ParallelArray</code> object with shape <code>[h,
+              w, 4]</code>.  An empty <code>ParallelArray</code> has
+            shape <code>[0]</code>, and a
+            one-dimensional <code>ParallelArray</code> with three
+            elements has shape <code>[3]</code>.
+          </p>
+
+          <p>
+            Multi-dimensional ParallelArrays are also required to
+            be <em>uniform</em> (also
+            called <em>rectangular</em>). That is, the length of all
+            inner arrays in a particular dimension must be the
+            same. For example,
+            <code>[[0, 1], [2], [3, 4]]</code> would be non-uniform
+            and is not allowed.
+          </p>
+
           <h3>Immutable</h3>
-          <code>ParallelArray</code>s are immutable once they are created. <code>ParallelArray</code>s
-          are manipulated by invoking methods on them, which produce and return new
-          <code>ParallelArray</code> objects.
+          
+          <p>
+            <code>ParallelArray</code>s are immutable once they are
+            created. <code>ParallelArray</code>s are manipulated by
+            invoking methods on them, which produce and return new
+            <code>ParallelArray</code> objects.
           </p>
-          <h2><a name="constructors"></a> Constructors</h2>
 
-          <code>ParallelArray</code> objects can be created in a variety of ways.
-          To create an empty <code>ParallelArray</code>, call the
-          constructor with no arguments:
+          <h2><a name="constructors"></a>Constructors</h2>
 
-          <pre class="brush: js;">
-            // Create an empty Parallel Array
-            var pa0 = new ParallelArray();
-          </pre>
-          <p>We can pass a regular JavaScript array to
-            the <code>ParallelArray</code> constructor, as well.  Here,
-            we are creating a <code>ParallelArray</code> out of a nested
-            JS array.  The inner arrays are
-            also <code>ParallelArray</code>s.</p>
+          <p>
+            <code>ParallelArray</code> objects can be created in a variety of ways.
+            To create an empty <code>ParallelArray</code>, call the
+            constructor with no arguments:
+          </p>
 
-          <pre class="brush: js;">
-            // Create a ParallelArray out of a nested JS array.
-            // Note that the inner arrays are also ParallelArrays.
-            var pa1 = new ParallelArray([ [0,1], [2,3], [4,5] ]);
-            // pa1 has shape [3,2]
-          </pre>
+          <p>
+            <pre class="brush: js;">
+              // Create an empty ParallelArray
+              var pa0 = new ParallelArray();
+            </pre>
+          </p>
 
-          <p>We can also create a new <code>ParallelArray</code>
+          <p>
+            We can pass a regular JavaScript array to
+            the <code>ParallelArray</code> constructor, as well.
+            Here, we are creating a <code>ParallelArray</code> out of
+            a nested JS array.  The inner arrays are
+            also <code>ParallelArray</code>s.
+          </p>
+
+          <p>
+            <pre class="brush: js;">
+              // Create a ParallelArray out of a nested JS array.
+              // Note that the inner arrays are also ParallelArrays.
+              var pa1 = new ParallelArray([ [0,1], [2,3], [4,5] ]);
+              // pa1 has shape [3,2]
+            </pre>
+          </p>
+
+          <p>
+            We can also create a new <code>ParallelArray</code>
             object from an existing one. The below example creates the
             new <code>ParallelArray</code> <code>pa2</code> from an existing
             one, <code>pa1</code>. Since <code>ParallelArray</code>s are
@@ -210,42 +232,51 @@ ol li:before {
             a copy of <code>pa1</code> or whether it simply returns a new
             reference to <code>pa1</code>. We are guaranteed that
             both <code>pa1</code> and <code>pa2</code> will have the same
-            structure and the same data in them for their lifetime.</p>
+            structure and the same data in them for their lifetime.
+          </p>
 
-          <pre class="brush: js;">
-            // Create a ParallelArray from another ParallelArray
-            var pa2 = new ParallelArray(pa1);
-            // pa2 has the same contents and shape as pa1
-          </pre>
+          <p>
+            <pre class="brush: js;">
+              // Create a ParallelArray from another ParallelArray
+              var pa2 = new ParallelArray(pa1);
+              // pa2 has the same contents and shape as pa1
+            </pre>
+          </p>
 
-          <p>We can also pass multiple arrays to
+          <p>
+            We can also pass multiple arrays to
             the <code>ParallelArray</code> constructor.  Here, the
             arguments <code>[0, 1]</code> and <code>[2, 3]</code> each
             have the shape <code>[2]</code>. The
             resulting <code>ParallelArray</code> object will therefore
             have the shape <code>[2,2]</code>: it contains two
-            elements, each of which contain two elements.</p>
+            elements, each of which contain two elements.
+          </p>
 
+          <p>
+            <pre class="brush: js;">
+              // Create a ParallelArray from several other
+              // ParallelArrays
+              var pa3 = new ParallelArray([0,1], [2,3]);
+              // pa3 has shape [2,2]
+            </pre>
+          </p>
 
-          <pre class="brush: js;">
-            // Create a ParallelArray from several other
-            // ParallelArrays
-            var pa3 = new ParallelArray([0,1], [2,3]);
-            // pa3 has shape [2,2]
-          </pre>
-
-          <p>Yet another way to create <code>ParallelArray</code>
+          <p>
+            Yet another way to create <code>ParallelArray</code>
             objects is by using a <em>comprehension
             constructor</em>. We specify the length of
             the <code>ParallelArray</code> we want to construct, and
             an <em>elemental function</em>.  This elemental function
             is invoked once for each element in the result array, with
-            that element's index as its argument.<p>
+            that element's index as its argument.
+          </p>
 
-          <p>In the below example, the length is <code>3</code> and
-            the elemental function is <code>function(i) { return [i,
-            i+1]; }</code>.  For every index <code>i</code>, the
-            elemental function returns a two-element array consisting
+          <p>
+            In the below example, the length is <code>3</code> and the
+            elemental function is <code>function(i) { return [i, i+1];
+            }</code>.  For every index <code>i</code>, the elemental
+            function returns a two-element array consisting
             of <code>i</code> and <code>i+1</code>. After the
             elemental function has been invoked for
             every <code>i</code>, we have the resulting
@@ -254,772 +285,1063 @@ ol li:before {
             all <code>ParallelArray</code>s as well). Note that the
             order in which the calls to the elemental function occur
             is irrelevant.  We will learn more about writing elemental
-            functions in the next section.</p>
+            functions in the next section.
+          </p>
 
-          <pre class="brush: js;">
-            // Create a ParallelArray of length 3 and
-            // shape [3,2], using the "comprehension" constructor
-            var pa6 = new ParallelArray(3, 
-            function(i){return [i, i+1];});
-          </pre>
+          <p>
+            <pre class="brush: js;">
+              // Create a ParallelArray of length 3 and
+              // shape [3,2], using the "comprehension" constructor
+              var pa6 =
+                new ParallelArray(3, function(i){return [i, i+1];});
+            </pre>
+          </p>
 
-          <p>The comprehension constructor can also create
+          <p>
+            The comprehension constructor can also create
             multi-dimensional arrays. We need to supply a <em>shape
             vector</em> instead of a length as the first argument to
             the constructor, and an elemental function that takes a
             <code>vector index</code> as an argument. In this case,
             the shape we specify is <code>[3,2]</code>, and the
             elemental function will be invoked with a two-element
-            vector argument <code>iv</code>:</p>
+            vector argument <code>iv</code>:
+          </p>
 
-          <pre class="brush: js;">
-            // Create a two-dimensional ParallelArray with shape
-            // [3,2] using the comprehension constructor
-            var pa7 = new ParallelArray([3, 2], 
-              function(iv) { return iv[0] * iv[1]; });
-          </pre>
+          <p>
+            <pre class="brush: js;">
+              // Create a two-dimensional ParallelArray with shape
+              // [3,2] using the comprehension constructor
+              var pa7 = new ParallelArray([3, 2], 
+                function(iv) { return iv[0] * iv[1]; });
+            </pre>
+          </p>
 
-          <p>Finally, we can also create a
+          <p>
+            Finally, we can also create a
             new <code>ParallelArray</code> object directly from an
             HTML5 <code>&lt;canvas&gt;</code> object. The canvas
             object is used for drawing 2D shapes, pictures and video
-            on a web page. We will see how this is useful later when
-            we build a video web app.</p>
+            on a web page. We will see how this is useful later on,
+            when we build a video web app.
+          </p>
 
-          <pre class="brush: js;">
-            // This creates a ParallelArray with shape
-            // [h, w, 4],
-            // corresponding to the height and width of the
-            // canvas and the RGBA value for each pixel.
-            var pa8 = new ParallelArray(document.createElement("canvas"));
-          </pre>
+          <p>
+            <pre class="brush: js;">
+              // This creates a ParallelArray with shape
+              // [h, w, 4],
+              // corresponding to the height and width of the
+              // canvas and the RGBA value for each pixel.
+              var pa8 = new ParallelArray(document.createElement("canvas"));
+            </pre>
+          </p>
 
-          <h2><a name="methods"></a> Methods </h2>
+          <h2><a name="methods"></a>Methods</h2>
 
-          <p><code>ParallelArray</code> objects created with the above
-          constructors come with several methods to manipulate
-          them. These methods typically produce a
-          new <code>ParallelArray</code> object (except
-          the <code>reduce</code> method, which produces a scalar
-          value).</p>
+          <p>
+            <code>ParallelArray</code> objects created with the above
+            constructors come with several methods to manipulate
+            them. These methods typically produce a
+            new <code>ParallelArray</code> object (except
+            the <code>reduce</code> method, which produces a scalar
+            value).
+          </p>
 
           <h3>Map</h3>
-          <p>
-          The first method we will discuss is <code>map</code>,
-          probably the most prominent and well-known data-parallel
-          skeleton.  The <code>map</code> method expects a function as its
-          first argument that, given a single value, produces a new
-          value as its result.  We call such
-          functions <em>elemental functions</em>, since they are used to
-          produce the elements of a <code>ParallelArray</code> object.
-          The <code>map</code> method computes a new <code>ParallelArray</code> object
-          from an existing <code>ParallelArray</code> object by applying the
-          provided elemental function to each element of the source
-          array and storing the result in the corresponding position
-          in the result array.  Let us look at a simple example:</p>
-
-          <pre class="brush: js;">
-          var source = new ParallelArray([1,2,3,4,5]);
-          var plusOne = source.map(function inc(v) { return v+1; });
-          </pre>
 
           <p>
-          Here, we define a new <code>ParallelArray</code> object <code>source</code> that contains the numbers 1 to 5. We then call the <code>map</code> method
-          of our source array with the function <code>inc</code> that returns its argument, incremented by one. Thus, <code>plusOne</code> contains
-          the values 2 to 6. Also note that <code>plusOne</code> has the same shape as the original array <code>source</code>. The <code>map</code> method is 
-          shape-preserving.</p>
+            The first method we will discuss is <code>map</code>,
+            probably the most prominent and well-known data-parallel
+            skeleton.  The <code>map</code> method expects a function
+            as its first argument that, given a single value, produces
+            a new value as its result.  We call such
+            functions <em>elemental functions</em>, since they are
+            used to produce the elements of
+            a <code>ParallelArray</code> object.  The <code>map</code>
+            method computes a new <code>ParallelArray</code> object
+            from an existing <code>ParallelArray</code> object by
+            applying the provided elemental function to each element
+            of the source array and storing the result in the
+            corresponding position in the result array.  Let us look
+            at a simple example:
+          </p>
 
           <p>
-          As you may have noticed, the <code>map</code> method does not provide an index to the elemental function it calls. Not using an index has the advantage that no indexing errors can be made. However, this added simplicity comes at the cost of expressiveness: with <code>map</code>, one can not inspect neighboring values in the array, as is commonly required for convolution-style computations. 
+            <pre class="brush: js;">
+              var source = new ParallelArray([1,2,3,4,5]);
+              var plusOne = source.map(function inc(v) { return v+1; });
+            </pre>
+          </p>
+
+          <p>
+            Here, we define a new <code>ParallelArray</code>
+            object <code>source</code> that contains the numbers 1 to
+            5. We then call the <code>map</code> method of our source
+            array with the function <code>inc</code> that returns its
+            argument, incremented by one. Thus, <code>plusOne</code>
+            contains the values 2 to 6. Also note
+            that <code>plusOne</code> has the same shape as the
+            original array <code>source</code>. The <code>map</code>
+            method is shape-preserving.
+          </p>
+
+          <p>
+            As you may have noticed, the <code>map</code> method does
+            not provide an index to the elemental function it
+            calls. Not using an index has the advantage that no
+            indexing errors can be made. However, this added
+            simplicity comes at the cost of expressiveness:
+            with <code>map</code>, one can not inspect neighboring
+            values in the array, as is commonly required for
+            convolution-style computations.
           </p>
 
           <h3>Combine</h3>
 
           <p>
-          The <code>combine</code> method addresses this issue. Like <code>map</code>, <code>combine</code> can be used to compute a new <code>ParallelArray</code> object by inspecting an
-          existing <code>ParallelArray</code> object's elements. Unlike <code>map</code>, the elemental function of <code>combine</code> is provided with access to the current index
-          in the source array, along with a reference to the source array itself.
-          Let us revisit the increment example from the previous section. When using <code>combine</code>, the program can be expressed as follows:
-          </p>
-
-          <pre class="brush: js;">
-          var source = new ParallelArray([1,2,3,4,5]);
-          var plusOne =
-            source.combine(function inc(i) { return this.get(i)+1; });
-          </pre>
-
-          <p>
-          As before, we first produce our source array holding the values 1 to 5. We then apply the <code>combine</code> method using a slightly modified 
-          version of the <code>inc</code> function. It now expects an index <code>i</code> as argument. Furthermore, <code>source</code> is bound to the variable <code>this</code> within the elemental function's body. 
-          We can access the value at index <code>i</code> of the source <code>ParallelArray</code> by calling the <code>get</code> method with index <code>i</code> as argument.
+            The <code>combine</code> method addresses this
+            issue. Like <code>map</code>, <code>combine</code> can be
+            used to compute a new <code>ParallelArray</code> object by
+            inspecting an existing <code>ParallelArray</code> object's
+            elements. Unlike <code>map</code>, the elemental function
+            of <code>combine</code> is provided with access to the
+            current index in the source array, along with a reference
+            to the source array itself.  Let us revisit the increment
+            example from the previous section. When
+            using <code>combine</code>, the program can be expressed
+            as follows:
           </p>
 
           <p>
-          As this example shows, using <code>combine</code> requires more code to implement <code>inc</code>. However, we have gained expressiveness. As an example, 
-          consider the following code, which reverses the order of elements in an array:
-          </p>
-
-          <pre class="brush: js;">
-          var source = new ParallelArray([1,2,3,4,5]);
-          var reverse = source.combine(function rev(i) {
-              return this.get(this.length-i[0]-1); });
-          </pre>
-
-          <p>
-          In the elemental function <code>rev</code>, we exploit the access to the index that <code>combine</code> provides to compute the reversed index in the source array. Note that
-          computations are driven by the index position in the <em>result</em> array, not the source array. We therefore use the expression <code>this.length-i[0]-1</code> 
-          to compute the source index of the reversed element for position <code>i</code> in the result array. This code makes use of the <code>length</code> 
-          property of the ParallelArray object that gives the number of elements in the array.
+            <pre class="brush: js;">
+              var source = new ParallelArray([1,2,3,4,5]);
+              var plusOne =
+                source.combine(function inc(i) { return this.get(i)+1; });
+            </pre>
           </p>
 
           <p>
-          It is important to note here that the index <code>i</code> is not a scalar value but actually a vector of indices. In the above example, we therefore 
-          have to use <code>i[0]</code> in the computation of the source index.
-
-          <p>So far, all our examples have used one-dimensional arrays, and the use of an index vector
-          in <code>combine</code> has been of no help. However, <code>ParallelArray</code> objects in River Trail can have multiple dimensions. The <code>map</code> method always 
-          operates on the outermost dimension only, that is, on
-          the dimension that corresponds to the first element of the shape vector. With <code>combine</code>, the programmer can choose how deep to traverse, using an optional first argument to the <code>combine</code> method. As an example, let us generalise the above array-reversal operation into a transpose operation
-          on matrices:
+            As before, we first produce our source array holding the
+            values 1 to 5. We then apply the <code>combine</code>
+            method using a slightly modified version of
+            the <code>inc</code> function. It now expects an
+            index <code>i</code> as
+            argument. Furthermore, <code>source</code> is bound to the
+            variable <code>this</code> within the elemental function's
+            body.  We can access the value at index <code>i</code> of
+            the source <code>ParallelArray</code> by calling
+            the <code>get</code> method with index <code>i</code> as
+            argument.
           </p>
 
-          <pre class="brush: js;">
-          var source = new ParallelArray([4,4], function (iv) {
-              return iv[0]*iv[1]; });
-          var transpose = source.combine(2, function rev(iv) {
+          <p>
+            As this example shows, using <code>combine</code> requires
+            more code to implement <code>inc</code>. However, we have
+            gained expressiveness. As an example, consider the
+            following code, which reverses the order of elements in an
+            array:
+          </p>
+
+          <p>
+            <pre class="brush: js;">
+              var source = new ParallelArray([1,2,3,4,5]);
+              var reverse = source.combine(function rev(i) {
+                return this.get(this.length-i[0]-1); });
+            </pre>
+          </p>
+
+          <p>
+            In the elemental function <code>rev</code>, we exploit the
+            access to the index that <code>combine</code> provides to
+            compute the reversed index in the source array. Note that
+            computations are driven by the index position in
+            the <em>result</em> array, not the source array. We
+            therefore use the
+            expression <code>this.length-i[0]-1</code> to compute the
+            source index of the reversed element for
+            position <code>i</code> in the result array. This code
+            makes use of the <code>length</code> property of the
+            ParallelArray object that gives the number of elements in
+            the array.
+          </p>
+
+          <p>
+            It is important to note here that the index <code>i</code>
+            is not a scalar value but actually a vector of indices. In
+            the above example, we therefore have to
+            use <code>i[0]</code> in the computation of the source
+            index.
+          </p>
+
+          <p>So far, all our examples have used one-dimensional
+            arrays, and the use of an index vector
+            in <code>combine</code> has been of no
+            help. However, <code>ParallelArray</code> objects in River
+            Trail can have multiple dimensions. The <code>map</code>
+            method always operates on the outermost dimension only,
+            that is, on the dimension that corresponds to the first
+            element of the shape vector. With <code>combine</code>,
+            the programmer can choose how deep to traverse, using an
+            optional first argument to the <code>combine</code>
+            method. As an example, let us generalise the above
+            array-reversal operation into a transpose operation on
+            matrices:
+          </p>
+
+          <p>
+            <pre class="brush: js;">
+              var source = new ParallelArray([4,4], function (iv) {
+                return iv[0]*iv[1]; });
+              var transpose = source.combine(2, function rev(iv) {
                 return this.get([this.getShape()[0]-iv[0]-1,
                                  this.getShape()[1]-iv[1]-1]); });
-          </pre>
+            </pre>
+          </p>
 
           <p>
-          We use a depth of 2 and, consequently, the index vector <code>iv</code> passed to the elemental function contains two indices, corresponding to the 
-          two outermost dimensions of the source array. This example also uses the <code>getShape</code> method, which is the multi-dimensional counterpart to <code>length</code>: 
-          it returns a vector that gives the length for each dimension of a <code>ParallelArray</code> object. With <code>this.getShape()[0]-iv[0]-1</code>, we compute 
-          the index at the transposed position within the source array for the first dimension. Note here that <code>get</code> also accepts an index vector as argument.
+            We use a depth of 2 and, consequently, the index
+            vector <code>iv</code> passed to the elemental function
+            contains two indices, corresponding to the two outermost
+            dimensions of the source array. This example also uses
+            the <code>getShape</code> method, which is the
+            multi-dimensional counterpart to <code>length</code>: it
+            returns a vector that gives the length for each dimension
+            of a <code>ParallelArray</code>
+            object. With <code>this.getShape()[0]-iv[0]-1</code>, we
+            compute the index at the transposed position within the
+            source array for the first dimension. Note here
+            that <code>get</code> also accepts an index vector as
+            argument.
           </p>
 
           <h3>Reduce</h3>
 
           <p>
-          So far we have concentrated on parallel patterns that produce a new array out of an existing array. The <code>reduce</code> method implements another
-          important parallel pattern: reduction operations. As the name suggests, a reduction operation reduces the elements in an array to a single result. A
-          good example to start with is computing the sum of all elements of an array:
+            So far we have concentrated on parallel patterns that
+            produce a new array out of an existing
+            array. The <code>reduce</code> method implements another
+            important parallel pattern: reduction operations. As the
+            name suggests, a reduction operation reduces the elements
+            in an array to a single result. A good example to start
+            with is computing the sum of all elements of an array:
           </p>
 
+          <p>
           <pre class="brush: js;">
-          var source = new ParallelArray([1,2,3,4,5]);
-          var sum = source.reduce(function plus(a,b) {
+            var source = new ParallelArray([1,2,3,4,5]);
+            var sum = source.reduce(function plus(a,b) {
               return a+b; });
           </pre>
-
-          <p>
-          As the example shows, the <code>reduce</code> method expects as its first argument an elemental function that, given two values as arguments, produces a new
-          value as its result. In our example, we use <code>plus</code>, which adds two values, as the elemental function. A reduction over <code>plus</code> then defines the <code>sum</code> operation.
           </p>
 
           <p>
-          Note here that the reduction may be computed in any order. In particular, this means that the elemental function has to be commutative and associative
-          to ensure deterministic results. The River Trail runtime will not check this property, but results might be different between calls even on the same
-          platform.
+            As the example shows, the <code>reduce</code> method
+            expects as its first argument an elemental function that,
+            given two values as arguments, produces a new value as its
+            result. In our example, we use <code>plus</code>, which
+            adds two values, as the elemental function. A reduction
+            over <code>plus</code> then defines the <code>sum</code>
+            operation.
+          </p>
+
+          <p>
+            Note here that the reduction may be computed in any
+            order. In particular, this means that the elemental
+            function has to be commutative and associative to ensure
+            deterministic results. The River Trail runtime will not
+            check this property, but results might be different
+            between calls even on the same platform.
           </p>
 
           <h3>Scan</h3>
 
           <p>
-          The <code>reduce</code> operation reduces an array into a single value. For some use cases, it can be interesting to also store the intermediate results of a reduction.
-          An example is the <em>prefix-sum</em> operation that, given a vector of numbers, computes another vector of numbers that each position contains
-          the sum of all elements of the source vector up to that position. To implement this parallel pattern, <code>ParallelArray</code>s support a
-          <em>scan</em> method.
-          </p>
-
-          <pre class="brush: js;">
-          var source = new ParallelArray([1,2,3,4,5]);
-          var psum = source.scan(function plus(a,b) { return a+b; });
-          </pre>
-
-          <p>
-          Here, we again use the <code>plus</code> elemental function from the previous reduction 
-          example. However, when used with <em>scan</em>, it now produces the prefix-sum array of the <code>source</code> array.
+            The <code>reduce</code> operation reduces an array into a
+            single value. For some use cases, it can be interesting to
+            also store the intermediate results of a reduction.  An
+            example is the <em>prefix-sum</em> operation that, given a
+            vector of numbers, computes another vector of numbers that
+            each position contains the sum of all elements of the
+            source vector up to that position. To implement this
+            parallel pattern, <code>ParallelArray</code>s support a
+            <em>scan</em> method.
           </p>
 
           <p>
-          The same rules of parallel execution that apply to <code>reduce</code> also apply to <code>scan</code>: the result of a <code>scan</code> operation can be computed in 
-          parallel, and therefore, we only
-          guarantee a deterministic result if the elemental function is
-          commutative and associative.
+            <pre class="brush: js;">
+              var source = new ParallelArray([1,2,3,4,5]);
+              var psum = source.scan(function plus(a,b) { return a+b; });
+            </pre>
+          </p>
+
+          <p>
+            Here, we again use the <code>plus</code> elemental
+            function from the previous reduction example. However,
+            when used with <em>scan</em>, it now produces the
+            prefix-sum array of the <code>source</code> array.
+          </p>
+
+          <p>
+            The same rules of parallel execution that apply
+            to <code>reduce</code> also apply to <code>scan</code>:
+            the result of a <code>scan</code> operation can be
+            computed in parallel, and therefore, we only guarantee a
+            deterministic result if the elemental function is
+            commutative and associative.
           </p>
 
           <h3>Scatter</h3>
 
           <p>
-          We have seen that <code>combine</code> can be used to produce new arrays out of existing arrays. However, with <code>combine</code> we must define for each index position in the result array how it is to be computed from the source array. Sometimes, this mapping is difficult to specify or
-          costly to compute. Instead, it is preferable to specify for a certain <em>source</em> index where it should be stored in the result array. This pattern is supported
-          by the <em>scatter</em> method in River Trail. Here is an example:
+            We have seen that <code>combine</code> can be used to
+            produce new arrays out of existing arrays. However,
+            with <code>combine</code> we must define for each index
+            position in the result array how it is to be computed from
+            the source array. Sometimes, this mapping is difficult to
+            specify or costly to compute. Instead, it is preferable to
+            specify for a certain <em>source</em> index where it
+            should be stored in the result array. This pattern is
+            supported by the <em>scatter</em> method in River
+            Trail. Here is an example:
           </p>
+
+          <p>
+            <pre class="brush: js;">
+              var source = new ParallelArray([1,2,3,4,5]);
+              var reorder = source.scatter([4,0,3,1,2]);
+            </pre>
+          </p>
+
+          <p>
+            We first compute our source array <code>source</code>. In
+            a second step, we apply the <em>scatter</em> method with a
+            single argument: the <em>scatter
+            vector</em> <code>[4,0,3,1,2]</code>. Thereby, we specify
+            that the first element of <code>source</code> is to become
+            the fifth element of the result (indexing starts with 0),
+            the second value in <code>source</code> becomes the first
+            in the result, and so on. Overall, the above example
+            produces the array <code>[2, 4, 5, 3, 1]</code>.
+          </p>
+
+          <p>
+            What happens if we assign two source values to the same
+            position of the result? As <code>scatter</code> is
+            potentially computed in parallel, the result would be
+            non-deterministic. Therefore, by default, the River Trail
+            runtime will throw an exception when result positions
+            conflict. However, in practice, conflicts often are
+            meaningful and can be deterministically resolved.  For
+            these scenarios, <code>scatter</code> accepts an optional
+            second argument: a <code>conflict function</code> that,
+            given two conflicting values, produces a single
+            resolution.
+          </p>
+
+          <p>
+            On closer inspection, a conflict function is not enough to
+            produce a fully specified result. If the scatter vector
+            contains the same target index more than once, inevitably
+            it will not fill all indices of the target array. To
+            remedy this, we also allow the programmer to specify an
+            optional default value that will be used for all index
+            positions that are not defined otherwise.
+          </p>
+
+          <p>
           <pre class="brush: js;">
-          var source = new ParallelArray([1,2,3,4,5]);
-          var reorder = source.scatter([4,0,3,1,2]);
-          </pre>
-
-          <p>
-          We first compute our source array <code>source</code>. In a second step, we apply the <em>scatter</em> method with a single argument: the 
-          <em>scatter vector</em> <code>[4,0,3,1,2]</code>. Thereby, we specify
-          that the first element of <code>source</code> is to become the fifth element 
-          of the result (indexing starts with 0), the second value in <code>source</code> becomes the first in the result, and so on. Overall, the above example 
-          produces the array <code>[2, 4, 5, 3, 1]</code>.
-          </p>
-
-          <p>
-          What happens if we assign two source values to the same position of the result? As <code>scatter</code> is potentially computed in parallel, the
-          result would be non-deterministic. Therefore, by default, the River Trail runtime will throw an exception when result positions conflict. However, in practice, 
-          conflicts often are meaningful and can be deterministically resolved.
-          For these scenarios, <code>scatter</code> accepts an optional second argument: a
-          <code>conflict function</code> that, given two conflicting values, produces a single resolution. 
-          </p>
-
-          <p>
-          On closer inspection, a conflict function is not enough to produce a fully specified result. If the scatter vector contains the same target index more 
-          than once, inevitably it will not fill all indices of the target array. To remedy this, we also allow the programmer to specify an optional default value
-          that will be used for all index positions that are not defined otherwise.
-          </p>
-
-          <pre class="brush: js;">
-          var source = new ParallelArray([1,2,3,4,5]);
-          var reorder = source.scatter([4,0,3,4,2], 3, function max(a, b) {
+            var source = new ParallelArray([1,2,3,4,5]);
+            var reorder = source.scatter([4,0,3,4,2], 3, function max(a, b) {
               return a&gt;b?a:b; });
           </pre>
-
-          <p>
-          In the above example, the first and fourth element of the source array are both written to the fifth element of the result array, and no value is written
-          to the second index position. However, we provide the default of <code>3</code> as the second argument to <code>scatter</code>. Lastly, we use a maximum as the conflict resolution 
-          function. Thus, the fifth position in the result is the maximum of <code>1</code> and <code>4</code>, which is <code>4</code>. Overall, we get
-          <code>[2, 3, 5, 3, 4]</code>.
-          </p>
-
-          <p><code>scatter</code> has a final optional argument: the result length. By default, the length of the result will be the same as the source array's. 
-          Using a scatter index outside of the result's length will lead to a range error. To spread elements out or reduce the total number of elements,
-          the new length has to be explicitly provided.
           </p>
 
           <p>
-          Putting it all together, we can implmenet a <em>histogram</em> by means
-          of <code>scatter</code>. A histogram computes the frequency or number of
-          occurrences of
-          a value within a sample. Let's assume we have some source data that contains values from zero to five. We also need a second vector that contains
-          weights. We will just use a vector of ones here. Here is the setup:
+            In the above example, the first and fourth element of the
+            source array are both written to the fifth element of the
+            result array, and no value is written to the second index
+            position. However, we provide the default
+            of <code>3</code> as the second argument
+            to <code>scatter</code>. Lastly, we use a maximum as the
+            conflict resolution function. Thus, the fifth position in
+            the result is the maximum of <code>1</code>
+            and <code>4</code>, which is <code>4</code>. Overall, we
+            get <code>[2, 3, 5, 3, 4]</code>.
           </p>
-
-          <pre class="brush: js;">
-          var source = new ParallelArray([1,2,2,4,2,4,5]);
-          var ones = source.map(function one(v) { return 1; });
-          </pre>
 
           <p>
-          We can then implement a histogram by scattering the ones we have just produced to the correct buckets, that is, we interpret the source data as scatter indices. 
-          Conflicts are resolved by adding values, ultimately counting how many times a one has been written to a certain position. The natural default value
-          is <code>0</code>. Lastly, we have to provide a new length, since we reduce multiple source values into a single frequency value. Here is what it looks
-          like:
+            <code>scatter</code> has a final optional argument: the
+            result length. By default, the length of the result will
+            be the same as the source array's.  Using a scatter index
+            outside of the result's length will lead to a range
+            error. To spread elements out or reduce the total number
+            of elements, the new length has to be explicitly provided.
           </p>
-          <pre class="brush: js;">
-          var hist = ones.scatter(source,
-                                  0,
-                                  function plus(a,b) { return a+b;},
-                                  6);
-          </pre>
+
+          <p>
+            Putting it all together, we can implement
+            a <em>histogram</em> by means of <code>scatter</code>. A
+            histogram computes the frequency or number of occurrences
+            of a value within a sample. Let's assume we have some
+            source data that contains values from zero to five. We
+            also need a second vector that contains weights. We will
+            just use a vector of ones here. Here is the setup:
+          </p>
+
+          <p>
+            <pre class="brush: js;">
+              var source = new ParallelArray([1,2,2,4,2,4,5]);
+              var ones = source.map(function one(v) { return 1; });
+            </pre>
+          </p>
+
+          <p>
+            We can then implement a histogram by scattering the ones
+            we have just produced to the correct buckets, that is, we
+            interpret the source data as scatter indices.  Conflicts
+            are resolved by adding values, ultimately counting how
+            many times a one has been written to a certain
+            position. The natural default value
+            is <code>0</code>. Lastly, we have to provide a new
+            length, since we reduce multiple source values into a
+            single frequency value. Here is what it looks like:
+          </p>
+
+          <p>
+            <pre class="brush: js;">
+              var hist = ones.scatter(source,
+                                      0,
+                                      function plus(a,b) { return a+b;},
+                                      6);
+            </pre>
+          </p>
 
           <h3>Filter</h3>
 
           <p>
-          With <code>scatter</code>, we can now create new <code>ParallelArray</code> objects by reordering the elements of an existing <code>ParallelArray</code> object. However, the result
-          still contains all elements of the source array, modulo conflicts. We are still missing a means to simply drop elements from an array. This is where
-          the <code>filter</code> method comes in. It expects an elemental function as its sole argument. The elemental function has the same signature as
-          <code>combine</code>: it gets the current index as an argument, and the source object is bound to <code>this</code> within its body. However, unlike with <code>combine</code>,
-          the elemental function passed to <code>filter</code> is expected to return a truth value that indicates whether the source array's element at the given index 
-          position should be included in the result. Let us look at an example:
+            With <code>scatter</code>, we can now create
+            new <code>ParallelArray</code> objects by reordering the
+            elements of an existing <code>ParallelArray</code>
+            object. However, the result still contains all elements of
+            the source array, modulo conflicts. We are still missing a
+            means to simply drop elements from an array. This is where
+            the <code>filter</code> method comes in. It expects an
+            elemental function as its sole argument. The elemental
+            function has the same signature as
+            <code>combine</code>: it gets the current index as an
+            argument, and the source object is bound
+            to <code>this</code> within its body. However, unlike
+            with <code>combine</code>, the elemental function passed
+            to <code>filter</code> is expected to return a truth value
+            that indicates whether the source array's element at the
+            given index position should be included in the result. Let
+            us look at an example:
           </p>
 
-          <pre class="brush: js;">
-          var source = new ParallelArray([1,2,3,4,5]);
-          var even = source.filter(function even(iv) {
-              return (this.get(iv) % 2) == 0; });
-          </pre>
+          <p>
+            <pre class="brush: js;">
+              var source = new ParallelArray([1,2,3,4,5]);
+              var even = source.filter(function even(iv) {
+                return (this.get(iv) % 2) == 0; });
+            </pre>
+          </p>
 
           <p>
-          As before, we first produce a source array containing the values one to five. Next, we apply the <code>filter</code> method using <code>even</code> as the elemental
-          function, which returns <code>true</code> for all even elements. Thus, we remove all odd elements from the source array, leading to the result <code>[2, 4]</code>.
+            As before, we first produce a source array containing the
+            values one to five. Next, we apply the <code>filter</code>
+            method using <code>even</code> as the elemental function,
+            which returns <code>true</code> for all even
+            elements. Thus, we remove all odd elements from the source
+            array, leading to the result <code>[2, 4]</code>.
           </p>
 
           <h2><a name="filters"></a>Parallel Video Filters with River Trail</h2>
 
-          <p>In this hands-on tutorial we will use River Trail to parallelize the
-          computationally intensive parts of a HTML5
-          video application. If you haven't already, read the above <a
-              href="index.html#methods">API method descriptions</a> and come back. It is also a
-          good idea to have the method descriptions to refer to while reading
-          through this tutorial.</p>
+          <p>
+            In this hands-on tutorial, we will use River Trail to
+            parallelize the computationally intensive parts of a HTML5
+            video application. If you haven't already, read the
+            above <a href="index.html#methods">API method
+            descriptions</a> and come back. It is also a good idea to
+            have the method descriptions to refer to while reading
+            through this tutorial.
+          </p>
 
           <h2><a name="setup"></a>Setup</h2>
 
           <h3>Download and Install</h3>
 
-          <p>If you have not done so already, download
-              and install the <a href="https://github.com/IntelLabs/RiverTrail/releases">River Trail Firefox extension</a>. For this tutorial, you do
-              <strong>not</strong> need
-              to build the extension from source; you only need to install the pre-built extension.</p>
+          <p>
+            If you have not done so already, download and install
+            the <a href="https://github.com/IntelLabs/RiverTrail/releases">River
+            Trail Firefox extension</a>. For this tutorial, you do
+            <strong>not</strong> need to build the extension from
+            source; you only need to install the pre-built
+            extension.</p>
 
-          <p>Also, clone
-          the <a href="https://github.com/IntelLabs/RiverTrail">River
-          Trail repository</a>,
-          or <a href="https://github.com/IntelLabs/RiverTrail/archive/master.zip">download
-          and unzip a snapshot of it</a>.</p>
+          <p>
+            Also, clone
+            the <a href="https://github.com/IntelLabs/RiverTrail">River
+            Trail repository</a>,
+            or <a href="https://github.com/IntelLabs/RiverTrail/archive/master.zip">download
+            and unzip a snapshot of it</a>.
+          </p>
 
-          <p>Finally, we will use the
-          10-minute film <em><a href="https://peach.blender.org/">Big Buck
-          Bunny</a></em> for the tutorial. Download an <a href="http://upload.wikimedia.org/wikipedia/commons/4/41/Big_Buck_Bunny_medium.ogv">.ogv file</a> of the movie,
-          and save it in the <code>tutorial/src/media/</code>
-          directory of the River Trail repository that you just cloned or unzipped.</p>
+          <p>
+            Finally, we will use the 10-minute
+            film <em><a href="https://peach.blender.org/">Big Buck
+            Bunny</a></em> for the tutorial. Download
+            an <a href="http://upload.wikimedia.org/wikipedia/commons/4/41/Big_Buck_Bunny_medium.ogv">.ogv
+            file</a> of the movie, and save it in
+            the <code>tutorial/src/media/</code> directory of the
+            River Trail repository that you just cloned or
+            unzipped.
+          </p>
 
           <h3>Serving the Tutorial Files</h3>
 
-          <p>Because of Firefox's security policies, for this tutorial
-          you will need to run a web server that serves files from the
-          River Trail directory.  For instance, if you have Python
-          installed, running the shell command <code>python -m SimpleHTTPServer</code>
-          in the directory where you cloned or unzipped the River
-          Trail repository is one way to quickly serve files:</p>
-
           <p>
-          <pre class="brush:bash;">
-~/repos/RiverTrail$ python -m SimpleHTTPServer
-Serving HTTP on 0.0.0.0 port 8000 ...</pre>
+            Because of Firefox's security policies, for this tutorial
+            you will need to run a web server that serves files from
+            the River Trail directory.  For instance, if you have
+            Python installed, running the shell command <code>python
+            -m SimpleHTTPServer</code> in the directory where you
+            cloned or unzipped the River Trail repository is one way
+            to quickly serve files:
           </p>
 
-          <p>Note that you need to serve the files from <strong>the
-          top-level directory</strong> where you cloned or unzipped the repo,
-          not the <code>tutorial/src/</code> directory!  You should
-          then be able to navigate
-          to, e.g., <a href="http://localhost:8000/tutorial/src/">http://localhost:8000/tutorial/src/</a>
-          in your browser and see the tutorial skeleton.</p>
+          <p>
+            <pre class="brush:bash;">
+              ~/repos/RiverTrail$ python -m SimpleHTTPServer
+              Serving HTTP on 0.0.0.0 port 8000 ...</pre>
+          </p>
+
+          <p>
+            Note that you need to serve the files from <strong>the
+            top-level directory</strong> where you cloned or unzipped
+            the repo, not the <code>tutorial/src/</code> directory!
+            You should then be able to navigate to,
+            e.g., <a href="http://localhost:8000/tutorial/src/">http://localhost:8000/tutorial/src/</a>
+            in your browser and see the tutorial skeleton.
+          </p>
 
           <h3>Verify</h3>
 
-          <p>To verify that the River Trail extension is installed, go to the <a
-          href="http://intellabs.github.io/RiverTrail-interactive/">interactive shell</a>.
-          You should see a message saying:</p>
-
           <p>
-          <code>River Trail Extension loaded. Enabling parallel mode...</code>
+            To verify that the River Trail extension is installed, go
+            to
+            the <a href="http://intellabs.github.io/RiverTrail-interactive/">interactive
+            shell</a>.  You should see a message saying:
           </p>
 
-          <p>If you see this, then the extension has been installed correctly.
-          However if you only see something like:</p>
-
           <p>
-          <code>River Trail not found. Enabling sequential mode...</code>
+            <code>River Trail Extension loaded. Enabling parallel
+            mode...</code>
           </p>
 
-          <p>then the extension isn't installed, or is disabled.  In
-          the Firefox Add-ons Manager, make sure that the extension is
-          installed and enabled, and try reloading the page.</p>
+          <p>
+            If you see this, then the extension has been installed
+            correctly.  However, if you only see something like:
+          </p>
 
-          <p>Once the extension is installed correctly, try running one of the
-          <a href="https://github.com/IntelLabs/RiverTrail/wiki#sample-applications">sample applications</a>.</p>
+          <p>
+            <code>River Trail not found. Enabling sequential
+            mode...</code>
+          </p>
+
+          <p>
+            then the extension isn't installed, or is disabled.  In
+            the Firefox Add-ons Manager, make sure that the extension is
+            installed and enabled, and try reloading the page.
+          </p>
+
+          <p>
+            Once the extension is installed correctly, you can try
+            running
+            the <a href="https://github.com/IntelLabs/RiverTrail/wiki#sample-applications">sample
+            applications</a> before moving on to the rest of this
+            tutorial.
+          </p>
 
           <h2><a name="skeleton"></a>The Skeleton</h2>
 
-          <p>In the River Trail repo, the <code>tutorial/src/</code> directory contains a
-          skeleton for the video application that you can start with.  If you've followed the above directions for serving the tutorial files, you should already be able to load up, e.g., <a href="http://localhost:8000/tutorial/src/">http://localhost:8000/tutorial/src/</a> in Firefox and see the
-          default screen for the application skeleton:
-          <img src="images/skeleton3.png"/>
-          The large box in the center is a 
-              <a href="https://developer.mozilla.org/en-US/docs/Canvas_tutorial">canvas</a> that is used for rendering the video output. The
-          video input is either an HTML5 video stream embedded in a
-              <a href="https://developer.mozilla.org/en-US/docs/HTML/Element/video">video</a> tag, or live video captured by a webcam.</p>
+          <p>
+            In the River Trail repo, the <code>tutorial/src/</code>
+            directory contains a skeleton for the video application
+            that you can start with.  If you've followed the above
+            directions for serving the tutorial files, you should
+            already be able to load up,
+            e.g., <a href="http://localhost:8000/tutorial/src/">http://localhost:8000/tutorial/src/</a>
+            in Firefox and see the default screen for the application
+            skeleton: <img src="images/skeleton3.png"/> The large box
+            in the center is
+            a <a href="https://developer.mozilla.org/en-US/docs/Canvas_tutorial">canvas</a>
+            that is used for rendering the video output. The video
+            input is either an HTML5 video stream embedded in
+            a <a href="https://developer.mozilla.org/en-US/docs/HTML/Element/video">video</a>
+            tag, or live video captured by a webcam.
+          </p>
 
-          <p>On the
-          right of the screen, you will see the various filters that can applied
-          to this input video stream: sepia toning, lightening, desaturation,
-          and so on. Click on the box in the center screen to start playback of the <em>Big Buck Bunny</em> video and try
-          out these filters. To switch to webcam video, click the "Webcam" toggle in
-          the top left corner.</p>
+          <p>
+            On the right of the screen, you will see the various
+            filters that can applied to this input video stream: sepia
+            toning, lightening, desaturation, and so on. Click on the
+            box in the center screen to start playback of the <em>Big
+            Buck Bunny</em> video and try out these filters. To switch
+            to webcam video, click the "Webcam" toggle in the top left
+            corner.
+          </p>
 
-          <p>The sequential JavaScript versions of the filters on the right are already
-          implemented.  In this tutorial, we will implement the parallel
-          versions using River Trail. Before we dive into implementation, let's
-          look at the basics of manipulating video using the Canvas API.</p>
+          <p>
+            The sequential JavaScript versions of the filters on the
+            right are already implemented.  In this tutorial, we will
+            implement the parallel versions using River Trail. Before
+            we dive into implementation, let's look at the basics of
+            manipulating video using the Canvas API.
+          </p>
 
           <h2><a name="manip"></a>Manipulating Pixels on Canvas</h2>
 
           <p>
-          Open up <code>tutorial/src/main-skeleton.js</code> in your favorite code editor. This file implements
-          all the functionality in this web application except the filters
-          themselves. When you load the page, the <code>doLoad()</code> function is called
-          after the body of the page has been loaded. This function sets up
-          the drawing contexts, initializes the list of filters (or kernels),
-          and assigns a click event handler for the output canvas.</p>
+            Open up <code>tutorial/src/main-skeleton.js</code> in your
+            favorite code editor. This file implements all the
+            functionality in this web application except the filters
+            themselves. When you load the page,
+            the <code>doLoad</code> function is called after the
+            body of the page has been loaded. This function sets up
+            the drawing contexts, initializes the list of filters (or
+            kernels), and assigns a click event handler for the output
+            canvas.
+          </p>
 
           <p>
-          The <code>computeFrame()</code> function is the workhorse that reads an input
-          video frame, applies all the selected filters on it, and produces an
-          output frame that is written to the output canvas context.
-          The code below shows how a single frame from an HTML video element is
-          drawn to a 2D context associated with a canvas element.</p>
+            The <code>computeFrame</code> function is the workhorse
+            that reads an input video frame, applies all the selected
+            filters on it, and produces an output frame that is
+            written to the output canvas context.  The code below
+            shows how a single frame from an HTML video element is
+            drawn to a 2D context associated with a canvas
+            element.
+          </p>
 
           <p>
             <pre class="brush: js;">
-            // main-skeleton.js: computeFrame() (excerpt)
-            output_context.drawImage(video, 0, 0, output_canvas.width,
+              output_context.drawImage(video, 0, 0, output_canvas.width,
                 output_canvas.height);
             </pre>
           </p>
 
           <p>
-                  After this video frame is drawn to canvas, we need to capture the
-                  pixels so that we can apply our filters. This is done by calling
-                  <code>getImageData()</code> on the context containing the image we want to
-                  capture.
+            After this video frame is drawn to canvas, we need to
+            capture the pixels so that we can apply our filters. This
+            is done by calling
+            <code>getImageData</code> on the context containing the image we want to
+            capture.
           </p>
 
           <p>
             <pre class="brush: js;">
-            // main-skeleton.js: computeFrame() (excerpt)
-            frame = output_context.getImageData(0, 0, input_canvas.width,
+              frame = output_context.getImageData(0, 0, input_canvas.width,
                 input_canvas.height);
-            len = frame.data.length;
-            w = frame.width;
-            h = frame.height;
+              len = frame.data.length;
+              w = frame.width;
+              h = frame.height;
             </pre>
           </p>
 
           <p>
-            Now we have an <a href="https://developer.mozilla.org/en-US/docs/HTML/Canvas/Pixel_manipulation_with_canvas"><code>ImageData</code></a> object called <code>frame</code>. The <code>data</code> attribute of <code>frame</code>
-            contains the pixel information, and the <code>width</code> and <code>height</code> attributes
-            contain the dimensions of the image we have captured.
+            Now we have
+            an <a href="https://developer.mozilla.org/en-US/docs/HTML/Canvas/Pixel_manipulation_with_canvas"><code>ImageData</code></a>
+            object called <code>frame</code>. The <code>data</code>
+            attribute of <code>frame</code> contains the pixel
+            information, and the <code>width</code>
+            and <code>height</code> attributes contain the dimensions
+            of the image we have captured.
           </p>
 
           <p>
-            The <code>data</code> attribute contains RGBA values for each pixel in a row-major format.
-            That is, for a frame with <em>h</em> rows of pixels and <em>w</em> columns, it contains a
-            one-dimensional array
-            of length <em>w</em> * <em>h</em> * 4, as shown below:</p>
+            The <code>data</code> attribute contains RGBA values for
+            each pixel in a row-major format.  That is, for a frame
+            with <em>h</em> rows of pixels and <em>w</em> columns, it
+            contains a one-dimensional array of length <em>w</em>
+            * <em>h</em> * 4, as shown below:
+          </p>
 
           <p style="text-align: center;">
             <img src="images/imgdata.png" width="350"/>
           </p>
 
           <p>
-            So, for example, to get the color values of a pixel in the 100th row and
-            50th column in the image, we could write the following code:</p>
+            So, for example, to get the color values of a pixel in the
+            100th row and 50th column in the image, we could write the
+            following code:
+          </p>
 
           <p>
             <pre class="brush: js;">
-            var red   = frame.data[100*w*4 + 50*4 + 0];
-            var green = frame.data[100*w*4 + 50*4 + 1];
-            var blue  = frame.data[100*w*4 + 50*4 + 2];
-            var alpha = frame.data[100*w*4 + 50*4 + 3];
+              var red   = frame.data[100*w*4 + 50*4 + 0];
+              var green = frame.data[100*w*4 + 50*4 + 1];
+              var blue  = frame.data[100*w*4 + 50*4 + 2];
+              var alpha = frame.data[100*w*4 + 50*4 + 3];
             </pre>
           </p>
 
           <p>
-            To set, for example, the red value of this pixel, simply write the new value at the
-            offset shown above in the <code>frame.data</code> buffer.
+            To set, for example, the red value of this pixel, simply
+            write the new value at the offset shown above in
+            the <code>frame.data</code> buffer.
           </p>
 
           <h2><a name="sepia"></a>Sepia Toning</h2>
 
           <p>
-            Sepia toning is a process performed on black-and-white print
-          photographs to give them a warmer color. This filter simulates the
-          sepia toning process on digital photographs or video.
+            <a href="http://en.wikipedia.org/wiki/Photographic_print_toning#Sepia_toning">Sepia
+            toning</a> is a process performed on black-and-white print
+            photographs to give them a warmer color. This filter
+            simulates the sepia toning process on digital photographs
+            or video.
           </p>
 
           <p>
-          Let us first look at the sequential implementation of this filter in
-          the function called <code>sepia_sequential()</code> in <code>tutorial/src/filters-skeleton.js</code>.
+            Let us first look at the sequential implementation of this
+            filter in the function
+            called <code>sepia_sequential</code>
+            in <code>tutorial/src/filters-skeleton.js</code>.
           </p>
 
-              <p>
-          <pre class="brush: js;">
-function sepia_sequential(frame, len, ctx) {
-    var pix = frame.data;
-    var r = 0, g = 0, b = 0;
-    for(var i = 0 ; i < len; i = i+4) {
-        r = (pix[i] * 0.393 + pix[i+1] * 0.769 + pix[i+2] * 0.189);
-        g = (pix[i] * 0.349 + pix[i+1] * 0.686 + pix[i+2] * 0.168);
-        b = (pix[i] * 0.272 + pix[i+1] * 0.534 + pix[i+2] * 0.131);
+          <p>
+            <pre class="brush: js;">
+    function sepia_sequential(frame, len, w, h, ctx) {
+        var pix = frame.data;
+        var avg = 0; var r = 0, g = 0, b = 0;
+        for(var i = 0 ; i < len; i = i+4) {
+            r = (pix[i] * 0.393 + pix[i+1] * 0.769 + pix[i+2] * 0.189);
+            g = (pix[i] * 0.349 + pix[i+1] * 0.686 + pix[i+2] * 0.168);
+            b = (pix[i] * 0.272 + pix[i+1] * 0.534 + pix[i+2] * 0.131);
 
-        if(r>255) r = 255;
-        if(g>255) g = 255;
-        if(b>255) b = 255;
+            if(r>255) r = 255;
+            if(g>255) g = 255;
+            if(b>255) b = 255;
+            if(r<0) r = 0;
+            if(g<0) g = 0;
+            if(b<0) b = 0;
 
-        if(r<0) r = 0;
-        if(g<0) g = 0;
-        if(b<0) b = 0;
-
-        pix[i] = r;
-        pix[i+1] = g;
-        pix[i+2] = b;
+            pix[i] = r;
+            pix[i+1] = g;
+            pix[i+2] = b;
+        }
+        ctx.putImageData(frame, 0, 0);
     }
-    ctx.putImageData(frame, 0, 0);
-} 
-          </pre>
+            </pre>
           </p>
 
           <p>
-          Recall that the <code>frame.data</code> buffer
-          contains color values as a linear sequence of RBGA values. The
-          <code>for</code> loop in <code>sepia_sequential()</code>
-          iterates over this buffer, and for each pixel it reads the red, green
-          and blue values (which are in <code>pix[i]</code>,
-          <code>pix[i+1]</code>, and <code>pix[i+2]</code>, respectively).
-          It computes a weighted average of these colors to produce the new
-          red, green, and blue values for that pixel. It then clamps the new
-          red, green and blue values to the range [0, 255] and writes them back into the
-          <code>frame.data</code> buffer. When the loop is finished, we have replaced the RGB
-          values for all the pixels with their sepia-toned values and we can
-          now write the image back into the output context <code>ctx</code>
-          with the <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/the-canvas-element.html#dom-context-2d-putimagedata">putImageData()</a>
-          method. The result should look like this (image on the left is the
-          original frame, image on the right is the output):
+            Recall that the <code>frame.data</code> buffer contains
+            color values as a linear sequence of RBGA
+            values. The <code>for</code> loop
+            in <code>sepia_sequential</code> iterates over this
+            buffer, and for each pixel it reads the red, green and
+            blue values (which are
+            in <code>pix[i]</code>, <code>pix[i+1]</code>,
+            and <code>pix[i+2]</code>, respectively).  It computes a
+            weighted average of these colors to produce the new red,
+            green, and blue values for that pixel. It then clamps the
+            new red, green and blue values to the range [0, 255] and
+            writes them back into the <code>frame.data</code>
+            buffer. When the loop is finished, we have replaced the
+            RGB values for all the pixels with their sepia-toned
+            values and we can now write the image back into the output
+            context <code>ctx</code> with
+            the <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/the-canvas-element.html#dom-context-2d-putimagedata">putImageData</a>
+            method. The result should look like this (image on the
+            left is the original frame, image on the right is the
+            output):
           </p>
 
           <p style="text-align: center;">
-          <img src="images/se1.png" height="170"/>
-          <img src="images/se2.png" height="170"/>
+            <img src="images/se1.png" height="170" />
+            <img src="images/se2.png" height="170" />
           </p>
 
-          <h3> Can we make this parallel? </h3>
+          <h3>Can we make this parallel?</h3>
           
           <p>
-          If you look closely at the <code>sepia_sequential()</code> function
-          above, you'll notice that each pixel can be processed independently
-          of all other pixels, as its new RGB values depend only on its current
-          RGB values. Furthermore, each iteration of the <code>for</code> loop does
-          not produce or consume side effects. This makes it easy to
-          parallelize this operation with River Trail.</p>
-
-          <p>Recall that the <code>ParallelArray</code> type has a constructor that
-          takes a canvas object as an argument and returns a freshly minted
-          <code>ParallelArray</code> object containing the pixel data from that canvas.</p>
-
-          <p>
-          <pre class="brush: js;">
-var pa = new ParallelArray(canvas);
-          </pre>
+            If you look closely at the <code>sepia_sequential</code>
+            function above, you'll notice that each pixel can be
+            processed independently of all other pixels, as its new
+            RGB values depend only on its current RGB
+            values. Furthermore, each iteration of
+            the <code>for</code> loop does not produce or consume side
+            effects. This makes it easy to parallelize this operation
+            with River Trail.
           </p>
 
           <p>
-          This creates a three-dimensional <code>ParallelArray</code> <code>pa</code> with shape
-          [h, w, 4] that looks like the following:</p>
-
-          <p>
-          <img src="images/pacanvas1.png" height="300" style="margin:auto;display:block;"/>
+            Recall that the <code>ParallelArray</code> type has a
+            constructor that takes a canvas object as an argument and
+            returns a freshly minted <code>ParallelArray</code> object
+            containing the pixel data from that canvas.
           </p>
 
           <p>
-          So, for the pixel on the canvas at coordinates <code>(x, y)</code>, <code>pa.get(x, y, 0)</code>
-          will contain the red value, <code>pa.get(x, y, 1)</code> will contain the green
-          value, and <code>pa.get(x, y, 2)</code> will contain the blue value.
-          In <code>computeFrame()</code>, we create a new <code>ParallelArray</code> from this canvas:</p>
+            <pre class="brush: js;">
+              var pa = new ParallelArray(canvas);
+            </pre>
+          </p>
 
           <p>
-          <pre class="brush: js;">
-            // main-skeleton.js: computeFrame() (excerpt)
-            else if (execution_mode === "parallel") {
+            This creates a
+            three-dimensional <code>ParallelArray</code> <code>pa</code>
+            with shape <code>[h, w, 4]</code> that looks like the
+            following:</p>
+
+          <p>
+            <img src="images/pacanvas1.png" height="300"
+            style="margin:auto;display:block;"/>
+          </p>
+
+          <p>
+            So, for the pixel on the canvas at coordinates <code>(x,
+            y)</code>, <code>pa.get(x, y, 0)</code> will contain the
+            red value, <code>pa.get(x, y, 1)</code> will contain the
+            green value, and <code>pa.get(x, y, 2)</code> will contain
+            the blue value.  In <code>computeFrame</code>, we create a
+            new <code>ParallelArray</code> from this canvas:</p>
+
+          <p>
+            <pre class="brush: js;">
+              else if (execution_mode === "parallel") {
                 frame = output_context.getImageData(0, 0, input_canvas.width, input_canvas.height);
                 stage_output = stage_input = new ParallelArray(input_canvas);
                 w = input_canvas.width; h = input_canvas.height;
-            }
-          </pre>
-
-
-          <p>
-          Here, <code>stage_input</code> and <code>stage_output</code> are
-          <code>ParallelArray</code> objects that contain the input and output pixel data
-          for each filtering "stage". Now let's look at the code that causes the
-          filters to be applied:</p>
+              }
+            </pre>
+          </p>
 
           <p>
-          <pre class="brush: js;">
-        // main-skeleton.js: computeFrame() (excerpt)
+            Here, <code>stage_input</code> and <code>stage_output</code> are
+            <code>ParallelArray</code> objects that contain the input
+            and output pixel data for each filtering "stage". Now
+            let's look at the code that causes the filters to be
+            applied:
+          </p>
+
+          <p>
+            <pre class="brush: js;">
         if(execution_mode === "parallel") {
             switch(filterName) {
                 ...
-
                 case "sepia":
                     /* Add your code here... */
 
                     break;
-
                 ...
-
             }
             // Make this filter's output the input to the next filter.
             stage_input = stage_output;
         }
-          </pre>
+            </pre>
           </p>
 
           <p>
-          To implement a
-          particular filter, we add code to produce a new <code>ParallelArray</code> object
-          containing the transformed pixel data and assign it to
-          <code>stage_output</code>.  For example, for the sepia filter, we would write:
-
-          <p>
-          <pre class="brush: js;">
-        case "sepia":
-            stage_output = /* new ParallelArray containing
-                              transformed pixel data */;
-
-            break;
-         </pre>
+            To implement a particular filter, we add code to produce a
+            new <code>ParallelArray</code> object containing the
+            transformed pixel data and assign it to
+            <code>stage_output</code>.  For example, for the sepia
+            filter, we would write:
           </p>
 
           <p>
-         Now, all we have to do above is produce a new <code>ParallelArray</code> object
-         on the right-hand side of the statement above.
-         We can produce this new <code>ParallelArray</code> one of two ways: by using the
-         powerful <code>ParallelArray</code> constructor, or by using the <code>combine</code> method.
-         Let us look at the constructor approach first.</p>
+            <pre class="brush: js;">
+                case "sepia":
+                    stage_output = /* new ParallelArray containing
+                                      transformed pixel data */;
 
-          <p>
-         Recall that the comprehension constructor has the following form:</p>
-
-          <p>
-         <pre class="brush: js;">
-         var pa = new ParallelArray(shape_vector, elemental_function,
-            arg1, arg2, ...);
-         </pre>
-         </p>
-
-          <p>
-         where <code>elemental_function</code> is a JavaScript function that produces the
-         value of an element at a particular index in <code>pa</code>.</p>
-
-          <p>
-         Recall that the input to our filter <code>stage_input</code> is a 
-          <code>ParallelArray</code> with shape <code>[h, w, 4]</code>. You can think of it as a two-dimensional
-         <code>ParallelArray</code> with shape <code>[h, w]</code> in which each element (which corresponds to
-         a single pixel) is itself a <code>ParallelArray</code> of shape <code>[4]</code>.
-         The output ParallelArray we will
-         produce will have this same shape: we will produce a new
-         <code>ParallelArray</code> of shape <code>[h, w]</code> in which each element has a shape of
-         <code>[4]</code>, thereby making the <code>ParallelArray</code> have a final shape of <code>[h, w, 4]</code>.  We can do so as follows:</p>
-
-          <p>
-          <pre class="brush: js;">
-        case "sepia":
-            stage_output = new ParallelArray([h, w], kernelName, stage_input);
-
-            break;
-         </pre>
+                    break;
+            </pre>
           </p>
 
+          <p>
+            Now, all we have to do above is produce a
+            new <code>ParallelArray</code> object on the right-hand
+            side of the statement above. We can produce this
+            new <code>ParallelArray</code> one of two ways: by using
+            the powerful <code>ParallelArray</code> constructor, or by
+            using the <code>combine</code> method.  Let us look at the
+            constructor approach first.
+          </p>
 
           <p>
-        The first argument, <code>[h, w]</code>, specifies the shape of the new
-        <code>ParallelArray</code> we want to create.
-        <code>kernelName</code> is a Function object pointing to the
-        elemental function for the sepia filter (which we will talk about in a moment), and
-        <code>stage_input</code> is an argument to this elemental
-        function. Hence this line of code creates a new
-        <code>ParallelArray</code> object of shape <code>[h, w]</code> in which each element is
-        produced by executing the function <code>kernelName</code>. This
-        new <code>ParallelArray</code> is then assigned to <code>stage_output</code>.</p>
+            Recall that the comprehension constructor has the
+            following form:
+          </p>
 
           <p>
-        Finally, we have to write the elemental function that produces the
-        color values for each pixel. We can think of it as a function that,
-        when supplied indices, produces the <code>ParallelArray</code> elements at those indices.</p>
-
-          <p>Open the
-          file <code>tutorial/src/filters-skeleton.js</code> in your
-          editor and find the stub for the <code>sepia_parallel</code>
-          function:</p>
+            <pre class="brush: js;">
+              var pa = new ParallelArray(shape_vector, elemental_function,
+                arg1, arg2, ...);
+            </pre>
+          </p>
 
           <p>
-        <pre class="brush: js;">
-    function sepia_parallel (indices, frame) {
-
-        /* Add your code here... */
-
-    }
-    </pre>
-        </p>
+            where <code>elemental_function</code> is a JavaScript
+            function that produces the value of an element at a
+            particular index in <code>pa</code>.
+          </p>
 
           <p>
-        The first argument <code>indices</code> is a vector of indices from the
-        iteration space <code>[h, w]</code>. <code>indices[0]</code> is the index along
-        the 1st dimension (from <code>0</code> to </code>h-1</code>) and <code>indices[1]</code> is the index along
-        the 2nd dimension (from <code>0</code> to <code>w-1</code>).</p>
+            Recall that the input to our filter <code>stage_input</code> is a 
+            <code>ParallelArray</code> with shape <code>[h, w,
+            4]</code>. You can think of it as a two-dimensional
+            <code>ParallelArray</code> with shape <code>[h, w]</code>
+            in which each element (which corresponds to a single
+            pixel) is itself a <code>ParallelArray</code> of
+            shape <code>[4]</code>.  The
+            output <code>ParallelArray</code> we will produce will
+            have this same shape: we will produce a new
+            <code>ParallelArray</code> of shape <code>[h, w]</code> in
+            which each element has a shape of
+            <code>[4]</code>, thereby making
+            the <code>ParallelArray</code> have a final shape
+            of <code>[h, w, 4]</code>.  We can do so as follows:
+          </p>
 
           <p>
-        The <code>frame</code> argument is the <code>ParallelArray</code> object that was passed as an
-        argument to the constructor above.</p>
+            <pre class="brush: js;">
+              case "sepia":
+                  stage_output = new ParallelArray([h, w], kernelName, stage_input);
+
+                  break;
+            </pre>
+          </p>
 
           <p>
-        Now let's fill in the body of the elemental function:</p>
+            The first argument, <code>[h, w]</code>, specifies the
+            shape of the new <code>ParallelArray</code> we want to
+            create. <code>kernelName</code> is the elemental function
+            for the sepia filter (which we will talk about in a
+            moment), and <code>stage_input</code> is an argument to
+            this elemental function. Hence this line of code creates a
+            new <code>ParallelArray</code> object of shape <code>[h,
+            w]</code> in which each element is produced by executing
+            the function <code>kernelName</code>. This
+            new <code>ParallelArray</code> is then assigned
+            to <code>stage_output</code>.
+          </p>
 
           <p>
-        <pre class="brush: js;">
-        function sepia_parallel(indices, frame) {
-            var i = indices[0];
-            var j = indices[1];
-
-            var old_r = frame[i][j][0];
-            var old_g = frame[i][j][1];
-            var old_b = frame[i][j][2];
-            var a     = frame[i][j][3];
-
-            var r = old_r*0.393 + old_g*0.769 + old_b*0.189;
-            var g = old_r*0.349 + old_g*0.686 + old_b*0.168;
-            var b = old_r*0.272 + old_g*0.534 + old_b*0.131;
-
-            return [r, g, b, a];
-        }
-        </pre>
-        </p>
+            Finally, we have to write the elemental function that
+            produces the color values for each pixel. We can think of
+            it as a function that, when supplied indices, produces
+            the <code>ParallelArray</code> elements at those
+            indices.
+          </p>
 
           <p>
-        In this code, we grab the indices <code>i</code> and <code>j</code> and read the RGBA values from the
-        input <code>frame</code>. Then, just like in the
-        sequential version of the code, we mix these colors and return a
-        four-element array consisting of the new color values for the pixel at
-        position (<code>i</code>, <code>j</code>).</p>
+            Open the
+            file <code>tutorial/src/filters-skeleton.js</code> in your
+            editor and find the stub for
+            the <code>sepia_parallel</code> function:
+          </p>
 
           <p>
-        And that's it. After filling in the <code>sepia_parallel</code> implementation, select the "River Trail" toggle on the top right of the
-        app screen and play the video (perhaps after restarting your web server). You should see the same sepia toning
-        effect you saw with the sequential implementation.</p>
+            <pre class="brush: js;">
+              function sepia_parallel(indices, frame) {
+
+                  /* Add your code here... */
+
+              }
+            </pre>
+          </p>
 
           <p>
-        The River Trail compiler takes your elemental function and parallelizes
-        its application over the iteration space. Note that you did not have to
-        create or manage threads, write any non-JavaScript code, or deal with
-        race conditions and deadlocks.</p>
+            The first argument <code>indices</code> is a vector of
+            indices from the iteration space <code>[h,
+            w]</code>. <code>indices[0]</code> is the index along the
+            1st dimension (from <code>0</code> to </code>h-1</code>)
+            and <code>indices[1]</code> is the index along the 2nd
+            dimension (from <code>0</code> to <code>w-1</code>).
+          </p>
 
-          <p>We could have also implemented the sepia filter by calling the
-        <code>combine</code> method on
-        the <code>stage_input</code> <code>ParallelArray</code>.  As
-        an optional exercise, try implementing a version of the sepia
-        filter using <code>combine</code>.</p>
+          <p>
+            The <code>frame</code> argument is
+            the <code>ParallelArray</code> object that was passed as
+            an argument to the constructor above.
+          </p>
 
-        <!--
-        <pre class="brush: js;">
-        stage_output = stage_input.combine(1, function(index) {
-            var old_r = this.get(index, 0);
-            var old_g = this.get(index, 1);
-            var old_b = this.get(index, 2);
-            var a     = this.get(index, 3);
+          <p>
+            Now let's fill in the body of the elemental function:
+          </p>
 
-            var r = old_r * 0.393 + old_g * 0.769 + old_b * 0.189;
-            var g = old_r * 0.349 + old_g * 0.686 + old_b * 0.168;
-            var b = old_r * 0.272 + old_g * 0.534 + old_b * 0.131;
-            return [r, g, b, a];
-        });
-        </pre>
-        -->
+          <p>
+            <pre class="brush: js;">
+              function sepia_parallel(indices, frame) {
+                  var i = indices[0];
+                  var j = indices[1];
+
+                  var old_r = frame[i][j][0];
+                  var old_g = frame[i][j][1];
+                  var old_b = frame[i][j][2];
+                  var a     = frame[i][j][3];
+
+                  var r = old_r*0.393 + old_g*0.769 + old_b*0.189;
+                  var g = old_r*0.349 + old_g*0.686 + old_b*0.168;
+                  var b = old_r*0.272 + old_g*0.534 + old_b*0.131;
+
+                  return [r, g, b, a];
+              }
+            </pre>
+          </p>
+
+          <p>
+            In this code, we grab the indices <code>i</code>
+            and <code>j</code> and read the RGBA values from the
+            input <code>frame</code>. Then, just like in the
+            sequential version of the code, we mix these colors and
+            return a four-element array consisting of the new color
+            values for the pixel at position <code>(i, j)</code>.
+          </p>
+
+          <p>
+            And that's it. After filling in
+            the <code>sepia_parallel</code> implementation, select the
+            "River Trail" toggle on the top right of the app screen
+            and play the video (perhaps after restarting your web
+            server). You should see the same sepia toning effect you
+            saw with the sequential implementation.
+          </p>
+
+          <p>
+            The River Trail compiler takes your elemental function and
+            parallelizes its application over the iteration
+            space. Note that you did not have to create or manage
+            threads, write any non-JavaScript code, or deal with race
+            conditions and deadlocks.
+          </p>
+
+          <p>We could have also implemented the sepia filter by
+          calling the <code>combine</code> method on
+            the <code>stage_input</code> <code>ParallelArray</code>.  As
+            an optional exercise, try implementing a version of the sepia
+            filter using <code>combine</code>.
+          </p>
+
+          <!-- Solution to the above exercise: -->
+          <!--
+              <pre class="brush: js;">
+                stage_output = stage_input.combine(1, function(index) {
+                var old_r = this.get(index, 0);
+                var old_g = this.get(index, 1);
+                var old_b = this.get(index, 2);
+                var a     = this.get(index, 3);
+
+                var r = old_r * 0.393 + old_g * 0.769 + old_b * 0.189;
+                var g = old_r * 0.349 + old_g * 0.686 + old_b * 0.168;
+                var b = old_r * 0.272 + old_g * 0.534 + old_b * 0.131;
+                return [r, g, b, a];
+                });
+              </pre>
+              -->
 
           <p>
             One last thing to note: although the sepia filter is being
@@ -1034,57 +1356,65 @@ var pa = new ParallelArray(canvas);
             which parallel execution is more worth the cost.
           </p>
 
-       <h2><a name="3D"></a> Stereoscopic 3D</h2>
+          <h2><a name="3D"></a> Stereoscopic 3D</h2>
 
-       <p>
-         Let's consider a slightly more complicated filter: one that transforms
-       the input video stream into 3D in real time. <a href="http://en.wikipedia.org/wiki/Stereoscopy">Stereoscopic 3D</a> is a
-       method of creating the illusion of depth by simulating the different
-       images that a normal pair of eyes see (see <a href="http://en.wikipedia.org/wiki/Binocular_disparity">binocular disparity</a>). 
-       In essence, when looking at a three-dimensional object, our eyes each see a
-       slightly different 2D image due to the distance between them on our
-       head. Our brain uses this difference to extract depth information from
-       these 2D images.
-       To implement stereoscopic 3D, we will use this same methodology: we
-       present two 2D images, each one slightly different from the other to the
-       viewer's eyes. The difference between these images&mdash;let's call them
-       left-eye and right-eye images&mdash;are two-fold. Firstly, the right-eye image
-       is offset slightly to the left in the horizontal direction. Secondly,
-       the red channel is masked off in the right-eye image and the blue and
-       green channels are masked off in the left-eye image. The result looks
-       something like the following (image on the left is the original, image
-       on the right is the 3D version):</p>
+          <p>
+            Let's consider a slightly more complicated filter: one
+            that transforms the input video stream into 3D in real
+            time. <a href="http://en.wikipedia.org/wiki/Stereoscopy">Stereoscopic
+            3D</a> is a method of creating the illusion of depth by
+            simulating the different images that a normal pair of eyes
+            (see <a href="http://en.wikipedia.org/wiki/Binocular_disparity">binocular
+            disparity</a>).  In essence, when looking at a
+            three-dimensional object, our eyes each see a slightly
+            different 2D image due to the distance between them on our
+            head. Our brain uses this difference to extract depth
+            information from these 2D images.  To implement
+            stereoscopic 3D, we will use this same methodology: we
+            present two 2D images, each one slightly different from
+            the other to the viewer's eyes. The difference between
+            these images&mdash;let's call them left-eye and right-eye
+            images&mdash;are two-fold. Firstly, the right-eye image is
+            offset slightly to the left in the horizontal
+            direction. Secondly, the red channel is masked off in the
+            right-eye image and the blue and green channels are masked
+            off in the left-eye image. The result looks something like
+            the following (image on the left is the original, image on
+            the right is the 3D version):
+          </p>
 
-       <p style="text-align: center;">
-          <img src="images/42.png" height="170"/>
-          <img src="images/3d42-all.png" height="170"/>
-       </p>
+          <p style="text-align: center;">
+            <img src="images/42.png" height="170"/>
+            <img src="images/3d42-all.png" height="170"/>
+          </p>
 
-       <p>The function <code>A3D_sequential()</code>
-       in <code>tutorial/src/filters-skeleton.js</code> implements a
-       sequential version of the stereoscopic 3D filter.  Let's look
-       at this sequential implementation:</p>
+          <p>
+            The function <code>A3D_sequential</code>
+            in <code>tutorial/src/filters-skeleton.js</code>
+            implements a sequential version of the stereoscopic 3D
+            filter.  Let's look at this sequential implementation:
+          </p>
 
-       <p>
-        <pre class="brush: js;">
-       function A3D_sequential(frame, len, w, h, dist, ctx) {
+          <p>
+            <pre class="brush: js;">
+    function A3D_sequential(frame, len, w, h, dist, ctx) {
         var pix = frame.data;
         var new_pix = new Array(len);
         var r1, g1, b1;
         var r2, g2, b2;
         var rb, gb, bb;
         for(var i = 0 ; i < len; i = i+4) {
-            var k = i-(dist*4);
+            var j = i-(dist*4);
             if(Math.floor(j/(w*4)) !== Math.floor(i/(w*4))) j = i;
                 r1 = pix[i]; g1 = pix[i+1]; b1 = pix[i+2];
-                r2 = pix[k]; g2 = pix[k+1]; b2 = pix[k+2];
+                r2 = pix[j]; g2 = pix[j+1]; b2 = pix[j+2];
+
                 var left = dubois_blend_left(r1, g1, b1);
                 var right = dubois_blend_right(r2, g2, b2);
-
                 rb = left[0] + right[0] + 0.5;
                 gb = left[1] + right[1] + 0.5;
                 bb = left[2] + right[2] + 0.5;
-
+                
                 new_pix[i] = rb;
                 new_pix[i+1] = gb;
                 new_pix[i+2] = bb;
@@ -1094,355 +1424,423 @@ var pa = new ParallelArray(canvas);
             pix[i] = new_pix[i];
         }
         ctx.putImageData(frame, 0, 0);
+
     }
-    </pre>
-        </p>
+            </pre>
+          </p>
 
-       <p>
-    Don't worry about the details of the implementation just yet; just note
-    that the structure is somewhat similar to the sepia filter. One important
-    distinction is that while the sepia filter updated the pixel data in-place,
-    we cannot do that here; processing each pixel involves reading a
-    neighboring pixel. If we updated in-place, we could end up reading the
-    updated value for this neighboring pixel. In other words, there is a
-    write-after-read loop-carried dependence here. So, instead of updating in place, we
-    allocate a new buffer <code>new_pix</code> for holding the updated
-    values of the pixels.</p>
+          <p>
+            Don't worry about the details of the implementation just
+            yet; just note that the structure is somewhat similar to
+            that of the sepia filter. One important distinction is
+            that while the sepia filter updated the pixel data
+            in-place, we cannot do that here; processing each pixel
+            involves reading a neighboring pixel. If we updated
+            in-place, we could end up reading the updated value for
+            this neighboring pixel. In other words, there is a
+            write-after-read loop-carried dependence here. So, instead
+            of updating in place, we allocate a new
+            buffer <code>new_pix</code> for holding the updated values
+            of the pixels.
+          </p>
 
-       <p>
-    Let's start implementing the parallel version. What we want to implement is an operation
-    that reads the pixel data in the input <code>ParallelArray</code> object and produces
-    new pixel data into another. So, just as with the sepia filter, we can use the <code>ParallelArray</code> constructor with an elemental function.  In <code>tutorial/src/main-skeleton.js</code>, modify the <code>computeFrame()</code> function to call the <code>ParallelArray</code> constructor as follows:</p>
+          <p>
+            Let's start implementing the parallel version. What we
+            want to implement is an operation that reads the pixel
+            data in the input <code>ParallelArray</code> object and
+            produces new pixel data into another. So, just as with the
+            sepia filter, we can use the <code>ParallelArray</code>
+            constructor with an elemental function.
+            In <code>tutorial/src/main-skeleton.js</code>, modify
+            the <code>computeFrame</code> function to call
+            the <code>ParallelArray</code> constructor as follows:
+          </p>
 
-       <p>
-    <pre class="brush: js;">
-        ...
+          <p>
+            <pre class="brush: js;">
         if(execution_mode === "parallel") {
             switch(filterName) {
                 ...
                 case "A3D":
                     stage_output = new ParallelArray([h, w], kernelName,
-                        stage_input, w, h);
+                      stage_input, w, h);
+
                     break;
                 ...
             }
-        ...
+            ...
         }
-        </pre>
+            </pre>
+          <p>
 
-    <p>
-    Then, in <code>tutorial/src/filters-skeleton.js</code>, find the
-    stub for the <code>A3D_parallel</code> elemental function and
-    begin modifying it as follows:</p>
+          <p>
+            Then, in <code>tutorial/src/filters-skeleton.js</code>,
+            find the stub for the <code>A3D_parallel</code> elemental
+            function and begin modifying it as follows:
+          </p>
 
-        <pre class="brush: js;">
-        function A3D_parallel (indices, frame, w, h, dist) {
-            var i = indices[0];
-            var j = indices[1];
-        }
-        </pre>
+          <p>
+            <pre class="brush: js;">
+              function A3D_parallel(indices, frame, w, h, dist) {
+                  var i = indices[0];
+                  var j = indices[1];
+              }
+            </pre>
+          </p>
 
-       <p>
-        Each pair <code>(i, j)</code> corresponds to a pixel in the output
-        frame. Recall that each pixel in the output frame is
-        generated by blending two images, the left-eye and right-eye images,
-        the latter being a copy of the former except shifted along the negative
-        x-axis (that is, to the left).</p>
+          <p>
+            Each pair <code>(i, j)</code> corresponds to a pixel in
+            the output frame. Recall that each pixel in the output
+            frame is generated by blending two images, the left-eye
+            and right-eye images, the latter being a copy of the
+            former except shifted along the negative x-axis (that is,
+            to the left).
+          </p>
 
-        <p>
-        Let's call the pixel <code>frame[i][j]</code> the left-eye pixel.
-        To get the right-eye pixel we will simply read a neighbor of the left
-        eye pixel that is some distance away. This distance is given to us as
-        the argument <code>dist</code> (which is updated every time the 3D slider on the UI is
-        moved):</p>
+          <p>
+            Let's call the pixel <code>frame[i][j]</code> the left-eye
+            pixel.  To get the right-eye pixel we will simply read a
+            neighbor of the left eye pixel that is some distance
+            away. This distance is given to us as the
+            argument <code>dist</code> (which is updated every time
+            the 3D slider on the UI is moved):
+          </p>
 
-        <p>
-        <pre class="brush: js;">
-        function A3D_parallel (indices, frame, w, h, dist) {
-            var i = indices[0];
-            var j = indices[1];
-            var k = j - dist;
-            if(k < 0) k = j;
-        }
-        </pre>
-        </p>
+          <p>
+            <pre class="brush: js;">
+              function A3D_parallel(indices, frame, w, h, dist) {
+                  var i = indices[0];
+                  var j = indices[1];
+                  var k = j - dist;
+                  if(k < 0) k = j;
+              }
+            </pre>
+          </p>
 
-        <p>
-        Now <code>frame[i][k]</code> is the right-eye pixel. We need to guard
-        against the fact that if <code>dist</code> large, we cannot get the right-eye pixel,
-        as it would be outside the frame we have. There are several
-        approaches for dealing with this situation; for simplicity, we 
-        simply make the right-eye pixel the same as the left-eye pixel.  The line <code>if(k < 0) k = j</code> accomplishes this.</p>
+          <p>
+            Now <code>frame[i][k]</code> is the right-eye pixel. We
+            need to guard against the fact that if <code>dist</code>
+            large, we cannot get the right-eye pixel, as it would be
+            outside the frame we have. There are several approaches
+            for dealing with this situation; for simplicity, we simply
+            make the right-eye pixel the same as the left-eye pixel.
+            The line <code>if(k < 0) k = j</code> accomplishes this.
+          </p>
 
-        <p>Now,
-        let's mask off the appropriate colors in each of the left and right eye
-        pixels. We use the <code>dubois_blend_left</code> and <code>dubois_blend_right()</code> functions for this. You
-        don't have to understand the details of these functions for this
-        tutorial; just that they take in an RGB tuple and produce a new RGB tuple
-        that is appropriately masked for the right and left eyes. For details
-        on these functions, read about the <a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=941256&tag=1">Dubois method</a>.</p>
-
-
-        <p>
-        <pre class="brush: js;">
-        function a3d_parallel (indices, frame, w, h, dist) {
-            var i = indices[0];
-            var j = indices[1];
-            var k = j - dist;
-            if(k < 0) k = j;
-            var r_l = frame[i][j][0];
-            var g_l = frame[i][j][1];
-            var b_l = frame[i][j][2];
-            var r_r = frame[i][k][0];
-            var g_r = frame[i][k][1];
-            var b_r = frame[i][k][2];
-            var left = dubois_blend_left(r_l, g_l, b_l);
-            var right = dubois_blend_right(r_r, g_r, b_r);
-        }
-        </pre>
-        </p>
+          <p>
+            Now, let's mask off the appropriate colors in each of the
+            left and right eye pixels. We use
+            the <code>dubois_blend_left</code>
+            and <code>dubois_blend_right</code> functions for
+            this. You don't have to understand the details of these
+            functions for this tutorial; just that they take in an RGB
+            tuple and produce a new RGB tuple that is appropriately
+            masked for the right and left eyes. For details on these
+            functions, read about
+            the <a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=941256&tag=1">Dubois
+            method</a>.
+          </p>
 
 
-        <p>
-        Now we have the separately masked and blended left and right eye pixels. We now
-        blend these two pixels together to produce the final color values:</p>
+          <p>
+            <pre class="brush: js;">
+              function A3D_parallel(indices, frame, w, h, dist) {
+                  var i = indices[0];
+                  var j = indices[1];
+                  var k = j - dist;
+                  if(k < 0) k = j;
+                  var r_l = frame[i][j][0];
+                  var g_l = frame[i][j][1];
+                  var b_l = frame[i][j][2];
+                  var r_r = frame[i][k][0];
+                  var g_r = frame[i][k][1];
+                  var b_r = frame[i][k][2];
+                  var left = dubois_blend_left(r_l, g_l, b_l);
+                  var right = dubois_blend_right(r_r, g_r, b_r);
+              }
+            </pre>
+          </p>
 
-        <p>
-        <pre class="brush: js;">
-        function a3d_parallel (indices, frame, w, h, dist) {
-            var i = indices[0];
-            var j = indices[1];
-            var k = j - dist;
-            if(k < 0) k = j;
-            var r_l = frame[i][j][0];
-            var g_l = frame[i][j][1];
-            var b_l = frame[i][j][2];
-            var r_r = frame[i][k][0];
-            var g_r = frame[i][k][1];
-            var b_r = frame[i][k][2];
-            var left = dubois_blend_left(r_l, g_l, b_l);
-            var right = dubois_blend_right(r_r, g_r, b_r);
-            var rb = left[0] + right[0] + 0.5;
-            var gb = left[1] + right[1] + 0.5;
-            var bb = left[2] + right[2] + 0.5;
-            return [rb, gb, bb, 255];
-        }
-        </pre>
-        </p>
+          <p>
+            Now we have the separately masked and blended left- and
+            right-eye pixels. We now blend these two pixels together
+            to produce the final color values:
+          </p>
 
-        <p>
-        And that's it. With the "River Trail" execution mode enabled, play the video and select the
-        3D filter. With red/cyan 3D glasses, you should be able to notice
-        the depth effect. Without the glasses, this is how it looks (original
-        video frame on the left, with the filter applied on the right):</p>
+          <p>
+            <pre class="brush: js;">
+              function A3D_parallel(indices, frame, w, h, dist) {
+                  var i = indices[0];
+                  var j = indices[1];
+                  var k = j - dist;
+                  if(k < 0) k = j;
+                  var r_l = frame[i][j][0];
+                  var g_l = frame[i][j][1];
+                  var b_l = frame[i][j][2];
+                  var r_r = frame[i][k][0];
+                  var g_r = frame[i][k][1];
+                  var b_r = frame[i][k][2];
+                  var left = dubois_blend_left(r_l, g_l, b_l);
+                  var right = dubois_blend_right(r_r, g_r, b_r);
+                  var rb = left[0] + right[0] + 0.5;
+                  var gb = left[1] + right[1] + 0.5;
+                  var bb = left[2] + right[2] + 0.5;
+                  return [rb, gb, bb, 255];
+              }
+            </pre>
+          </p>
 
-        <p style="text-align: center;">
-          <img src="images/se1.png" height="170"/>
-          <img src="images/3d1.png" height="170"/>
-        </p>
+          <p>
+            And that's it. With the "River Trail" execution mode
+            enabled, play the video and select the 3D filter. With
+            red/cyan 3D glasses, you should be able to notice the
+            depth effect. Without the glasses, this is how it looks
+            (original video frame on the left, with the filter applied
+            on the right):
+          </p>
 
-       <h2><a name="edge"></a>Edge Detection and Sharpening</h2>
+          <p style="text-align: center;">
+            <img src="images/se1.png" height="170"/>
+            <img src="images/3d1.png" height="170"/>
+          </p>
 
-       <p>
-       Finally, let's move on to something a little more complicated: <a
-       href="http://en.wikipedia.org/wiki/Edge_detection">edge
-           detection</a> and <a href="http://en.wikipedia.org/wiki/Edge_enhancement">sharpening</a>.
-       Edge detection is a common tool used in digital image processing and
-       computer vision that seeks to highlight points in an image where the
-       image brightness changes sharply. Select the "Edge Detect" effect and
-       play the video to see the result of the effect.</p>
+          <h2><a name="edge"></a>Edge Detection and Sharpening</h2>
 
-       <p style="text-align: center;">
-       <img src="images/se1.png" height="170"/>
-       <img src="images/ed1.png" height="170"/>
-       </p>
+          <p>
+            Finally, let's move on to something a little more
+            complicated: <a href="http://en.wikipedia.org/wiki/Edge_detection">edge
+            detection</a>
+            and <a href="http://en.wikipedia.org/wiki/Edge_enhancement">sharpening</a>.
+            Edge detection is a common tool used in digital image
+            processing and computer vision that seeks to highlight
+            points in an image where the image brightness changes
+            sharply. Select the "Edge Detect" effect and play the
+            video to see the result of the effect.
+          </p>
 
-       <p>
-       There are many diverse approaches to edge detection, but we are
-       interested in the 2D discrete <a
-       href="http://en.wikipedia.org/wiki/Convolution">convolution</a>-based approach:</p>
+          <p style="text-align: center;">
+            <img src="images/se1.png" height="170"/>
+            <img src="images/ed1.png" height="170"/>
+          </p>
 
-       <p>
-       <img src="images/convolution2.png" height="200"
-       style="margin:auto;display:block;"/></p>
+          <p>
+            There are many diverse approaches to edge detection, but
+            we are interested in the 2D
+            discrete <a href="http://en.wikipedia.org/wiki/Convolution">convolution</a>-based
+            approach:
+          </p>
 
-       <p>
-       At a high level, discrete convolution on a single pixel in an image
-       involves taking this pixel (shown in dark blue above) and computing the
-       weighted sum of its neighbors that lie within some specific window to produce the output pixel (shown in dark
-       red above). The weights and the window are described by the convolution
-       <em>kernel</em>. This process is repeated for all the pixels to produce
-       the final output of the convolution.</p>
+          <p>
+            <img src="images/convolution2.png" height="200"
+                 style="margin:auto;display:block;"/></p>
 
-       <p>
-       Consider a 5x5 matrix convolved with a 3x3 kernel as shown below. For
-       simplicity, we are only interested in the input element highlighted in
-       blue.</p>
-       
-       <p>
-       <img src="images/convolution4.png" height="150" style="margin:auto;display:block;"/>
-       </p>
+          <p>
+            At a high level, discrete convolution on a single pixel in
+            an image involves taking this pixel (shown in dark blue
+            above) and computing the weighted sum of its neighbors
+            that lie within some specific window to produce the output
+            pixel (shown in dark red above). The weights and the
+            window are described by the convolution
+            <em>kernel</em>. This process is repeated for all the pixels to produce
+            the final output of the convolution.
+          </p>
 
-       <p>The weighted sum for this element is:</p>
+          <p>
+            Consider a 5x5 matrix convolved with a 3x3 kernel as shown
+            below. For simplicity, we are only interested in the input
+            element highlighted in blue.
+          </p>
+          
+          <p>
+            <img src="images/convolution4.png" height="150"
+                 style="margin:auto;display:block;"/>
+          </p>
 
-       <p style="text-align: center;">
-       (1*2) + (1*3) + (2*0) +<br />
-       (2*0) + (2*1) + (1*3) +<br />
-       (1*3) + (5*0) + (0*3) &nbsp;&nbsp;<br />
-       = 13.</p>
+          <p>The weighted sum for this element is:</p>
 
-       <p>The value of the element in the output matrix is therefore
-       13.</p>
+          <p style="text-align: center;">
+            (1*2) + (1*3) + (2*0) +<br />
+            (2*0) + (2*1) + (1*3) +<br />
+            (1*3) + (5*0) + (0*3) &nbsp;&nbsp;<br />
+            = 13.
+          </p>
 
-       <p>
-         The <code>edge_detect_sequential</code> function in <code>tutorial/src/filters-skeleton.js</code> gives a sequential implementation of edge detection. Don't worry about
-       understanding it in detail yet.</p>
+          <p>
+            The value of the element in the output matrix is therefore
+            13.
+          </p>
 
-       <p>
-    Let us try and implement this filter using River
-    Trail. In <code>tutorial/src/filter-skeleton.js</code>, find the
-    stub for the <code>edge_detect_parallel</code> function and modify
-    it as folllows:</p>
+          <p>
+            The <code>edge_detect_sequential</code> function
+            in <code>tutorial/src/filters-skeleton.js</code> gives a
+            sequential implementation of edge detection. Don't worry
+            about understanding it in detail yet.
+          </p>
 
-       <p>
-       <pre class="brush: js;highlight: [1,2,3,4,5,6,7]">
-        function edge_detect_parallel(index, frame, w, h) {
-            var m = index[0];
-            var n = index[1];
-            var ekernel = [[1,1,1,1,1], [1,2,2,2,1], [1,2,-32,2,1], [1,2,2,2,1],
-                [1,1,1,1,1]];
-            var kernel_width = (ekernel.length-1)/2; // will be '2' for this kernel
-            var neighbor_sum = [0, 0, 0, 255];
-        }
-        </pre>
-       </p>
+          <p>
+            Let us try and implement this filter using River
+            Trail. In <code>tutorial/src/filter-skeleton.js</code>,
+            find the stub for the <code>edge_detect_parallel</code>
+            function and modify it as folllows:
+          </p>
 
-       <p>
-        The first two lines of the body are the same as the beginning of the
-        parallel sepia implementation. <code>(m, n)</code> is now the position of a pixel in
-        the input <code>ParallelArray</code> <code>frame</code>. The variable
-        <code>ekernel</code> is the 5x5 kernel we will be using for
-        convolution (you can copy this over from the sequential version). And
-        we also need a 4-element array <code>neighbor_sum</code> to hold the weighted sum.</p>
+          <p>
+            <pre class="brush: js;">
+              function edge_detect_parallel(index, frame, w, h) {
+                  var m = index[0];
+                  var n = index[1];
+                  var ekernel = [[1,1,1,1,1], [1,2,2,2,1], [1,2,-32,2,1], [1,2,2,2,1],
+                    [1,1,1,1,1]];
+                  var kernel_width = (ekernel.length-1)/2; // will be '2' for this kernel
+                  var neighbor_sum = [0, 0, 0, 255];
+              }
+            </pre>
+          </p>
 
-       <p>
-        At this point we have an input frame (<code>frame</code>) and a
-        specific pixel <code>(m, n)</code> which we will call the <em>input pixel</em>. Now we need to define a "window" of
-        neighboring pixels such that this window is centered at this input
-        pixel. We can define such a window by using a nested loop, as follows:</p>
+          <p>
+            The first two lines of the body are the same as the
+            beginning of the parallel sepia implementation. <code>(m,
+            n)</code> is now the position of a pixel in the
+            input <code>ParallelArray</code> <code>frame</code>. The
+            variable <code>ekernel</code> is the 5x5 kernel we will be
+            using for convolution (you can copy this over from the
+            sequential version). And we also need a 4-element
+            array <code>neighbor_sum</code> to hold the weighted
+            sum.
+          </p>
 
-       <p>
-        <pre class="brush: js;">
-        function edge_detect_parallel(index, frame, w, h) {
-            var m = index[0];
-            var n = index[1];
-            var ekernel = [[1,1,1,1,1], [1,2,2,2,1], [1,2,-32,2,1], [1,2,2,2,1],
-                [1,1,1,1,1]];
-            var kernel_width = (ekernel.length-1)/2; // will be '2' for this kernel
-            var neighbor_sum = [0, 0, 0, 255];
-            for(var i = -1*kernel_width; i <= kernel_width; i++) {
-                for(var j = -1*kernel_width; j <= kernel_width; j++) {
-                    var x = m+i; var y = n+j;
-                }
-            }
-        }
-        </pre>
-        </p>
-        
-        <p>Now we have an iteration space <code>(x, y)</code> that goes
-        from <code>[m-2, n-2]</code> to <code>[m+2, n+2]</code>, which is precisely the set of neighboring
-        pixels we want to add up. That is, <code>frame[x][y]</code> is a pixel within the
-        neighbor window. So let's add them up with the weights from
-        <code>ekernel</code>:</p>
+          <p>
+            At this point we have an input frame (<code>frame</code>)
+            and a specific pixel <code>(m, n)</code> which we will
+            call the <em>input pixel</em>. Now we need to define a
+            "window" of neighboring pixels such that this window is
+            centered at this input pixel. We can define such a window
+            by using a nested loop, as follows:
+          </p>
 
-        <p>
-        <pre class="brush: js;">
-        function edge_detect_parallel(index, frame, w, h) {
-            var m = index[0];
-            var n = index[1];
-            var ekernel = [[1,1,1,1,1], [1,2,2,2,1], [1,2,-32,2,1], [1,2,2,2,1],
-                [1,1,1,1,1]];
-            var kernel_width = (ekernel.length-1)/2; // will be '2' for this kernel
-            var neighbor_sum = [0, 0, 0, 255];
-            var weight;
-            for(var i = -1*kernel_width; i <= kernel_width; i++) {
-                for(var j = -1*kernel_width; j <= kernel_width; j++) {
-                    var x = m+i; var y = n+j;
-                    weight = ekernel[i+kernel_width][j+kernel_width];
-                    neighbor_sum[0] += frame[x][y][0] * weight;
-                    neighbor_sum[1] += frame[x][y][1] * weight;
-                    neighbor_sum[2] += frame[x][y][2] * weight;
-                }
-            }
-        }
-        </pre>
-        </p>
+          <p>
+            <pre class="brush: js;">
+              function edge_detect_parallel(index, frame, w, h) {
+                  var m = index[0];
+                  var n = index[1];
+                  var ekernel = [[1,1,1,1,1], [1,2,2,2,1], [1,2,-32,2,1], [1,2,2,2,1],
+                    [1,1,1,1,1]];
+                  var kernel_width = (ekernel.length-1)/2; // will be '2' for this kernel
+                  var neighbor_sum = [0, 0, 0, 255];
+                  for(var i = -1*kernel_width; i <= kernel_width; i++) {
+                      for(var j = -1*kernel_width; j <= kernel_width; j++) {
+                          var x = m+i; var y = n+j;
+                      }
+                  }
+              }
+            </pre>
+          </p>
+          
+          <p>
+            Now we have an iteration space <code>(x, y)</code> that
+            goes from <code>[m-2, n-2]</code> to <code>[m+2,
+            n+2]</code>, which is precisely the set of neighboring
+            pixels we want to add up. That
+            is, <code>frame[x][y]</code> is a pixel within the
+            neighbor window. So let's add them up with the weights
+            from <code>ekernel</code>:
+          </p>
 
-        <p>
-        There is a detail we have ignored so far: what do we do with pixels on
-        the borders of the image for which the neighbor window goes out of the
-        image? There are several approaches to handle this situation. We
-        could pad the original <code>ParallelArray</code> on all four sides so that the
-        neighbor window is guaranteed to never go out of bounds. Another
-        approach is to wrap around the image. For simplicity, we will simply
-        clamp the neighbor window to the borders of the image.</p>
+          <p>
+            <pre class="brush: js;">
+              function edge_detect_parallel(index, frame, w, h) {
+                  var m = index[0];
+                  var n = index[1];
+                  var ekernel = [[1,1,1,1,1], [1,2,2,2,1], [1,2,-32,2,1], [1,2,2,2,1],
+                    [1,1,1,1,1]];
+                  var kernel_width = (ekernel.length-1)/2; // will be '2' for this kernel
+                  var neighbor_sum = [0, 0, 0, 255];
+                  var weight;
+                  for(var i = -1*kernel_width; i <= kernel_width; i++) {
+                      for(var j = -1*kernel_width; j <= kernel_width; j++) {
+                          var x = m+i; var y = n+j;
+                          weight = ekernel[i+kernel_width][j+kernel_width];
+                          neighbor_sum[0] += frame[x][y][0] * weight;
+                          neighbor_sum[1] += frame[x][y][1] * weight;
+                          neighbor_sum[2] += frame[x][y][2] * weight;
+                      }
+                  }
+              }
+            </pre>
+          </p>
 
-        <p>
-        <pre class="brush:">
-             var x = m+i; var y = n+j;
-             if(x < 0) x = 0; if(x > h-1) x = h-1;
-             if(y < 0) y = 0; if(y > w-1) y = w-1;
-             weight = ekernel[i+kernel_width][j+kernel_width];
-        </pre>
-             </p>
-             
+          <p>
+            There is a detail we have ignored so far: what do we do
+            with pixels on the borders of the image for which the
+            neighbor window goes out of the image? There are several
+            approaches to handle this situation. We could pad the
+            original <code>ParallelArray</code> on all four sides so
+            that the neighbor window is guaranteed to never go out of
+            bounds. Another approach is to wrap around the image. For
+            simplicity, we will simply clamp the neighbor window to
+            the borders of the image.
+          </p>
 
-        <p>After the loops are done, we have our weighted sum for each color in
-        <code>neighbor_sum</code>, which we return.  The
-        completed <code>edge_detect_parallel</code> function looks
-        like this:</p>
+          <p>
+            <pre class="brush: js;">
+              var x = m+i; var y = n+j;
+              if(x < 0) x = 0; if(x > h-1) x = h-1;
+              if(y < 0) y = 0; if(y > w-1) y = w-1;
+              weight = ekernel[i+kernel_width][j+kernel_width];
+            </pre>
+          </p>
 
-        <p>
-        <pre class="brush: js;">
-        function edge_detect_parallel(index, frame, w, h) {
-            var m = index[0];
-            var n = index[1];
-            var ekernel = [[1,1,1,1,1], [1,2,2,2,1], [1,2,-32,2,1], [1,2,2,2,1],
-                [1,1,1,1,1]];
-            var kernel_width = (ekernel.length-1)/2; // will be '2' for this kernel
-            var neighbor_sum = [0, 0, 0, 255];
-            var weight;
-            for(var i = -1*kernel_width; i <= kernel_width; i++) {
-                for(var j = -1*kernel_width; j <= kernel_width; j++) {
-                    var x = m+i; var y = n+j;
-                    if(x < 0) x = 0; if(x > h-1) x = h-1;
-                    if(y < 0) y = 0; if(y > w-1) y = w-1;
-                    weight = ekernel[i+kernel_width][j+kernel_width];
-                    neighbor_sum[0] += frame[x][y][0] * weight;
-                    neighbor_sum[1] += frame[x][y][1] * weight;
-                    neighbor_sum[2] += frame[x][y][2] * weight;
-                }
-            }
-            return neighbor_sum;
-        }
-        </pre>
-        </p>
+          <p>
+            After the loops are done, we have our weighted sum for
+            each color in <code>neighbor_sum</code>, which we return.
+            The completed <code>edge_detect_parallel</code> function
+            looks like this:
+          </p>
 
-        <h2> <a name="summary"></a> Summary</h2>
-        The River Trail programming model allows programmers to utilize
-        hardware parallelism on clients at the SIMD unit level as well as the
-        multi-core level. With its high-level API, programmers do not have to
-        explicitly manage
-        threads or orchestrate shared data synchronization or scheduling.
-        Moreover, since the API is JavaScript, programmers do not have
-        to learn a new language or semantics to use it.</p>
+          <p>
+            <pre class="brush: js;">
+              function edge_detect_parallel(index, frame, w, h) {
+                  var m = index[0];
+                  var n = index[1];
+                  var ekernel = [[1,1,1,1,1], [1,2,2,2,1], [1,2,-32,2,1], [1,2,2,2,1],
+                    [1,1,1,1,1]];
+                  var kernel_width = (ekernel.length-1)/2; // will be '2' for this kernel
+                  var neighbor_sum = [0, 0, 0, 255];
+                  var weight;
+                  for(var i = -1*kernel_width; i <= kernel_width; i++) {
+                      for(var j = -1*kernel_width; j <= kernel_width; j++) {
+                          var x = m+i; var y = n+j;
+                          if(x < 0) x = 0; if(x > h-1) x = h-1;
+                          if(y < 0) y = 0; if(y > w-1) y = w-1;
+                          weight = ekernel[i+kernel_width][j+kernel_width];
+                          neighbor_sum[0] += frame[x][y][0] * weight;
+                          neighbor_sum[1] += frame[x][y][1] * weight;
+                          neighbor_sum[2] += frame[x][y][2] * weight;
+                      }
+                  }
+              }
+            </pre>
+          </p>
 
-        <p>
-        To learn more about River Trail, visit the <a
-            href="http://github.com/IntelLabs/RiverTrail">project on GitHub</a>.
-        </p>
+          <h2><a name="summary"></a>Summary</h2>
+          
+          <p>
+            The River Trail programming model allows programmers to
+            utilize hardware parallelism on clients at the SIMD unit
+            level as well as the multi-core level. With its high-level
+            API, programmers do not have to explicitly manage threads
+            or orchestrate shared data synchronization or scheduling.
+            Moreover, since the API is JavaScript, programmers do not
+            have to learn a new language or semantics to use it.
+          </p>
 
-       </section>
-        </div>
-    </body>
+          <p>
+            To learn more about River Trail, visit
+            the <a href="http://github.com/IntelLabs/RiverTrail">project
+            on GitHub</a>.
+          </p>
+
+        </section>
+      </div>
+  </body>
 </html>
