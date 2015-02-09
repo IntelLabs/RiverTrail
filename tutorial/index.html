@@ -46,6 +46,20 @@ Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
         <link type="text/css" rel="stylesheet" href="css/shCoreDefault.css"/>
         <link type="text/css" rel="Stylesheet" href="css/shThemeDefault.css" />
         <script type="text/javascript">SyntaxHighlighter.all();</script>
+
+<!-- Add "1.1", "1.2", etc., numbering in sublists. -->
+        <style>
+ol {
+    counter-reset: item;
+}
+ol li {
+    display: block;
+}
+ol li:before {
+    content: counters(item, ".")". ";
+    counter-increment: item;
+}
+        </style>
   </head>
 
   <body>
@@ -67,34 +81,28 @@ Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
       <div style="float:left; margin:30px;">
         <h2>Index</h2>
 
-<!--<pre id="indextable">-->
-          <a href="#motivation" style="cursor:pointer">1. Motivation and
-          Background</a><br>
-          <a href="#pa" style="cursor:pointer">2. The <em>ParallelArray</em> type</a>
-            <p style="margin:0px;text-indent:10%"><a href="#constructors" style="cursor:pointer">2.1 Constructors</a><br>
-            <p style="margin:0px;text-indent:10%"><a href="#methods"
-            style="cursor:pointer">2.2 Methods</a><br>
-
-          <a href="#filters" style="cursor:pointer">3. Parallel Video Filters with
-          River Trail</a><br>
-
-            <p style="margin:0px;text-indent:10%"><a href="#setup"
-            style="cursor:pointer">3.1 Setup</a><br>
-            <p style="margin:0px;text-indent:10%"><a href="#skeleton"
-            style="cursor:pointer">3.2 The Skeleton</a><br>
-            <p style="margin:0px;text-indent:10%"><a href="#manip"
-            style="cursor:pointer">3.3 Manipulating Pixels on Canvas</a><br>
-            <p style="margin:0px;text-indent:10%"><a href="#sepia"
-            style="cursor:pointer">3.4 Sepia Toning</a><br>
-            <p style="margin:0px;text-indent:10%"><a href="#3D"
-            style="cursor:pointer">3.5 Stereoscopic 3D</a><br>
-            <p style="margin:0px;text-indent:10%"><a href="#edge"
-            style="cursor:pointer">3.6 Edge Detection/Sharpening</a><br>
-
-          <a href="#summary" style="cursor:pointer" >7. Summary</a><br>
-          <a href="#references" style="cursor:pointer" >8. References</a><br>
-
-        </div>
+        <ol>
+          <li><a href="#motivation">Motivation and Background</a></li>
+          <li><a href="#pa">The <em>ParallelArray</em> type</a>
+            <ol>
+              <li><a href="#constructors">Constructors</a></li>
+              <li><a href="#methods">Methods</a></li>
+            </ol>
+          </li>
+          <li><a href="#filters">Parallel Video Filters with River Trail</a>
+            <ol>
+              <li><a href="#setup">Setup</a></li>
+              <li><a href="#skeleton">The Skeleton</a></li>
+              <li><a href="#manip">Manipulating Pixels on Canvas</a></li>
+              <li><a href="#sepia">Sepia Toning</a></li>
+              <li><a href="#3D">Stereoscopic 3D</a></li>
+              <li><a href="#edge">Edge Detection/Sharpening</a></li>
+            </ol>
+          </li>
+          <li><a href="#summary">Summary</a></li>
+          <li><a href="#references">References</a></li>
+        </ol>
+      </div>
 
 
           <section id="main_content" class="inner">
