@@ -1035,31 +1035,38 @@ var pa = new ParallelArray(canvas);
           </p>
 
        <h2><a name="3D"></a> Stereoscopic 3D</h2>
-       Let's consider a slightly more complicated filter - one that transforms
+
+       <p>
+         Let's consider a slightly more complicated filter: one that transforms
        the input video stream into 3D in real time. <a href="http://en.wikipedia.org/wiki/Stereoscopy">Stereoscopic 3D</a> is a
        method of creating the illusion of depth by simulating the different
-       images that a normal pair of eyes see (see <a href="http://en.wikipedia.org/wiki/Binocular_disparity">Binocular Disparity</a>). 
-       In essence, when looking at a 3-dimensional object our eyes each see a
+       images that a normal pair of eyes see (see <a href="http://en.wikipedia.org/wiki/Binocular_disparity">binocular disparity</a>). 
+       In essence, when looking at a three-dimensional object, our eyes each see a
        slightly different 2D image due to the distance between them on our
        head. Our brain uses this difference to extract depth information from
        these 2D images.
-       To implement stereoscopic 3D, we will use this same methodology - we
-       present two 2D images each one slightly different from the other to the
-       viewer's eyes. The difference between these images - let's call them
-       left-eye and right-eye images; are two-fold. Firstly, the right-eye image
+       To implement stereoscopic 3D, we will use this same methodology: we
+       present two 2D images, each one slightly different from the other to the
+       viewer's eyes. The difference between these images&mdash;let's call them
+       left-eye and right-eye images&mdash;are two-fold. Firstly, the right-eye image
        is offset slightly to the left in the horizontal direction. Secondly,
        the red channel is masked off in the right-eye image and the blue and
        green channels are masked off in the left-eye image. The result looks
        something like the following (image on the left is the original, image
-       on the right is the 3d version).<br>
-       <div align="center">
+       on the right is the 3D version):</p>
+
+       <p style="text-align: center;">
           <img src="images/42.png" height="170"/>
           <img src="images/3d42-all.png" height="170"/>
-          <br>
-       </div>
+       </p>
 
-       Let's look at the sequential implementation first:
-        <pre class="brush: js;first-line: 810">
+       <p>The function <code>A3D_sequential()</code>
+       in <code>tutorial/src/filters-skeleton.js</code> implements a
+       sequential version of the stereoscopic 3D filter.  Let's look
+       at this sequential implementation:</p>
+
+       <p>
+        <pre class="brush: js;">
        function A3D_sequential(frame, len, w, h, dist, ctx) {
         var pix = frame.data;
         var new_pix = new Array(len);
@@ -1089,59 +1096,68 @@ var pa = new ParallelArray(canvas);
         ctx.putImageData(frame, 0, 0);
     }
     </pre>
-    Don't worry about the details of the implementation just yet, just note
+        </p>
+
+       <p>
+    Don't worry about the details of the implementation just yet; just note
     that the structure is somewhat similar to the sepia filter. One important
     distinction is that while the sepia filter updated the pixel data in-place,
-    we cannot do that here - processing each pixel involves reading a
-    neighboring pixel. If we updated in-place, we may end up reading the
+    we cannot do that here; processing each pixel involves reading a
+    neighboring pixel. If we updated in-place, we could end up reading the
     updated value for this neighboring pixel. In other words, there is a
-    write-after-read loop carried dependence here. So instead of updating in place, we
+    write-after-read loop-carried dependence here. So, instead of updating in place, we
     allocate a new buffer <code>new_pix</code> for holding the updated
-    values of the pixels.<br>
+    values of the pixels.</p>
 
-    Lets start implementing the parallel version. What we want to implement is an operation
-    that reads the pixel data in the input ParallelArray object and produces
-    new pixel data into another. So just like sepia we can use the constructor
-    + elemental function approach.
+       <p>
+    Let's start implementing the parallel version. What we want to implement is an operation
+    that reads the pixel data in the input <code>ParallelArray</code> object and produces
+    new pixel data into another. So, just as with the sepia filter, we can use the <code>ParallelArray</code> constructor with an elemental function.  In <code>tutorial/src/main-skeleton.js</code>, modify the <code>computeFrame()</code> function to call the <code>ParallelArray</code> constructor as follows:</p>
 
-    <pre class="brush: js;first-line: 272; highlight: [275, 276]">
+       <p>
+    <pre class="brush: js;">
         ...
-        switch(filterName) {
-            case "A3D":
-                stage_output = new ParallelArray([h, w], kernelName,
-                    stage_input, w, h);
-                break;
+        if(execution_mode === "parallel") {
+            switch(filterName) {
+                ...
+                case "A3D":
+                    stage_output = new ParallelArray([h, w], kernelName,
+                        stage_input, w, h);
+                    break;
+                ...
+            }
         ...
+        }
         </pre>
-    Then create the elemental function in <code>filters.js</code> as follows:
 
-        <pre class="brush: js;; highlight:[1,2,3,4,5]">
-        // elemental function for 3D
+    <p>
+    Then, in <code>tutorial/src/filters-skeleton.js</code>, find the
+    stub for the <code>A3D_parallel</code> elemental function and
+    begin modifying it as follows:</p>
+
+        <pre class="brush: js;">
         function A3D_parallel (indices, frame, w, h, dist) {
             var i = indices[0];
             var j = indices[1];
         }
         </pre>
 
+       <p>
         Each pair <code>(i, j)</code> corresponds to a pixel in the output
-        frame. Recall that each pixel such pixel in the output frame is
-        generated by blending two images - the left-eye and right-eye images
+        frame. Recall that each pixel in the output frame is
+        generated by blending two images, the left-eye and right-eye images,
         the latter being a copy of the former except shifted along the negative
-        x-axis (i.e., to the left).
+        x-axis (that is, to the left).</p>
 
-        <!--
-        So we first need two images from <code>frame</code> one for the left-eye and
-        one for the right-eye which is a copy of the left-eye image except it
-        is shifted along the negative x-axis (i.e., to the left).
-        -->
-        Let's call the pixel <code>frame[i][j]</code> the left eye pixel.
+        <p>
+        Let's call the pixel <code>frame[i][j]</code> the left-eye pixel.
         To get the right-eye pixel we will simply read a neighbor of the left
-        eye pixel that is some distance away. This distance is given to us the
-        the argument dist (which is updated everytime the 3D slider on the UI is
-        moved):
+        eye pixel that is some distance away. This distance is given to us as
+        the argument <code>dist</code> (which is updated every time the 3D slider on the UI is
+        moved):</p>
 
-        <pre class="brush: js; highlight:[5,6]">
-        // elemental function for 3D
+        <p>
+        <pre class="brush: js;">
         function A3D_parallel (indices, frame, w, h, dist) {
             var i = indices[0];
             var j = indices[1];
@@ -1149,20 +1165,26 @@ var pa = new ParallelArray(canvas);
             if(k < 0) k = j;
         }
         </pre>
-        Now <code>frame[i][k]</code> is the right eye pixel. We need to guard
-        against the fact that if the distance is large we cannot get the right
-        eye pixel as it would be outside the frame we have. There are several
-        approaches for dealing with this situation - for simplicity we will
-        simply make the right eye pixel the same as the left eye pixel. Now,
-        lets mask off the appropriate colors in each of the left and right eye
-        pixels. We use the <code>dubois_blend_left/right()</code> functions for this. You
-        don't have to understand the details of these functions for this
-        tutorial; just that they take in an RGB tuple and produce new RGB tuple
-        that is appropriately masked for the right and left eyes. For details
-        on these functions, read about the <a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=941256&tag=1">Dubois method</a>.
+        </p>
 
-        <pre class="brush: js; highlight:[7,8,9,10,11,12,13,14]">
-        // elemental function for 3d
+        <p>
+        Now <code>frame[i][k]</code> is the right-eye pixel. We need to guard
+        against the fact that if <code>dist</code> large, we cannot get the right-eye pixel,
+        as it would be outside the frame we have. There are several
+        approaches for dealing with this situation; for simplicity, we 
+        simply make the right-eye pixel the same as the left-eye pixel.  The line <code>if(k < 0) k = j</code> accomplishes this.</p>
+
+        <p>Now,
+        let's mask off the appropriate colors in each of the left and right eye
+        pixels. We use the <code>dubois_blend_left</code> and <code>dubois_blend_right()</code> functions for this. You
+        don't have to understand the details of these functions for this
+        tutorial; just that they take in an RGB tuple and produce a new RGB tuple
+        that is appropriately masked for the right and left eyes. For details
+        on these functions, read about the <a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=941256&tag=1">Dubois method</a>.</p>
+
+
+        <p>
+        <pre class="brush: js;">
         function a3d_parallel (indices, frame, w, h, dist) {
             var i = indices[0];
             var j = indices[1];
@@ -1178,11 +1200,15 @@ var pa = new ParallelArray(canvas);
             var right = dubois_blend_right(r_r, g_r, b_r);
         }
         </pre>
+        </p>
 
+
+        <p>
         Now we have the separately masked and blended left and right eye pixels. We now
-        blend these two pixels together to produce the final color values.
-        <pre class="brush: js; highlight:[15,16,17,18]">
-        // elemental function for 3d
+        blend these two pixels together to produce the final color values:</p>
+
+        <p>
+        <pre class="brush: js;">
         function a3d_parallel (indices, frame, w, h, dist) {
             var i = indices[0];
             var j = indices[1];
@@ -1202,62 +1228,84 @@ var pa = new ParallelArray(canvas);
             return [rb, gb, bb, 255];
         }
         </pre>
+        </p>
 
-        And thats it. Select "RiverTrail" execution, click play and select the
-        3D filter. Put on Red-Cyan 3D glasses and you should be able to notice
-        the depth effect. Without the glasses this is how it looks (original
-        video frame on the left, with 3D on the right):<br>
+        <p>
+        And that's it. With the "River Trail" execution mode enabled, play the video and select the
+        3D filter. With red/cyan 3D glasses, you should be able to notice
+        the depth effect. Without the glasses, this is how it looks (original
+        video frame on the left, with the filter applied on the right):</p>
 
-          <div align="center">
+        <p style="text-align: center;">
           <img src="images/se1.png" height="170"/>
-          <img src="images/3d1.png" height="170"/><br>
-          </div>
-       <h2><a name="edge"></a> Edge Detection and Sharpening</h2>
-       Let's move on to something a little more complicated - <a
+          <img src="images/3d1.png" height="170"/>
+        </p>
+
+       <h2><a name="edge"></a>Edge Detection and Sharpening</h2>
+
+       <p>
+       Finally, let's move on to something a little more complicated: <a
        href="http://en.wikipedia.org/wiki/Edge_detection">edge
            detection</a> and <a href="http://en.wikipedia.org/wiki/Edge_enhancement">sharpening</a>.
        Edge detection is a common tool used in digital image processing and
-       computer vision that seeks to highlight points in the image where the
-       image brightness changes sharply. Select the edge detection effect and
-       click play to look at the result of the effect.<br>
+       computer vision that seeks to highlight points in an image where the
+       image brightness changes sharply. Select the "Edge Detect" effect and
+       play the video to see the result of the effect.</p>
 
-       <div align="center">
+       <p style="text-align: center;">
        <img src="images/se1.png" height="170"/>
-       <img src="images/ed1.png" height="170"/><br>
-       </div>
+       <img src="images/ed1.png" height="170"/>
+       </p>
 
-       There are many diverse approaches to edge detection but we are
-       interested in the most popular 2D discrete <a
-       href="http://en.wikipedia.org/wiki/Convolution">convolution</a>
-   based approach.<br>
+       <p>
+       There are many diverse approaches to edge detection, but we are
+       interested in the 2D discrete <a
+       href="http://en.wikipedia.org/wiki/Convolution">convolution</a>-based approach:</p>
+
+       <p>
        <img src="images/convolution2.png" height="200"
-       style="margin:auto;display:block;"/><br>
-       At a high-level, discrete convolution on a single pixel in an image
+       style="margin:auto;display:block;"/></p>
+
+       <p>
+       At a high level, discrete convolution on a single pixel in an image
        involves taking this pixel (shown in dark blue above) and computing the
        weighted sum of its neighbors that lie within some specific window to produce the output pixel (shown in dark
        red above). The weights and the window are described by the convolution
        <em>kernel</em>. This process is repeated for all the pixels to produce
-       the final output of the convolution.
-       <br><br>
+       the final output of the convolution.</p>
+
+       <p>
        Consider a 5x5 matrix convolved with a 3x3 kernel as shown below. For
        simplicity, we are only interested in the input element highlighted in
-       blue.<br>
+       blue.</p>
+       
+       <p>
        <img src="images/convolution4.png" height="150" style="margin:auto;display:block;"/>
-       The weighted sum for this element is:<br>
-       (1*2) + (1*3) + (2*0) + <br>
-       (2*0) + (2*1) + (1*3) + <br>
-       (1*3) + (5*0) + (0*3) + <br>
-       = 13. The value of this element in the output matrix is therefore
-       13.<br>
+       </p>
 
+       <p>The weighted sum for this element is:</p>
 
-       You can take a look at the sequential implementation of edge detection in
-       <code>edge_detect_sequential</code> in filters.js. Don't worry about
-       understanding it in detail yet.
+       <p style="text-align: center;">
+       (1*2) + (1*3) + (2*0) +<br />
+       (2*0) + (2*1) + (1*3) +<br />
+       (1*3) + (5*0) + (0*3) &nbsp;&nbsp;<br />
+       = 13.</p>
 
-    Let us try and implement this filter using RiverTrail. Make a function called
-    <code>edge_detect_parallel</code> in filters.js.
-        <pre class="brush: js;highlight: [1,2,3,4,5,6,7]">
+       <p>The value of the element in the output matrix is therefore
+       13.</p>
+
+       <p>
+         The <code>edge_detect_sequential</code> function in <code>tutorial/src/filters-skeleton.js</code> gives a sequential implementation of edge detection. Don't worry about
+       understanding it in detail yet.</p>
+
+       <p>
+    Let us try and implement this filter using River
+    Trail. In <code>tutorial/src/filter-skeleton.js</code>, find the
+    stub for the <code>edge_detect_parallel</code> function and modify
+    it as folllows:</p>
+
+       <p>
+       <pre class="brush: js;highlight: [1,2,3,4,5,6,7]">
         function edge_detect_parallel(index, frame, w, h) {
             var m = index[0];
             var n = index[1];
@@ -1267,19 +1315,24 @@ var pa = new ParallelArray(canvas);
             var neighbor_sum = [0, 0, 0, 255];
         }
         </pre>
+       </p>
+
+       <p>
         The first two lines of the body are the same as the beginning of the
-        parallel sepia implementation. (m, n) is now the position of a pixel in
-        the input ParallelArray <code>frame</code>. The variable
+        parallel sepia implementation. <code>(m, n)</code> is now the position of a pixel in
+        the input <code>ParallelArray</code> <code>frame</code>. The variable
         <code>ekernel</code> is the 5x5 kernel we will be using for
         convolution (you can copy this over from the sequential version). And
-        we also need a 4 element array <code>neighbor_sum</code> to hold the weighted sum.
-        <br><br>
-        At this point we have an input frame (<code>frame</code>) and a
-        specific pixel <code>(m, n)</code> which we will call the "input pixel". Now we need to define a "window" of
-        neighboring pixels such that this window is centered at this input
-        pixel. We can define such a window by using a nested loop as follows:
+        we also need a 4-element array <code>neighbor_sum</code> to hold the weighted sum.</p>
 
-        <pre class="brush: js;highlight: [7,8,9,10,11]">
+       <p>
+        At this point we have an input frame (<code>frame</code>) and a
+        specific pixel <code>(m, n)</code> which we will call the <em>input pixel</em>. Now we need to define a "window" of
+        neighboring pixels such that this window is centered at this input
+        pixel. We can define such a window by using a nested loop, as follows:</p>
+
+       <p>
+        <pre class="brush: js;">
         function edge_detect_parallel(index, frame, w, h) {
             var m = index[0];
             var n = index[1];
@@ -1294,13 +1347,16 @@ var pa = new ParallelArray(canvas);
             }
         }
         </pre>
-        And there. Now we have an iteration space <code>(x, y)</code> that goes
-        from [m-2, n-2] to [m+2, n+2] which is precisely the set of neighboring
-        pixels we want to add up. That is, frame[x][y] is a pixel in within the
-        neighbor window. So lets add them up with the weights from
-        <code>ekernel</code>:
+        </p>
+        
+        <p>Now we have an iteration space <code>(x, y)</code> that goes
+        from <code>[m-2, n-2]</code> to <code>[m+2, n+2]</code>, which is precisely the set of neighboring
+        pixels we want to add up. That is, <code>frame[x][y]</code> is a pixel within the
+        neighbor window. So let's add them up with the weights from
+        <code>ekernel</code>:</p>
 
-        <pre class="brush: js;highlight: [7,11,12,13,14]">
+        <p>
+        <pre class="brush: js;">
         function edge_detect_parallel(index, frame, w, h) {
             var m = index[0];
             var n = index[1];
@@ -1320,26 +1376,34 @@ var pa = new ParallelArray(canvas);
             }
         }
         </pre>
-        There is a detail we have ignored so far. What do we do with pixels on
-        the borders of the image for whom the neighbor window goes out of the
-        image ? There are several approaches to handle this situation - we
-        could pad the original ParallelArray on all 4 sides so that the
+        </p>
+
+        <p>
+        There is a detail we have ignored so far: what do we do with pixels on
+        the borders of the image for which the neighbor window goes out of the
+        image? There are several approaches to handle this situation. We
+        could pad the original <code>ParallelArray</code> on all four sides so that the
         neighbor window is guaranteed to never go out of bounds. Another
         approach is to wrap around the image. For simplicity, we will simply
-        clamp the neighbor window to the borders of the image.
-        <pre class="brush: js;first-line:10;highlight: [11,12]">
+        clamp the neighbor window to the borders of the image.</p>
+
+        <p>
+        <pre class="brush:">
              var x = m+i; var y = n+j;
              if(x < 0) x = 0; if(x > h-1) x = h-1;
              if(y < 0) y = 0; if(y > w-1) y = w-1;
              weight = ekernel[i+kernel_width][j+kernel_width];
         </pre>
+             </p>
+             
 
+        <p>After the loops are done, we have our weighted sum for each color in
+        <code>neighbor_sum</code>, which we return.  The
+        completed <code>edge_detect_parallel</code> function looks
+        like this:</p>
 
-        After the loops are done, we have our weighted sum for each color in
-        neighbor_sum which we return.
-
-
-        <pre class="brush: js;highlight: [19]">
+        <p>
+        <pre class="brush: js;">
         function edge_detect_parallel(index, frame, w, h) {
             var m = index[0];
             var n = index[1];
@@ -1362,52 +1426,23 @@ var pa = new ParallelArray(canvas);
             return neighbor_sum;
         }
         </pre>
+        </p>
 
         <h2> <a name="summary"></a> Summary</h2>
         The River Trail programming model allows programmers to utilize
         hardware parallelism on clients at the SIMD unit level as well as the
-        muti-core level. With its high-level API programmers do not have to
+        multi-core level. With its high-level API, programmers do not have to
         explicitly manage
-        threads, orchestrate shared data synchronization or scheduling.
+        threads or orchestrate shared data synchronization or scheduling.
         Moreover, since the API is JavaScript, programmers do not have
-        to learn a new language or semantics to use it.
-
+        to learn a new language or semantics to use it.</p>
 
         <p>
-        To learn more about River Trail, visit the project page on <a
-            href="http://github.com/rivertrail/rivertrail">Github</a>.
+        To learn more about River Trail, visit the <a
+            href="http://github.com/IntelLabs/RiverTrail">project on GitHub</a>.
         </p>
 
-
-
-        <h2> <a name="references"></a> References </h2>
-        <ol>
-
-            <li> <a href="http://github.com/rivertrail/rivertrail">River Trail
-                Repository on Github</a></li>
-
-            <li><a href="http://github.com/rivertrail/rivertrail/wiki">River Trail wiki</a></li>
-            <li><a href="http://rivertrail.github.com/RiverTrail/interactive/">River Trail interactive shell</a></li>
-
-            <li><a href="http://wiki.ecmascript.org/doku.php?id=strawman:data_parallelism">River Trail API discussion</a></li>
-            <li><a href="https://mail.mozilla.org/listinfo/es-discuss">ES-Discuss mailing list</a></li>
-            <li><a href="https://developer.mozilla.org/en-US/docs/Canvas_tutorial">Mozilla Developer Network: Canvas Tutorial</a></li>
-            <li><a href="https://developer.mozilla.org/en-US/docs/HTML/Element/video">Mozilla Developer Network: Video Element</a></li>
-            <li><a href="https://developer.mozilla.org/en-US/docs/HTML/Canvas/Pixel_manipulation_with_canvas">Mozilla Developer Network : Pixel Manipulation with
-                Canvas</a></li>
-            <li><a href="http://en.wikipedia.org/wiki/Photographic_print_toning#Sepia_toning">Sepia Toning</a></li>
-            <li><a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/the-canvas-element.html#dom-context-2d-putimagedata">The putImageData() method</a></li>
-            <li><a href="http://en.wikipedia.org/wiki/Stereoscopy">Stereoscopic 3D</a></li>
-            <li><a href="http://en.wikipedia.org/wiki/Binocular_disparity">Binocular Disparity</a></li>
-            <li><a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=941256&tag=1">The Dubois method</a></li>
-            <li><a href="http://en.wikipedia.org/wiki/Edge_detection">Edge Detection</a></li>
-            <li><a href="http://en.wikipedia.org/wiki/Edge_enhancement">Sharpening</a></li>
-            <li><a href="http://en.wikipedia.org/wiki/Convolution">Convolution</a></li>
-
-            <hr>
-            
-            </section>
+       </section>
         </div>
-
     </body>
 </html>
