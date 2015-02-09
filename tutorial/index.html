@@ -737,22 +737,23 @@
           <h3>Download and Install</h3>
 
           <p>
-            If you have not done so already, download and install
+            If you're using Windows or Linux, you will need to
+            download and install
+            the <a href="http://www.intel.com/go/opencl">Intel OpenCL
+            SDK</a> if you haven't done so already (click the "Free
+            Download" button on that page and fill out the form on the
+            following page).  Mac users can skip this step, since
+            OpenCL is already packaged as part of OS X.
+          </p>
+
+          <p>
+            Also, if you have not done so already, download and
+            install
             the <a href="https://github.com/IntelLabs/RiverTrail/releases">River
             Trail Firefox extension</a>. For this tutorial, you do
             <strong>not</strong> need to build the extension from
             source; you only need to install the pre-built
             extension.
-          </p>
-
-          <p>
-            If you're using Windows or Linux, you will also need to
-            download and install
-            the <a href="http://www.intel.com/go/opencl">Intel OpenCL
-            SDK</a> (click the "Free Download" button on that page and
-            fill out the form on the following page).  Mac users can
-            skip this step, since OpenCL is already packaged as part
-            of OS X.
           </p>
 
           <p>
@@ -802,8 +803,8 @@
           <h3>Verify</h3>
 
           <p>
-            To verify that the River Trail extension is installed, go
-            to
+            To verify that the River Trail extension is installed and
+            talking to OpenCL, go to
             the <a href="http://intellabs.github.io/RiverTrail-interactive/">interactive
             shell</a>.  You should see a message saying:
           </p>
@@ -824,14 +825,17 @@
           </p>
 
           <p>
-            then the extension isn't installed, or is disabled.  In
-            the Firefox Add-ons Manager, make sure that the extension is
-            installed and enabled, and try reloading the page.
+            then the extension is disabled or not installed, or not
+            interfacing with OpenCL properly.  In the Firefox Add-ons
+            Manager, make sure that the extension is installed and
+            enabled, and try reloading the page.  If you just
+            installed OpenCL, try disabling and re-enabling the
+            extension.
           </p>
 
           <p>
-            Once the extension is installed correctly, you can try
-            running
+            Once the extension is installed and working correctly, you
+            can try running
             the <a href="https://github.com/IntelLabs/RiverTrail/wiki#sample-applications">sample
             applications</a> before moving on to the rest of this
             tutorial.
