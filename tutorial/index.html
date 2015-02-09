@@ -33,11 +33,11 @@
         Authors: Jaswanth Sreeram jaswanth.sreeram@intel.com
         Stephan Herhut stephan.a.herhut@intel.com
         Lindsey Kuper lindsey.kuper@intel.com
-      --->
+      -->
     <meta http-equiv="X-UA-Compatible" content="chrome=1" />
     <meta name="description" content="Jsreeram.github.com : jsreeram.github.com" />
 
-    <link rel="stylesheet" type="text/css" media="screen" href="css/stylesheet.css">
+    <link rel="stylesheet" type="text/css" media="screen" href="css/stylesheet.css" />
 
       <title>River Trail</title>
       <script type="text/javascript" src="js/XRegExp.js"></script> <!-- XRegExp is bundled with the final shCore.js during build -->
@@ -48,7 +48,7 @@
       <script type="text/javascript">SyntaxHighlighter.all();</script>
 
       <!-- Add "1.1", "1.2", etc., numbering in sublists. -->
-      <style>
+      <style type="text/css">
         ol {
             counter-reset: item;
         }
@@ -199,12 +199,10 @@
             constructor with no arguments:
           </p>
 
-          <p>
-            <pre class="brush: js;">
-              // Create an empty ParallelArray
-              var pa0 = new ParallelArray();
-            </pre>
-          </p>
+          <pre class="brush: js;">
+            // Create an empty ParallelArray
+            var pa0 = new ParallelArray();
+          </pre>
 
           <p>
             We can pass a regular JavaScript array to
@@ -214,14 +212,12 @@
             also <code>ParallelArray</code>s.
           </p>
 
-          <p>
-            <pre class="brush: js;">
-              // Create a ParallelArray out of a nested JS array.
-              // Note that the inner arrays are also ParallelArrays.
-              var pa1 = new ParallelArray([ [0,1], [2,3], [4,5] ]);
-              // pa1 has shape [3,2]
-            </pre>
-          </p>
+          <pre class="brush: js;">
+            // Create a ParallelArray out of a nested JS array.
+            // Note that the inner arrays are also ParallelArrays.
+            var pa1 = new ParallelArray([ [0,1], [2,3], [4,5] ]);
+            // pa1 has shape [3,2]
+          </pre>
 
           <p>
             We can also create a new <code>ParallelArray</code>
@@ -235,13 +231,11 @@
             structure and the same data in them for their lifetime.
           </p>
 
-          <p>
-            <pre class="brush: js;">
-              // Create a ParallelArray from another ParallelArray
-              var pa2 = new ParallelArray(pa1);
-              // pa2 has the same contents and shape as pa1
-            </pre>
-          </p>
+          <pre class="brush: js;">
+            // Create a ParallelArray from another ParallelArray
+            var pa2 = new ParallelArray(pa1);
+            // pa2 has the same contents and shape as pa1
+          </pre>
 
           <p>
             We can also pass multiple arrays to
@@ -253,14 +247,12 @@
             elements, each of which contain two elements.
           </p>
 
-          <p>
-            <pre class="brush: js;">
-              // Create a ParallelArray from several other
-              // ParallelArrays
-              var pa3 = new ParallelArray([0,1], [2,3]);
-              // pa3 has shape [2,2]
-            </pre>
-          </p>
+          <pre class="brush: js;">
+            // Create a ParallelArray from several other
+            // ParallelArrays
+            var pa3 = new ParallelArray([0,1], [2,3]);
+            // pa3 has shape [2,2]
+          </pre>
 
           <p>
             Yet another way to create <code>ParallelArray</code>
@@ -288,14 +280,12 @@
             functions in the next section.
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               // Create a ParallelArray of length 3 and
               // shape [3,2], using the "comprehension" constructor
               var pa6 =
                 new ParallelArray(3, function(i){return [i, i+1];});
-            </pre>
-          </p>
+          </pre>
 
           <p>
             The comprehension constructor can also create
@@ -308,14 +298,12 @@
             vector argument <code>iv</code>:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               // Create a two-dimensional ParallelArray with shape
               // [3,2] using the comprehension constructor
               var pa7 = new ParallelArray([3, 2], 
                 function(iv) { return iv[0] * iv[1]; });
-            </pre>
-          </p>
+          </pre>
 
           <p>
             Finally, we can also create a
@@ -326,15 +314,13 @@
             when we build a video web app.
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               // This creates a ParallelArray with shape
               // [h, w, 4],
               // corresponding to the height and width of the
               // canvas and the RGBA value for each pixel.
               var pa8 = new ParallelArray(document.createElement("canvas"));
-            </pre>
-          </p>
+          </pre>
 
           <h2><a name="methods"></a>Methods</h2>
 
@@ -366,12 +352,10 @@
             at a simple example:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var source = new ParallelArray([1,2,3,4,5]);
               var plusOne = source.map(function inc(v) { return v+1; });
-            </pre>
-          </p>
+          </pre>
 
           <p>
             Here, we define a new <code>ParallelArray</code>
@@ -412,13 +396,11 @@
             as follows:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var source = new ParallelArray([1,2,3,4,5]);
               var plusOne =
                 source.combine(function inc(i) { return this.get(i)+1; });
-            </pre>
-          </p>
+          </pre>
 
           <p>
             As before, we first produce our source array holding the
@@ -442,13 +424,11 @@
             array:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var source = new ParallelArray([1,2,3,4,5]);
               var reverse = source.combine(function rev(i) {
                 return this.get(this.length-i[0]-1); });
-            </pre>
-          </p>
+          </pre>
 
           <p>
             In the elemental function <code>rev</code>, we exploit the
@@ -488,15 +468,13 @@
             matrices:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var source = new ParallelArray([4,4], function (iv) {
                 return iv[0]*iv[1]; });
               var transpose = source.combine(2, function rev(iv) {
                 return this.get([this.getShape()[0]-iv[0]-1,
                                  this.getShape()[1]-iv[1]-1]); });
-            </pre>
-          </p>
+          </pre>
 
           <p>
             We use a depth of 2 and, consequently, the index
@@ -526,13 +504,11 @@
             with is computing the sum of all elements of an array:
           </p>
 
-          <p>
           <pre class="brush: js;">
             var source = new ParallelArray([1,2,3,4,5]);
             var sum = source.reduce(function plus(a,b) {
               return a+b; });
           </pre>
-          </p>
 
           <p>
             As the example shows, the <code>reduce</code> method
@@ -567,12 +543,10 @@
             <em>scan</em> method.
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var source = new ParallelArray([1,2,3,4,5]);
               var psum = source.scan(function plus(a,b) { return a+b; });
-            </pre>
-          </p>
+          </pre>
 
           <p>
             Here, we again use the <code>plus</code> elemental
@@ -605,12 +579,10 @@
             Trail. Here is an example:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var source = new ParallelArray([1,2,3,4,5]);
               var reorder = source.scatter([4,0,3,1,2]);
-            </pre>
-          </p>
+          </pre>
 
           <p>
             We first compute our source array <code>source</code>. In
@@ -648,13 +620,11 @@
             positions that are not defined otherwise.
           </p>
 
-          <p>
           <pre class="brush: js;">
             var source = new ParallelArray([1,2,3,4,5]);
             var reorder = source.scatter([4,0,3,4,2], 3, function max(a, b) {
-              return a&gt;b?a:b; });
+              return a>b?a:b; });
           </pre>
-          </p>
 
           <p>
             In the above example, the first and fourth element of the
@@ -688,12 +658,10 @@
             just use a vector of ones here. Here is the setup:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var source = new ParallelArray([1,2,2,4,2,4,5]);
               var ones = source.map(function one(v) { return 1; });
-            </pre>
-          </p>
+          </pre>
 
           <p>
             We can then implement a histogram by scattering the ones
@@ -707,14 +675,13 @@
             single frequency value. Here is what it looks like:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+
+          <pre class="brush: js;">
               var hist = ones.scatter(source,
                                       0,
                                       function plus(a,b) { return a+b;},
                                       6);
-            </pre>
-          </p>
+          </pre>
 
           <h3>Filter</h3>
 
@@ -738,13 +705,11 @@
             us look at an example:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var source = new ParallelArray([1,2,3,4,5]);
               var even = source.filter(function even(iv) {
                 return (this.get(iv) % 2) == 0; });
-            </pre>
-          </p>
+          </pre>
 
           <p>
             As before, we first produce a source array containing the
@@ -810,11 +775,9 @@
             to quickly serve files:
           </p>
 
-          <p>
-            <pre class="brush:bash;">
+          <pre class="brush:bash;">
               ~/repos/RiverTrail$ python -m SimpleHTTPServer
               Serving HTTP on 0.0.0.0 port 8000 ...</pre>
-          </p>
 
           <p>
             Note that you need to serve the files from <strong>the
@@ -873,8 +836,9 @@
             already be able to load up,
             e.g., <a href="http://localhost:8000/tutorial/src/">http://localhost:8000/tutorial/src/</a>
             in Firefox and see the default screen for the application
-            skeleton: <img src="images/skeleton3.png"/> The large box
-            in the center is
+            skeleton: <img src="images/skeleton3.png" alt="Default
+            screen for the app skeleton." /> The large box in the
+            center is
             a <a href="https://developer.mozilla.org/en-US/docs/Canvas_tutorial">canvas</a>
             that is used for rendering the video output. The video
             input is either an HTML5 video stream embedded in
@@ -924,12 +888,10 @@
             element.
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               output_context.drawImage(video, 0, 0, output_canvas.width,
                 output_canvas.height);
-            </pre>
-          </p>
+          </pre>
 
           <p>
             After this video frame is drawn to canvas, we need to
@@ -939,15 +901,13 @@
             capture.
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               frame = output_context.getImageData(0, 0, input_canvas.width,
                 input_canvas.height);
               len = frame.data.length;
               w = frame.width;
               h = frame.height;
-            </pre>
-          </p>
+          </pre>
 
           <p>
             Now we have
@@ -968,7 +928,8 @@
           </p>
 
           <p style="text-align: center;">
-            <img src="images/imgdata.png" width="350"/>
+            <img src="images/imgdata.png" alt="A one-dimensional array
+            of length w * h * 4." width="350"/>
           </p>
 
           <p>
@@ -977,14 +938,12 @@
             following code:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var red   = frame.data[100*w*4 + 50*4 + 0];
               var green = frame.data[100*w*4 + 50*4 + 1];
               var blue  = frame.data[100*w*4 + 50*4 + 2];
               var alpha = frame.data[100*w*4 + 50*4 + 3];
-            </pre>
-          </p>
+          </pre>
 
           <p>
             To set, for example, the red value of this pixel, simply
@@ -1009,8 +968,7 @@
             in <code>tutorial/src/filters-skeleton.js</code>.
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
     function sepia_sequential(frame, len, w, h, ctx) {
         var pix = frame.data;
         var avg = 0; var r = 0, g = 0, b = 0;
@@ -1019,12 +977,12 @@
             g = (pix[i] * 0.349 + pix[i+1] * 0.686 + pix[i+2] * 0.168);
             b = (pix[i] * 0.272 + pix[i+1] * 0.534 + pix[i+2] * 0.131);
 
-            if(r>255) r = 255;
-            if(g>255) g = 255;
-            if(b>255) b = 255;
-            if(r<0) r = 0;
-            if(g<0) g = 0;
-            if(b<0) b = 0;
+            if(r > 255) r = 255;
+            if(g > 255) g = 255;
+            if(b > 255) b = 255;
+            if(r < 0) r = 0;
+            if(g < 0) g = 0;
+            if(b < 0) b = 0;
 
             pix[i] = r;
             pix[i+1] = g;
@@ -1032,8 +990,7 @@
         }
         ctx.putImageData(frame, 0, 0);
     }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             Recall that the <code>frame.data</code> buffer contains
@@ -1059,8 +1016,10 @@
           </p>
 
           <p style="text-align: center;">
-            <img src="images/se1.png" height="170" />
-            <img src="images/se2.png" height="170" />
+            <img src="images/se1.png" alt="Frame of video before
+            processing." height="170" />
+            <img src="images/se2.png" alt="Frame of video after
+            sepia-toning filter has been applied." height="170" />
           </p>
 
           <h3>Can we make this parallel?</h3>
@@ -1083,11 +1042,9 @@
             containing the pixel data from that canvas.
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var pa = new ParallelArray(canvas);
-            </pre>
-          </p>
+          </pre>
 
           <p>
             This creates a
@@ -1096,7 +1053,8 @@
             following:</p>
 
           <p>
-            <img src="images/pacanvas1.png" height="300"
+            <img src="images/pacanvas1.png" alt="A three-dimensional
+            ParallelArray representing a canvas." height="300"
             style="margin:auto;display:block;"/>
           </p>
 
@@ -1108,15 +1066,13 @@
             the blue value.  In <code>computeFrame</code>, we create a
             new <code>ParallelArray</code> from this canvas:</p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               else if (execution_mode === "parallel") {
                 frame = output_context.getImageData(0, 0, input_canvas.width, input_canvas.height);
                 stage_output = stage_input = new ParallelArray(input_canvas);
                 w = input_canvas.width; h = input_canvas.height;
               }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             Here, <code>stage_input</code> and <code>stage_output</code> are
@@ -1126,8 +1082,7 @@
             applied:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
         if(execution_mode === "parallel") {
             switch(filterName) {
                 ...
@@ -1140,8 +1095,7 @@
             // Make this filter's output the input to the next filter.
             stage_input = stage_output;
         }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             To implement a particular filter, we add code to produce a
@@ -1151,15 +1105,13 @@
             filter, we would write:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
                 case "sepia":
                     stage_output = /* new ParallelArray containing
                                       transformed pixel data */;
 
                     break;
-            </pre>
-          </p>
+          </pre>
 
           <p>
             Now, all we have to do above is produce a
@@ -1176,12 +1128,10 @@
             following form:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var pa = new ParallelArray(shape_vector, elemental_function,
                 arg1, arg2, ...);
-            </pre>
-          </p>
+          </pre>
 
           <p>
             where <code>elemental_function</code> is a JavaScript
@@ -1206,14 +1156,12 @@
             of <code>[h, w, 4]</code>.  We can do so as follows:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               case "sepia":
                   stage_output = new ParallelArray([h, w], kernelName, stage_input);
 
                   break;
-            </pre>
-          </p>
+          </pre>
 
           <p>
             The first argument, <code>[h, w]</code>, specifies the
@@ -1244,21 +1192,19 @@
             the <code>sepia_parallel</code> function:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               function sepia_parallel(indices, frame) {
 
                   /* Add your code here... */
 
               }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             The first argument <code>indices</code> is a vector of
             indices from the iteration space <code>[h,
             w]</code>. <code>indices[0]</code> is the index along the
-            1st dimension (from <code>0</code> to </code>h-1</code>)
+            1st dimension (from <code>0</code> to <code>h-1</code>)
             and <code>indices[1]</code> is the index along the 2nd
             dimension (from <code>0</code> to <code>w-1</code>).
           </p>
@@ -1273,8 +1219,7 @@
             Now let's fill in the body of the elemental function:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               function sepia_parallel(indices, frame) {
                   var i = indices[0];
                   var j = indices[1];
@@ -1290,8 +1235,7 @@
 
                   return [r, g, b, a];
               }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             In this code, we grab the indices <code>i</code>
@@ -1384,8 +1328,10 @@
           </p>
 
           <p style="text-align: center;">
-            <img src="images/42.png" height="170"/>
-            <img src="images/3d42-all.png" height="170"/>
+            <img src="images/42.png" alt="An image of the number 42
+            before processing." height="170"/>
+            <img src="images/3d42-all.png" alt="An image of the number
+            41 after stereoscopic 3D processing." height="170"/>
           </p>
 
           <p>
@@ -1395,8 +1341,7 @@
             filter.  Let's look at this sequential implementation:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
     function A3D_sequential(frame, len, w, h, dist, ctx) {
         var pix = frame.data;
         var new_pix = new Array(len);
@@ -1426,8 +1371,7 @@
         ctx.putImageData(frame, 0, 0);
 
     }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             Don't worry about the details of the implementation just
@@ -1456,8 +1400,7 @@
             the <code>ParallelArray</code> constructor as follows:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
         if(execution_mode === "parallel") {
             switch(filterName) {
                 ...
@@ -1470,8 +1413,7 @@
             }
             ...
         }
-            </pre>
-          <p>
+          </pre>
 
           <p>
             Then, in <code>tutorial/src/filters-skeleton.js</code>,
@@ -1479,14 +1421,12 @@
             function and begin modifying it as follows:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               function A3D_parallel(indices, frame, w, h, dist) {
                   var i = indices[0];
                   var j = indices[1];
               }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             Each pair <code>(i, j)</code> corresponds to a pixel in
@@ -1506,16 +1446,14 @@
             the 3D slider on the UI is moved):
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               function A3D_parallel(indices, frame, w, h, dist) {
                   var i = indices[0];
                   var j = indices[1];
                   var k = j - dist;
                   if(k < 0) k = j;
               }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             Now <code>frame[i][k]</code> is the right-eye pixel. We
@@ -1537,13 +1475,11 @@
             tuple and produce a new RGB tuple that is appropriately
             masked for the right and left eyes. For details on these
             functions, read about
-            the <a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=941256&tag=1">Dubois
+            the <a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=941256&amp;tag=1">Dubois
             method</a>.
           </p>
 
-
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               function A3D_parallel(indices, frame, w, h, dist) {
                   var i = indices[0];
                   var j = indices[1];
@@ -1558,8 +1494,7 @@
                   var left = dubois_blend_left(r_l, g_l, b_l);
                   var right = dubois_blend_right(r_r, g_r, b_r);
               }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             Now we have the separately masked and blended left- and
@@ -1567,8 +1502,7 @@
             to produce the final color values:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               function A3D_parallel(indices, frame, w, h, dist) {
                   var i = indices[0];
                   var j = indices[1];
@@ -1587,8 +1521,7 @@
                   var bb = left[2] + right[2] + 0.5;
                   return [rb, gb, bb, 255];
               }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             And that's it. With the "River Trail" execution mode
@@ -1600,8 +1533,10 @@
           </p>
 
           <p style="text-align: center;">
-            <img src="images/se1.png" height="170"/>
-            <img src="images/3d1.png" height="170"/>
+            <img src="images/se1.png" alt="A frame of video before
+            stereoscopic 3D filtering." height="170"/>
+            <img src="images/3d1.png" alt="A frame of video after
+            stereoscopic 3D filtering." height="170"/>
           </p>
 
           <h2><a name="edge"></a>Edge Detection and Sharpening</h2>
@@ -1619,8 +1554,10 @@
           </p>
 
           <p style="text-align: center;">
-            <img src="images/se1.png" height="170"/>
-            <img src="images/ed1.png" height="170"/>
+            <img src="images/se1.png" alt="A frame of video before
+            edge detection filtering." height="170"/>
+            <img src="images/ed1.png" alt="A frame of video with an
+            edge detection filter applied." height="170"/>
           </p>
 
           <p>
@@ -1631,8 +1568,9 @@
           </p>
 
           <p>
-            <img src="images/convolution2.png" height="200"
-                 style="margin:auto;display:block;"/></p>
+            <img src="images/convolution2.png" alt="An illustration of
+                 how discrete convolution on a pixel works."
+                 height="200" style="margin:auto;display:block;"/></p>
 
           <p>
             At a high level, discrete convolution on a single pixel in
@@ -1652,7 +1590,8 @@
           </p>
           
           <p>
-            <img src="images/convolution4.png" height="150"
+            <img src="images/convolution4.png" alt="An example
+                 convolution computation." height="150"
                  style="margin:auto;display:block;"/>
           </p>
 
@@ -1684,8 +1623,7 @@
             function and modify it as folllows:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               function edge_detect_parallel(index, frame, w, h) {
                   var m = index[0];
                   var n = index[1];
@@ -1694,8 +1632,7 @@
                   var kernel_width = (ekernel.length-1)/2; // will be '2' for this kernel
                   var neighbor_sum = [0, 0, 0, 255];
               }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             The first two lines of the body are the same as the
@@ -1718,8 +1655,7 @@
             by using a nested loop, as follows:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               function edge_detect_parallel(index, frame, w, h) {
                   var m = index[0];
                   var n = index[1];
@@ -1733,8 +1669,7 @@
                       }
                   }
               }
-            </pre>
-          </p>
+          </pre>
           
           <p>
             Now we have an iteration space <code>(x, y)</code> that
@@ -1746,8 +1681,7 @@
             from <code>ekernel</code>:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               function edge_detect_parallel(index, frame, w, h) {
                   var m = index[0];
                   var n = index[1];
@@ -1766,8 +1700,7 @@
                       }
                   }
               }
-            </pre>
-          </p>
+          </pre>
 
           <p>
             There is a detail we have ignored so far: what do we do
@@ -1781,14 +1714,12 @@
             the borders of the image.
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               var x = m+i; var y = n+j;
               if(x < 0) x = 0; if(x > h-1) x = h-1;
               if(y < 0) y = 0; if(y > w-1) y = w-1;
               weight = ekernel[i+kernel_width][j+kernel_width];
-            </pre>
-          </p>
+          </pre>
 
           <p>
             After the loops are done, we have our weighted sum for
@@ -1797,8 +1728,7 @@
             looks like this:
           </p>
 
-          <p>
-            <pre class="brush: js;">
+          <pre class="brush: js;">
               function edge_detect_parallel(index, frame, w, h) {
                   var m = index[0];
                   var n = index[1];
@@ -1819,8 +1749,7 @@
                       }
                   }
               }
-            </pre>
-          </p>
+          </pre>
 
           <h2><a name="summary"></a>Summary</h2>
           
