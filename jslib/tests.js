@@ -126,6 +126,16 @@ this.ParallelArrayTests = {
 
 this.mapTests = {
     'm0': function(test) {
+        var pa = new ParallelArray([1,2,3,4,5]);
+        var paIdentical = pa.map(function(val){ return val; });
+
+        test.expect(2);
+        test.equal(pa.toString(), "[1, 2, 3, 4, 5]", "given a ParallelArray");
+        test.equal(paIdentical.toString(), "[1, 2, 3, 4, 5]", "use `map` to create an identical ParallelArray");
+        test.done();
+    },
+
+    'm1': function(test) {
         var source = new ParallelArray([1,2,3,4,5]);
         var plusOne = source.map(function inc(v) { return v+1; });
 
