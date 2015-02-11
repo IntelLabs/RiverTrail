@@ -81,6 +81,42 @@ this.ParallelArrayTests = {
         test.done();
     },
 
+
+    'pa4': function(test) {
+        var pa4 = new ParallelArray([ [0, 1], [2] ]);
+
+        test.expect(0);
+        test.done();
+
+        // TODO: Figure out how to test this.
+
+        // The tutorial says, "Multi-dimensional ParallelArrays are
+        // also required to be uniform (also called rectangular). That
+        // is, the length of all inner arrays in a particular
+        // dimension must be the same. For example, [[0, 1], [2], [3,
+        // 4]] would be non-uniform and is not allowed." But what does
+        // "not allowed" mean?  We're clearly still able to call
+        // `ParallelArray` with this argument, and it still returns
+        // something.
+
+    },
+
+    'pa5': function(test) {
+        var elem0 = new ParallelArray([0, 1]);
+        var elem1 = new ParallelArray([2]);
+        var pa5 = new ParallelArray([ elem0, elem1 ]);
+
+        test.expect(0);
+        test.done();
+
+        // TODO: Figure out how to test this.
+
+        // This is like the above, except that the inner arrays are
+        // already ParallelArrays.  What happens then?  Is it like the
+        // above case?
+
+    },
+
     'pa6': function(test) {
         var pa6 = new ParallelArray(3, function (i) { return [i, i+1]; });
 
@@ -118,6 +154,10 @@ this.ParallelArrayTests = {
         test.equal(pa8.shape[2], "4", "and RGBA values for each pixel");
         test.done();
     },
+
+    // TODO: it would be great to have tests for the special cases
+    // mentioned under "Discussion" on
+    // https://github.com/IntelLabs/RiverTrail/wiki/ParallelArray .
 
 };
 
