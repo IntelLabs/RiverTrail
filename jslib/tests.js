@@ -37,9 +37,6 @@
 
 // 4. load up 'tests.html' in Firefox
 
-
-// For now, these are just the first few tests from the tutorial.
-
 this.ParallelArrayTests = {
     'pa0': function(test) {
         var pa0 = new ParallelArray();
