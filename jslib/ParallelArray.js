@@ -29,10 +29,6 @@
 ////////////////////
 
 
-// Temp hack to find out what the type of something is.
-var typeOf = function(obj) {
-  return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase()
-}
 
 
 //ParallelArray
@@ -1184,7 +1180,6 @@ var ParallelArray = function () {
                 rawResult[1] = f.apply(this, callArguments);
                 var last = rawResult[1];
 
-                console.log("type of last.data: " + typeOf(last.data));
                 if ((last.data instanceof Object) &&
                     equalsShape(rawResult[0].getShape(), last.getShape())) {
                     // this was computed by openCL and the function is shape preserving.
@@ -1538,7 +1533,6 @@ var ParallelArray = function () {
             var imageData = context.createImageData(currImage.width, currImage.height);
             var data = imageData.data;
 
-        console.log("type of this.data: " + typeOf(this.data));
             if (extensionIsInstalled && (this.data instanceof Object)) {
                 this.data.writeTo(data);
             } else {

@@ -113,7 +113,7 @@ this.ParallelArrayTests = {
         // canvas elements default to width 300 and height 150
 
         test.expect(4);
-        test.equal(typeOf(pa8),
+        test.equal(typeof(pa8),
                    "object",
                    "create a ParallelArray from a canvas element");
         test.equal(pa8.shape[0], "150", "with height 150");
