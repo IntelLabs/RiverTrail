@@ -283,7 +283,7 @@
           <pre class="brush: js;">
               // Create a ParallelArray of length 3 and
               // shape [3,2], using the "comprehension" constructor
-              var pa6 =
+              var pa4 =
                 new ParallelArray(3, function(i){return [i, i+1];});
           </pre>
 
@@ -301,7 +301,7 @@
           <pre class="brush: js;">
               // Create a two-dimensional ParallelArray with shape
               // [3,2] using the comprehension constructor
-              var pa7 = new ParallelArray([3, 2], 
+              var pa5 = new ParallelArray([3, 2], 
                 function(iv) { return iv[0] * iv[1]; });
           </pre>
 
@@ -319,7 +319,7 @@
               // [h, w, 4],
               // corresponding to the height and width of the
               // canvas and the RGBA value for each pixel.
-              var pa8 = new ParallelArray(document.createElement("canvas"));
+              var pa6 = new ParallelArray(document.createElement("canvas"));
           </pre>
 
           <h2><a name="methods"></a>Methods</h2>
