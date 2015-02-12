@@ -343,6 +343,38 @@ this.getTests = {
 
 };
 
+this.partitionTests = {
+
+    'p0': function(test) {
+
+        var pa1D = new ParallelArray([1, 2, 3, 4]);
+        var pa2D = pa1D.partition(2);
+
+        test.expect(4);
+        test.equal(pa1D.shape.toString(), "4", "given a 4-element, 1-dimensional ParallelArray");
+        test.equal(pa1D.toString(), "[1, 2, 3, 4]", "partition it");
+        test.equal(pa2D.shape.toString(), "2,2", "to two dimensions with two elements");
+        test.equal(pa2D.get(0).get(1), 2, "where 2 is the element at index [0,1]");
+        test.done();
+
+    },
+
+    'p1': function(test) {
+
+        var pa1D = new ParallelArray([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        var pa2D = pa1D.partition(3);
+
+        test.expect(4);
+        test.equal(pa1D.shape.toString(), "9", "given a 9-element, 1-dimensional ParallelArray");
+        test.equal(pa1D.toString(), "[1, 2, 3, 4, 5, 6, 7, 8, 9]", "partition it");
+        test.equal(pa2D.shape.toString(), "3,3", "to two dimensions with three elements in each dimension");
+        test.equal(pa2D.get(2).get(0), 7, "where 7 is the element at index [2,0]");
+        test.done();
+
+    },
+
+};
+
 // These are tests for issues that have already been resolved.  We
 // should keep testing them to avoid regressions.
 this.closedIssueTests = {
