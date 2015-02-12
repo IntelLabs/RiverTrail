@@ -269,7 +269,83 @@ this.filterTests = {
     },
 };
 
-this.issueTests = {
+this.getTests = {
+
+    'g0': function(test) {
+
+        var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
+
+        test.expect(6);
+        test.equal(pa.get([0,0]), 0, "index into a 2D ParallelArray and, from the array at index 0, retrieve the element at index 0");
+        test.equal(pa.get([0,4]), 4, "index into a 2D ParallelArray and, from the array at index 1, retrieve the element at index 4");
+        test.equal(pa.get([1,1]), 11, "index into a 2D ParallelArray and, from the array at index 1, retrieve the element at index 1");
+        test.equal(pa.get([1,0]), 10, "index into a 2D ParallelArray and, from the array at index 1, retrieve the element at index 0");
+        test.equal(pa.get([2,4]), 24, "index into a 2D ParallelArray and, from the array at index 2, retrieve the element at index 4");
+        test.equal(pa.get([1,5]), undefined, "attempt an out-of-bounds index into a 2D ParallelArray");
+        test.done();
+    },
+
+    'g1': function(test) {
+
+        var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
+
+        test.expect(4);
+        test.equal(pa.get([0]).toString(), "[0, 1, 2, 3, 4]", "index into a 2D ParallelArray and retrieve the array at index 1");
+        test.equal(pa.get([1]).toString(), "[10, 11, 12, 13, 14]", "index into a 2D ParallelArray and retrieve the array at index 1");
+        test.equal(pa.get([3]), undefined, "attempt an out-of-bounds index into the top level of a 2D ParallelArray");
+        test.equal(pa.get([2]).get([4]), 24, "index into a 2D ParallelArray and retrieve the ParallelArray at index 2; then index into that ParallelArray and retrieve the element at index 4");
+        test.done();
+
+    },
+
+    'g2': function(test) {
+
+        var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
+
+        test.expect(4);
+        test.equal(pa.get(0).toString(), "[0, 1, 2, 3, 4]", "index into a 2D ParallelArray and retrieve the array at index 1");
+        test.equal(pa.get(1).toString(), "[10, 11, 12, 13, 14]", "index into a 2D ParallelArray and retrieve the array at index 1");
+        test.equal(pa.get(3), undefined, "attempt an out-of-bounds index into the top level of a 2D ParallelArray");
+        test.equal(pa.get(2).get(4), 24, "index into a 2D ParallelArray and retrieve the ParallelArray at index 2; then index into that ParallelArray and retrieve the element at index 4");
+        test.done();
+
+    },
+
+    'g3': function(test) {
+
+        var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
+
+        test.expect(6);
+        test.equal(pa.get(0,0), 0, "index into a 2D ParallelArray using multiple index arguments: from the array at index 0, retrieve the element at index 0");
+        test.equal(pa.get(0,4), 4, "index into a 2D ParallelArray using multiple index arguments: from the array at index 1, retrieve the element at index 4");
+        test.equal(pa.get(1,1), 11, "index into a 2D ParallelArray using multiple index arguments: from the array at index 1, retrieve the element at index 1");
+        test.equal(pa.get(1,0), 10, "index into a 2D ParallelArray using multiple index arguments: from the array at index 1, retrieve the element at index 0");
+        test.equal(pa.get(2,4), 24, "index into a 2D ParallelArray using multiple index arguments from the array at index 2, retrieve the element at index 4");
+        test.equal(pa.get(1,5), undefined, "attempt an out-of-bounds index into a 2D ParallelArray using multiple index arguments");
+        test.done();
+
+    },
+
+    'g4': function(test) {
+
+        var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
+
+        test.expect(1);
+        test.throws(
+            function() {
+                pa.get(2, 4, 1)
+            },
+            "too many indices in get call",
+            "attempt to index into a 2D ParallelArray using more indices than there are dimensions");
+        test.done();
+
+    },
+
+};
+
+// These are tests for issues that have already been resolved.  We
+// should keep testing them to avoid regressions.
+this.closedIssueTests = {
     'issue48': function(test) {
         var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
 
@@ -280,4 +356,21 @@ this.issueTests = {
         test.done();
     },
 
+};
+
+// After fixing an issue, move the test from here to
+// `closedIssueTests`.
+this.openIssueTests = {
+    'issue54': function(test) {
+        var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
+
+        test.expect(1);
+        test.throws(
+            function() {
+                pa.get([2, 4, 1])
+            },
+            "too many indices in get call",
+            "attempt to index into a 2D ParallelArray using an array of length 3");
+        test.done();
+    },
 };
