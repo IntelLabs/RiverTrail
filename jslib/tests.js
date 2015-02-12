@@ -375,6 +375,64 @@ this.partitionTests = {
 
 };
 
+this.reduceTests = {
+
+    'r0': function(test) {
+
+        var source = new ParallelArray();
+        var sum = source.reduce(function plus(a, b) { return a+b; });
+
+        test.expect(1);
+        test.equal(sum, undefined, "reduce an addition operation over a 0-element array, returning undefined");
+        test.done();
+
+    },
+
+    'r1': function(test) {
+
+        var source = new ParallelArray([1]);
+        var sum = source.reduce(function plus(a,b) { return a+b; });
+
+        test.expect(1);
+        test.equal(sum, 1, "reduce an addition operation over a 1-element array, returning that element");
+        test.done();
+
+    },
+
+    'r2': function(test) {
+
+        var source = new ParallelArray([1, 2, 3, 4, 5]);
+        var sum = source.reduce(function plus(a,b) { return a+b; });
+
+        test.expect(1);
+        test.equal(sum, 15, "reduce an addition operation over the ParallelArray [1, 2, 3, 4, 5], returning 15");
+        test.done();
+    },
+
+    'r3': function(test) {
+
+        var source = new ParallelArray([1, 2, 3, 4, 5]);
+        var prod = source.reduce(function mult(a, b) { return a*b; });
+
+        test.expect(1);
+        test.equal(prod, 120, "reduce a multiplication operation over a ParallelArray [1, 2, 3, 4, 5], returning 120");
+        test.done();
+
+    },
+
+    'r4': function(test) {
+
+        var source = new ParallelArray([1, 2, 3, 4, 5, 0]);
+        var prod = source.reduce(function mult(a, b) { return a*b; });
+
+        test.expect(1);
+        test.equal(prod, 0, "reduce a multiplication operation over a ParallelArray containing 0, returning 0");
+        test.done();
+
+    },
+
+};
+
 // These are tests for issues that have already been resolved.  We
 // should keep testing them to avoid regressions.
 this.closedIssueTests = {
