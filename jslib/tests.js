@@ -433,6 +433,33 @@ this.reduceTests = {
 
 };
 
+this.scanTests = {
+
+    's0': function(test) {
+
+        var pa = new ParallelArray([1,2,3,4,5]);
+        var paIdentical = pa.scan(function plus(a, b) { return b; });
+
+        test.expect(1);
+        test.equal(paIdentical.toString(), "[1, 2, 3, 4, 5]", "use `scan` to compute an identity function on a ParallelArray");
+        test.done();
+
+    },
+
+    's1': function(test) {
+
+        var source = new ParallelArray([1,2,3,4,5]);
+        var psum = source.scan(function plus(a, b) { return a+b; });
+
+        test.expect(1);
+        test.equal(psum.toString(), "[1, 3, 6, 10, 15]", "use `scan` to compute a partial sum");
+        test.done();
+
+    },
+
+};
+
+
 // These are tests for issues that have already been resolved.  We
 // should keep testing them to avoid regressions.
 this.closedIssueTests = {
