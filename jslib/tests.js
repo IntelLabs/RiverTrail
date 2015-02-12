@@ -168,7 +168,7 @@ this.flattenTests = {
         test.expect(4);
         test.equal(pa.shape.toString(), "2,2,2", "given a 2x2x2 ParallelArray");
         test.equal(paFlat.toString(), "[1, 1, 2, 2, 3, 3, 4, 4]", "flatten it");
-        test.equal(paFlat.shape.toString(), "4,2", "to two dimensions");
+        test.equal(paFlat.shape.toString(), "4,2", "to two dimensions with four elements in the outermost dimension and two elements in the second");
         test.equal(paFlat.get(0).toString(), "[1, 1]", "where [1, 1] is the first element");
         test.done();
     },
