@@ -463,16 +463,69 @@ this.scatterTests = {
 
     's0': function(test) {
 
-        test.expect(0);
+        var source = new ParallelArray([1,2,3,4,5]);
+        var indices = [0, 1, 2, 3, 4];
+        var identity = source.scatter(indices);
+
+        test.expect(1);
+        test.equal(identity.toString(), "[1, 2, 3, 4, 5]", "compute an identity function using `scatter");
         test.done();
 
     },
 
     's1': function(test) {
 
-        test.expect(0);
+        var source = new ParallelArray([1,2,3,4,5]);
+        var reorderedArray = source.scatter([4,0,3,1,2]);
+
+        test.expect(1);
+        test.equal(reorderedArray.toString(), "[2, 4, 5, 3, 1]", "reorder elements in a ParallelArray using `scatter`");
         test.done();
 
+    },
+
+    's2': function(test) {
+
+        var source = new ParallelArray([1,2,3,4,5]);
+        var reorderedArrayWithConflictResolution =
+          source.scatter([4,0,3,4,2],
+                         33,
+                         function max(a, b) { return a>b?a:b; });
+
+        test.expect(1);
+        test.equal(reorderedArrayWithConflictResolution.toString(),
+                   "[2, 33, 5, 3, 4]",
+                   "reorder elements in a ParallelArray using `scatter` with a conflict resolution function");
+        test.done();
+
+    },
+
+    's3': function(test) {
+
+        var source = new ParallelArray([1,2,2,4,2,4,5]);
+        var ones = source.map(function one(v) { return 1; });
+        var histogram = ones.scatter(source,
+                                     0,
+                                     function plus(a,b) { return a+b; },
+                                     6);
+        test.expect(1);
+        test.equal(histogram.toString(), "[0, 1, 3, 0, 2, 1]", "create a histogram using `scatter`");
+        test.done();
+
+    },
+
+    's4': function(test) {
+
+        var source = new ParallelArray([1,2,3,4,5]);
+
+        test.expect(1);
+        test.throws(
+            function() {
+                source.scatter([4,0,3,4,2], 0);
+            },
+            "RangeError: Duplicate indices in scatter",
+            "attempt to `scatter` to conflicting indices without specifying a conflict resolution function");
+        test.done();
     },
 
 };
