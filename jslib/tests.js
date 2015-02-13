@@ -459,6 +459,23 @@ this.scanTests = {
 
 };
 
+this.scatterTests = {
+
+    's0': function(test) {
+
+        test.expect(0);
+        test.done();
+
+    },
+
+    's1': function(test) {
+
+        test.expect(0);
+        test.done();
+
+    },
+
+};
 
 // These are tests for issues that have already been resolved.  We
 // should keep testing them to avoid regressions.
