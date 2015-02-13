@@ -4647,31 +4647,13 @@ RiverTrail.runtime = (function() {
 
 "use strict";
 
-// See documentation and examples at:
+// See documentation for the `ParallelArray` constructor at:
 // https://github.com/IntelLabs/RiverTrail/wiki/ParallelArray
 var ParallelArray = function () {
 
-//    The array object has the following prototype methods that are also implemented
-//    for ParallelArray.
-
-//    concat, join, slice, toString
-
-//    See https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Array
-//    for their description.
-
-
-
-//    The ParallelArray prototype includes the data parallel mechanisms used by ParallelArrays.
-//
-//    Notes.
-//    Copperheap python - allowed closures to be passed. Pass arguments as free variables....
-//
-//    There are other patterns that can be easily derived from these patterns for example max of a ParallelArray
-//    is nothing more that a reduce using the binary max function.
-
-// N.B.: A ParallelArray's `flat` attribute should be `true` if it is
-// either a JS array of numbers or a TypedArray.  If it is a nested JS
-// array, `flat` should be set to `false`.
+    // N.B.: A ParallelArray's `flat` attribute should be `true` if it
+    // is either a JS array of numbers or a TypedArray.  If it is a
+    // nested JS array, `flat` should be set to `false`.
     
     // use Proxies to emulate square bracket index selection on ParallelArray objects
     var enableProxies = false;
@@ -4853,7 +4835,7 @@ var ParallelArray = function () {
         return strides;
     };
 
-// Given the shape of an array return the number of elements.    
+    // Given the shape of an array return the number of elements.
     var shapeToLength = function shapeToLength (shape) {
         var i;
         var result;
@@ -5283,6 +5265,8 @@ var ParallelArray = function () {
     };
     **/
 
+    // See documentation for the `partition` operation at:
+    // https://github.com/IntelLabs/RiverTrail/wiki/partition
     var partition = function partition(partitionSize) {
         if (this.flat) {
             return partitionFlat(this, partitionSize);
@@ -5412,34 +5396,8 @@ var ParallelArray = function () {
         return new ParallelArray(this.data.constructor, result);
     };
 
-    // combine implements the openCL parallel version of combine.  
-    // When in the elemental function f "this" is the same as "this" in combine.
-
-    /***
-    Combine
-    Overview 
-        Similar to map except this is the entire array and an index is provided since you have the entire array you can access other elements in the array. 
-
-    Arguments
-        depth – the number of dimensions traversed to access an element in this
-        Elemental function described below
-        Optional arguments passed unchanged to elemental function
-
-    Elemental Function 
-        this - The ParallelArray
-        index	Location in combine’s result where the result of the elemental function is placed.  Suitable as the first argument to “get” to retrieve source values.
-        Optional arguments
-            Same as the optional arguments passed to combine
-        Result
-            An element to be placed in combine’s result at  the location indicated by index
-
-    Returns
-        A freshly minted ParallelArray whose elements are the results of applying the elemental function.
-
-    Example: an identity function
-        pa.combine(function(i){return this.get(i);})
-
-    ***/
+    // See documentation for the `combine` operation at:
+    // https://github.com/IntelLabs/RiverTrail/wiki/combine
     var combine = function combine() { // optional arguments follow
         var i;
         var paResult;
@@ -5483,40 +5441,8 @@ var ParallelArray = function () {
         paResult = RiverTrail.compiler.compileAndGo(this, f, "combine", depth, extraArgs, enable64BitFloatingPoint);
         return paResult;
     };
-        
-    /**
-      Fundamental Constructs of ParallelArray – the minimal set from which you should be able to cleanly express
-      90% of the useful constructs needed by programmers. 
-          
-      Map, 
-      Combine, 
-      Reduce, 
-      Scan, 
-      Scatter
-      Partition, 
-      filter 
-     **/
-        
-    /***
-    mapSeq
 
-    Elemental Function
-        this - the entire ParallelArray 
-        val - an element from the ParallelArray
-        Optional arguments - Same as the optional arguments passed to map 
-    
-    Result
-        An element to be placed in the result at the same offset we found “this”
- 	
-    Returns
-        A freshly minted ParallelArray 
-        Elements are the results of applying the elemental function to the 
-            elements in the original ParallelArray plus any optional arguments.
-
-    Example: an identity function
-        pa.map(function(val){return val;})
-    ***/
-
+    // Sequential version of `map` that doesn't compile to OpenCL.
     var mapSeq = function mapSeq (f) { // extra args passed unchanged and unindexed.
         var len = this.shape[0];
         var i, j;
@@ -5554,12 +5480,9 @@ var ParallelArray = function () {
         return new ParallelArray(result);
         return new ParallelArray(this.data.constructor, result);
     };
-    
-    //
-    // map - 
-    //      Same as mapSeq but uses the OpenCL optimized version.
-    //
 
+    // See documentation for the `map` operation at:
+    // https://github.com/IntelLabs/RiverTrail/wiki/map
     var map = function map (f) { // extra args passed unchanged and unindexed.
         var len = this.shape[0];
         var args = new Array(arguments.length-1);
@@ -5574,44 +5497,9 @@ var ParallelArray = function () {
         }
         return paResult;
     };
-        
-    /***
-    reduce
-    Arguments
-        Elemental function described below.
-        Optional arguments passed unchanged to elemental function
 
-    Elemental Function 
-        this - the entire ParallelArray 
-        a, b - arguments to be reduced and returned
-        Optional arguments - Same as the optional arguments passed to map 
-        Result
-            The result of the reducing a and b, typically used in further 
-            applications of the elemental function.
-
-    Returns
-        The final value, if the ParallelArray has only 1 element then that element is returned.
-
-    Discussion
-        Reduce is free to group calls to the elemental function in arbitrary ways and 
-        order the calls arbitrarily. If the elemental function is associative then the 
-        final result will be the same regardless of the ordering.  For integers addition 
-        is an example of an associative function and the sum of a ParallelArray will 
-        always be the same regardless of the order that reduces calls addition. Average 
-        is an example of non-associative function. Average(Average(2, 3), 9) is 5 2/3 
-        while Average(2, Average(3, 9)) is 4. Reduce is permitted to chose whichever 
-        call ordering it finds convenient.
-
-        Reduce is only required to return a result consistent with some call ordering and 
-        is not required to chose the same call ordering on subsequent calls. Furthermore, 
-        reduce does not magically resolve problems related to the well document fact 
-        that some floating point numbers are not represented exactly in JavaScript 
-        and the underlying hardware.
-
-        Reduce does not require the elemental function be communitive since it does
-        induce reordering of the arguments passed to the elemental function's.
-    ***/
-
+    // See documentation for the `reduce` operation at:
+    // https://github.com/IntelLabs/RiverTrail/wiki/reduce
     var reduce = function reduce(f) {
         // SAH: for now we have to manually unwrap. Proxies might be a solution but they 
         //      are too underspecified as of yet
@@ -5634,49 +5522,9 @@ var ParallelArray = function () {
 
         return callArguments[0];
     };
-    /***
-        scan
-    
-        Arguments
-            Elemental function described below
-            Optional arguments passed unchanged to elemental function
 
-        Elemental Function 
-            this - the entire ParallelArray 
-            a, b - arguments to be reduced and returned
-            Optional arguments - Same as the optional arguments passed to scan
-            Result - The result of the reducing a and b, typically used in further 
-            applications of the elemental function.
- 
-        Returns
-            A freshly minted ParallelArray whose ith elements is the results of 
-            using the elemental function to reduce the elements between 0 and i
-            in the original ParallelArray.
-
-        Example: an identity function
-            pa.scan(function(a, b){return b;})
-
-        Discussion:
-            We implement what is known as an inclusive scan which means that
-            the value of the ith result is the [0 .. i].reduce(elementalFunction) 
-            result. Notice that the first element of the result is the same as 
-            the first element in the original ParallelArray. An exclusive scan can
-            be implemented by shifting right end off by one the results 
-            of an inclusive scan and inserting the identity at location 0. 
-            Similar to reduce scan can arbitrarily reorder the order the calls to 
-            the elemental functions. Ignoring floating point anomalies, this 
-            cannot be detected if the elemental function is associative so 
-            using a elemental function such as addition to create a partial 
-            sum will produce the same result regardless of the 
-            order in which the elemental function is called. However using a 
-            non-associative function can produce different results due to the 
-            ordering that scan calls the elemental function. While scan will 
-            produce a result consistent with a legal ordering the ordering and the 
-            result may differ for each call to scan. 
-
-        Typically the programmer will only call scan with associative functions 
-        but there is nothing preventing them doing otherwise.
-    ***/
+    // See documentation for the `scan` operation at:
+    // https://github.com/IntelLabs/RiverTrail/wiki/scan
     var scan = function scan(f) {    
         // SAH: for now we have to manually unwrap. Proxies might be a solution but they 
         //      are too underspecified as of yet
@@ -5811,33 +5659,9 @@ var ParallelArray = function () {
         }
         return (new ParallelArray(rawResult));
     };
-            
-    /***
-    filter
-        Arguments
-            Elemental function described below
-            Optional arguments passed unchanged to elemental function
 
-        Elemental Function 
-            this - The ParallelArray
-            index - The location in “this” where the source element is found. 
-            Optional arguments - Same as the optional arguments passed to filter
-            Result
-                true (true, 1, or other JavaScript truthy value) 
-                    if the source element should be placed in filter’s result.
-                false (false, 0, undefined, or other JavaScript falsey value) 
-                    if the source element should not to be placed in filter’s result. 
- 
-        Returns
-            A freshly minted ParallelArray holding source elements where the 
-            results of applying the elemental function is true. The order of 
-            the elements in the returned ParallelArray is the same as the order 
-            of the elements in the source ParallelArray. 
-
-        Example: an identity function
-            pa.filter(function(){return true;})
-            
-    ***/
+    // See documentation for the `filter` operation at:
+    // https://github.com/IntelLabs/RiverTrail/wiki/filter
     var filter = function filter(f) {
         var len = this.length;
         // Generate a ParallelArray where t means the corresponding value is in the resulting array.
@@ -5861,52 +5685,8 @@ var ParallelArray = function () {
         return (new ParallelArray(rawResult));
     };
     
-   
-
-    /***
-    scatter
-        Arguments
-            indices: array of indices in the resulting array
-            defaultValue:   optional argument indicating the value of elements not set by scatter
-                            When not present, the default value is 'undefined’
-            conflictFunction: optional function to resolve conflicts, details below.
-            length: optional argument indicating the length of the resulting array.
-                    If absent, the length is the same as the length of the indices argument 
-            Note that scatter does not take an elemental function
-            Optional arguments are ignored.
-        Returns
-            A freshly minted ParallelArray A whose elements are the result of:
-                A[indices[i]] = this[i], when indices[i] is unique
-                A[indices[i]] = conflictFunction(index, A[indices[i]],) 
-                    when A[indices[i]] has a previously assigned value. 
-                defaultValue, when index is not present in 'indices' array
-
-        Example: an identity function
-            pa.scatter(indices);
-            where indices is a ParallelArray where element === index
-
-        Handling conflicts
-            Conflicts result when multiple elements are scattered to the same location.
-            Conflicts results in a call to conflictFunction, which is an 
-                optional third argument to scatter
-
-            Arguments
-                this is value from the source array that is currently being scattered
-                Previous value – value in result placed there by some previous iteration
-
-            It is the programmer’s responsibility to provide a conflictFunction that is 
-            associative and commutative since there is no guarantee in what order the 
-            conflicts will be resolved. 
-
-            Returns
-                Value to place in result[indices[index]]
-
-            Example: Resolve conflict with larger number
-                chooseMax(prev){
-                    return (this>prev)?this:prev;
-                } 
-                
-        ***/
+    // See documentation for the `scatter` operation at:
+    // https://github.com/IntelLabs/RiverTrail/wiki/scatter
     var scatter = function scatter(indices, defaultValue, conflictFunction, length) {
         var result;
         var len = this.shape[0];
@@ -5943,9 +5723,6 @@ var ParallelArray = function () {
         return result;
     };    
     
-    /*** End of the fundemental constructts */
-        
-        
     /***
       getArray
       Synopsis:
@@ -5984,18 +5761,9 @@ var ParallelArray = function () {
         var result = new this.data.constructor(this.data);
         return result;
     };
-    /***
-      get
-      Synopsis:
-      get(index);
-      Arguments
-      index: a integer indicating that you want the element in the highest rank,
-      typically this is used for vectors.
-      index: an array of integers indicating that you want an element in a multiple dimension
-      array. 
-      Returns
-      The element refered to by the index/indices.
-     ***/
+
+    // See documentation for the `get` operation at:
+    // https://github.com/IntelLabs/RiverTrail/wiki/get
     var get = function get (index) {
         var i;
         var result;
@@ -6116,7 +5884,6 @@ var ParallelArray = function () {
     //      for a description.
     //          
     //     
-        
         
     // concat() Joins two or more arrays, and returns a copy of the joined arrays
     var concat = function concat () {
@@ -6270,6 +6037,8 @@ var ParallelArray = function () {
         throw new TypeError("ParallelArray has no method 'unshift' - it is a read only construct.");
     };
     
+    // See documentation for the `flatten` operation at:
+    // https://github.com/IntelLabs/RiverTrail/wiki/flatten
     var flatten = function flatten () {
         var len = this.length;
         var newLength = 0;
