@@ -1485,11 +1485,6 @@ var ParallelArray = function () {
          return new ParallelArray( resultArray);
     };
 
-    var inferType = function inferType () {
-        // TODO: deprecated, delete for good
-        throw "inferType is no longer here!";
-    };
-    
     var _fastClasses = function () {
 
         var Fast0DPA = function (pa) { 
@@ -1799,7 +1794,6 @@ var ParallelArray = function () {
         "unshift" : unshift,
         "flatten" : flatten,
         "flattenRegular" : flattenRegular,
-        "inferType" : inferType,
         get maxPrecision () { return enable64BitFloatingPoint ? 64 : 32; }
     };
     
