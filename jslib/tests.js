@@ -43,7 +43,7 @@ this.ParallelArrayTests = {
 
         test.expect(2);
         test.equal(pa0.toString(), "[]", "create an empty ParallelArray");
-        test.equal(pa0.shape.toString(), "0", "with shape 0");
+        test.deepEqual(pa0.shape, [0], "with shape [0]");
         test.done();
     },
 
@@ -54,7 +54,7 @@ this.ParallelArrayTests = {
         test.equal(pa1.toString(),
                    "[0, 1, 2, 3, 4, 5]",
                    "create a ParallelArray out of a nested JS array");
-        test.equal(pa1.shape.toString(), "3,2", "with shape 3,2");
+        test.deepEqual(pa1.shape, [3,2], "with shape [3,2]");
         test.done();
     },
 
@@ -66,7 +66,7 @@ this.ParallelArrayTests = {
         test.equal(pa2.toString(),
                    "[0, 1, 2, 3, 4, 5]",
                    "create a ParallelArray from another ParallelArray");
-        test.equal(pa2.shape.toString(), "3,2", "with shape 3,2");
+        test.deepEqual(pa2.shape, [3,2], "with shape [3,2]");
         test.done();
     },
 
@@ -77,7 +77,7 @@ this.ParallelArrayTests = {
         test.equal(pa3.toString(),
                    "[0, 1, 2, 3]",
                    "create a nested ParallelArray from two arrays");
-        test.equal(pa3.shape.toString(), "2,2", "with shape 2,2");
+        test.deepEqual(pa3.shape, [2,2], "with shape [2,2]");
         test.done();
     },
 
@@ -88,7 +88,7 @@ this.ParallelArrayTests = {
         test.equal(pa6.toString(),
                    "[0, 1, 1, 2, 2, 3]",
                    "create a ParallelArray using the comprehension constructor");
-        test.equal(pa6.shape.toString(), "3,2", "with shape 3,2");
+        test.deepEqual(pa6.shape, [3,2], "with shape [3,2]");
         test.done();
     },
 
@@ -99,7 +99,7 @@ this.ParallelArrayTests = {
         test.equal(pa7.toString(),
                    "[0, 0, 0, 1, 0, 2]",
                    "create a ParallelArray with a shape vector");
-        test.equal(pa7.shape.toString(), "3,2", "with shape 3,2");
+        test.deepEqual(pa7.shape, [3,2], "with shape [3,2]");
         test.done();
     },
 
@@ -113,9 +113,9 @@ this.ParallelArrayTests = {
         test.equal(typeof(pa8),
                    "object",
                    "create a ParallelArray from a canvas element");
-        test.equal(pa8.shape[0], "150", "with height 150");
-        test.equal(pa8.shape[1], "300", "and width 300");
-        test.equal(pa8.shape[2], "4", "and RGBA values for each pixel");
+        test.deepEqual(pa8.shape[0], "150", "with height 150");
+        test.deepEqual(pa8.shape[1], "300", "and width 300");
+        test.deepEqual(pa8.shape[2], "4", "and RGBA values for each pixel");
         test.done();
     },
 
@@ -142,7 +142,7 @@ this.mapTests = {
 
         test.expect(2);
         test.equal(plusOne.toString(), "[2, 3, 4, 5, 6]", "add 1 to every element in a ParallelArray");
-        test.equal(plusOne.shape.toString(), "5", "with shape 5");
+        test.deepEqual(plusOne.shape, [5], "with shape [5]");
         test.done();
     },
 
@@ -154,9 +154,9 @@ this.flattenTests = {
         var paFlat = pa.flatten();
 
         test.expect(4);
-        test.equal(pa.shape.toString(), "2,2", "given a 2x2 ParallelArray");
+        test.deepEqual(pa.shape, [2,2], "given a 2x2 ParallelArray");
         test.equal(paFlat.toString(), "[1, 2, 3, 4]", "flatten it");
-        test.equal(paFlat.shape.toString(), "4", "to one dimension with four elements");
+        test.deepEqual(paFlat.shape, [4], "to one dimension with four elements");
         test.equal(paFlat.get(0).toString(), "1", "where 1 is the first element");
         test.done();
     },
@@ -166,9 +166,9 @@ this.flattenTests = {
         var paFlat = pa.flatten();
 
         test.expect(4);
-        test.equal(pa.shape.toString(), "2,2,2", "given a 2x2x2 ParallelArray");
+        test.deepEqual(pa.shape, [2,2,2], "given a 2x2x2 ParallelArray");
         test.equal(paFlat.toString(), "[1, 1, 2, 2, 3, 3, 4, 4]", "flatten it");
-        test.equal(paFlat.shape.toString(), "4,2", "to two dimensions with four elements in the outermost dimension and two elements in the second");
+        test.deepEqual(paFlat.shape, [4,2], "to two dimensions with four elements in the outermost dimension and two elements in the second");
         test.equal(paFlat.get(0).toString(), "[1, 1]", "where [1, 1] is the first element");
         test.done();
     },
@@ -351,9 +351,9 @@ this.partitionTests = {
         var pa2D = pa1D.partition(2);
 
         test.expect(4);
-        test.equal(pa1D.shape.toString(), "4", "given a 4-element, 1-dimensional ParallelArray");
+        test.deepEqual(pa1D.shape, [4], "given a 4-element, 1-dimensional ParallelArray");
         test.equal(pa1D.toString(), "[1, 2, 3, 4]", "partition it");
-        test.equal(pa2D.shape.toString(), "2,2", "to two dimensions with two elements");
+        test.deepEqual(pa2D.shape, [2,2], "to two dimensions with two elements");
         test.equal(pa2D.get(0).get(1), 2, "where 2 is the element at index [0,1]");
         test.done();
 
@@ -365,9 +365,9 @@ this.partitionTests = {
         var pa2D = pa1D.partition(3);
 
         test.expect(4);
-        test.equal(pa1D.shape.toString(), "9", "given a 9-element, 1-dimensional ParallelArray");
+        test.deepEqual(pa1D.shape, [9], "given a 9-element, 1-dimensional ParallelArray");
         test.equal(pa1D.toString(), "[1, 2, 3, 4, 5, 6, 7, 8, 9]", "partition it");
-        test.equal(pa2D.shape.toString(), "3,3", "to two dimensions with three elements in each dimension");
+        test.deepEqual(pa2D.shape, [3,3], "to two dimensions with three elements in each dimension");
         test.equal(pa2D.get(2).get(0), 7, "where 7 is the element at index [2,0]");
         test.done();
 
