@@ -630,20 +630,6 @@ var ParallelArray = function () {
         }
         return result;
     };
-    /** Erase RLH.
-    var calculateSize = function calculateSize(ravel) {
-        var size = 0;
-        var i;
-        if (ravel.length == 0) {
-            return size;
-        }
-        size = 1;
-        for (i=ravel.length-1; i>=0; i--) {
-            size = size * ravel[i];            
-        }
-        return size;
-    };
-    **/
 
     // See documentation for the `partition` operation at:
     // https://github.com/IntelLabs/RiverTrail/wiki/partition
