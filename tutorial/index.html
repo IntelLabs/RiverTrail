@@ -160,13 +160,21 @@
             The shape of a <code>ParallelArray</code> is specified as
             an array of numbers in which the value of the <em>i</em>th
             element is the number of elements in the <em>i</em>th
-            dimension of the <code>ParallelArray</code>.  So, for
-            instance, a 4x5 matrix of numbers can be represented as
-            a <code>ParallelArray</code> object whose shape
+            dimension of the <code>ParallelArray</code>.  The number
+            of dimensions of a <code>ParallelArray</code> is the
+            number of elements in its shape array.
+          </p>
+
+          <p>
+            For instance, a 4x5 matrix of numbers can be represented
+            as a <code>ParallelArray</code> object whose shape
             is <code>[4, 5]</code>. Similarly, a 2D image in which
             each pixel has an RGBA value can be represented as
             a <code>ParallelArray</code> object with shape <code>[h,
-              w, 4]</code>.  An empty <code>ParallelArray</code> has
+            w, 4]</code>.  (The <code>4</code> comes from the fact
+            that an RGBA value is 4 bytes, one for each of the red,
+            green, and blue channels and one for the alpha channel.)
+            An empty <code>ParallelArray</code> has
             shape <code>[0]</code>, and a
             one-dimensional <code>ParallelArray</code> with three
             elements has shape <code>[3]</code>.
@@ -208,8 +216,8 @@
             We can pass a regular JavaScript array to
             the <code>ParallelArray</code> constructor, as well.
             Here, we are creating a <code>ParallelArray</code> out of
-            a nested JS array.  The inner arrays are
-            also <code>ParallelArray</code>s.
+            a nested JS array.  The inner arrays will also become
+            <code>ParallelArray</code>s.
           </p>
 
           <pre class="brush: js;">
@@ -338,7 +346,7 @@
           <p>
             The first method we will discuss is <code>map</code>,
             probably the most prominent and well-known data-parallel
-            skeleton.  The <code>map</code> method expects a function
+            construct.  The <code>map</code> method expects a function
             as its first argument that, given a single value, produces
             a new value as its result.  We call such
             functions <em>elemental functions</em>, since they are
@@ -540,7 +548,7 @@
             each position contains the sum of all elements of the
             source vector up to that position. To implement this
             parallel pattern, <code>ParallelArray</code>s support a
-            <em>scan</em> method.
+            <code>scan</code> method.
           </p>
 
           <pre class="brush: js;">
@@ -551,8 +559,13 @@
           <p>
             Here, we again use the <code>plus</code> elemental
             function from the previous reduction example. However,
-            when used with <em>scan</em>, it now produces the
-            prefix-sum array of the <code>source</code> array.
+            when used with <code>scan</code>, it now produces the
+            prefix-sum array of the <code>source</code> array, which
+            is the <code>ParallelArray</code> <code>[1, 3, 6, 10,
+            15]</code>.  If we were only interested in the last
+            element, <code>15</code>, we could have just
+            called <code>reduce</code>; by using <code>scan</code>, we
+            also get all the intermediate results.
           </p>
 
           <p>
@@ -575,7 +588,7 @@
             specify or costly to compute. Instead, it is preferable to
             specify for a certain <em>source</em> index where it
             should be stored in the result array. This pattern is
-            supported by the <em>scatter</em> method in River
+            supported by the <code>scatter</code> method in River
             Trail. Here is an example:
           </p>
 
@@ -586,8 +599,8 @@
 
           <p>
             We first compute our source array <code>source</code>. In
-            a second step, we apply the <em>scatter</em> method with a
-            single argument: the <em>scatter
+            a second step, we apply the <code>scatter</code> method
+            with a single argument: the <em>scatter
             vector</em> <code>[4,0,3,1,2]</code>. Thereby, we specify
             that the first element of <code>source</code> is to become
             the fifth element of the result (indexing starts with 0),
