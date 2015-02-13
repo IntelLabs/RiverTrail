@@ -157,7 +157,7 @@ this.flattenTests = {
         test.deepEqual(pa.shape, [2,2], "given a 2x2 ParallelArray");
         test.equal(paFlat.toString(), "[1, 2, 3, 4]", "flatten it");
         test.deepEqual(paFlat.shape, [4], "to one dimension with four elements");
-        test.equal(paFlat.get(0).toString(), "1", "where 1 is the first element");
+        test.equal(paFlat.get(0), 1, "where 1 is the first element");
         test.done();
     },
 
