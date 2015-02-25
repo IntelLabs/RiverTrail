@@ -1144,6 +1144,13 @@ var ParallelArray = function () {
                     if (index[i] < 0 || index[i] >= this.shape[i]) return undefined;
                     offset = offset + index[i]*this.strides[i];
                 }
+                if (this.shape.length < index.length) {
+                    // The length of an array of indices must not exceed the
+                    // dimension of the ParallelArray being indexed.
+                    //
+                    // Fixes: https://github.com/IntelLabs/RiverTrail/issues/54
+                    throw "too many indices in get call";
+                }
                 if (this.shape.length === index.length) {
                     return this.data[offset];
                 } else {
