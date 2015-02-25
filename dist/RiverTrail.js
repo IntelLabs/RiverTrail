@@ -5739,7 +5739,7 @@ var ParallelArray = function () {
     };
     
     // This takes a ParallelArray and creates a similar JavaScript array.
-    // By similar the array returned will be of a cononical type. In
+    // By similar the array returned will be of a canonical type. In
     // particular it will be whatever type the data in the ParallelArray
     // is held in. A Float32Array would be returned if the original ParallelArray
     // held the actual data in a Float32Array.
@@ -5763,6 +5763,13 @@ var ParallelArray = function () {
                     // if we go out of bounds, we return undefined
                     if (index[i] < 0 || index[i] >= this.shape[i]) return undefined;
                     offset = offset + index[i]*this.strides[i];
+                }
+                if (this.shape.length < index.length) {
+                    // The length of an array of indices must not exceed the
+                    // dimension of the ParallelArray being indexed.
+                    //
+                    // Fixes: https://github.com/IntelLabs/RiverTrail/issues/54
+                    throw "too many indices in get call";
                 }
                 if (this.shape.length === index.length) {
                     return this.data[offset];
