@@ -543,11 +543,6 @@ this.closedIssueTests = {
         test.done();
     },
 
-};
-
-// After fixing an issue, move the test from here to
-// `closedIssueTests`.
-this.openIssueTests = {
     'issue54': function(test) {
         var pa = new ParallelArray([0,1,2,3,4], [10,11,12,13,14], [20,21,22,23,24]);
 
@@ -561,3 +556,7 @@ this.openIssueTests = {
         test.done();
     },
 };
+
+// After fixing an issue, move the test from here to
+// `closedIssueTests`.
+this.openIssueTests = {};

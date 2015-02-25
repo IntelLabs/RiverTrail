@@ -1119,7 +1119,7 @@ var ParallelArray = function () {
     };
     
     // This takes a ParallelArray and creates a similar JavaScript array.
-    // By similar the array returned will be of a cononical type. In
+    // By similar the array returned will be of a canonical type. In
     // particular it will be whatever type the data in the ParallelArray
     // is held in. A Float32Array would be returned if the original ParallelArray
     // held the actual data in a Float32Array.
