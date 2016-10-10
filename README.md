@@ -17,6 +17,6 @@ Please see the [project wiki](https://github.com/IntelLabs/RiverTrail/wiki) or t
 
 ## Firefox version requirements
 
-The final release of River Trail ([v0.35.0](https://github.com/IntelLabs/RiverTrail/releases) is known to work with Firefox versions 33, 34, and 35.  It may work with newer versions of Firefox, but has not been tested.
+The final release of River Trail ([v0.35.0](https://github.com/IntelLabs/RiverTrail/releases)) is known to work with Firefox versions 33, 34, and 35.  It may work with newer versions of Firefox, but has not been tested.
 
 Note that River Trail is an unsigned extension.  Beginning with Firefox 42, Mozilla began to change their extension security model to require extensions to be [signed through addons.mozilla.org](https://wiki.mozilla.org/Add-ons/Extension_Signing).  Extension signing is now mandatory and cannot be overridden for Firefox release and beta channels, but [may be overridden in Firefox nightly and Firefox Developer Edition](https://wiki.mozilla.org/Add-ons/Extension_Signing) by setting the `xpinstall.signatures.required` preference to "false".
