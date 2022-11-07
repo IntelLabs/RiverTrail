@@ -1,7 +1,7 @@
+> :warning: **DISCONTINUATION OF PROJECT** - *This project will no longer be maintained by Intel.  This project has been identified as having known security escapes.  Intel has ceased development and contributions including, but not limited to, maintenance, bug fixes, new releases, or updates, to this project.* **Intel no longer accepts patches to this project.**
+
 River Trail
 ===========
-
-**Note: As of 2016, River Trail is no longer being actively developed.**
 
 River Trail is a JavaScript library and a Firefox add-on that together provide support for **data-parallel programming in JavaScript**, targeting multi-core CPUs, GPUs and vector SSE/AVX instructions.
 
